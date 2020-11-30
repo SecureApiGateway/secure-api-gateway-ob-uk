@@ -125,7 +125,7 @@ function createTpp(tppData){
         	}
 	}
 	else{
-		returnObject.reason = "[IDM ERROR] identifier and ssa must be specified as a string";
+        	returnObject.reason = "[IDM ERROR] identifier and ssa must be specified as a string";
 		returnObject.code = 500;
 	}
 
