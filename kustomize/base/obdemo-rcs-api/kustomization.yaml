@@ -1,0 +1,10 @@
+kind: ""
+apiversion: ""
+commonLabels:
+  app: obdemo-rcs-api
+  vendor: forgerock
+  tier: ui
+resources:
+- deployment.yaml
+- service.yaml
+- ingress.yaml

@@ -1,0 +1,38 @@
+namespace: obdemo-bank
+commonLabels:
+  app.kubernetes.io/name: "forgerock"
+resources:
+- ../../../base/kustomizeConfig
+- ../../../base/forgeops-secrets
+- ../../../base/7.0/ingress
+- ../../../base/ig
+- ../../../base/obdemo-rcs-ui
+- ../../../base/obdemo-rcs-api
+- ../../../base/obdemo-rs
+
+secretGenerator:
+- name: obri-ca
+  files:
+  - ca.crt
+generatorOptions:
+  disableNameSuffixHash: true
+
+patchesJson6902:
+  - path: ingress-patch.yaml
+    target:
+      group: extensions
+      kind: Ingress
+      name: forgerock
+      version: v1beta1
+
+patchesStrategicMerge:
+- |-
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: platform-config
+  data:
+    FQDN: obdemo-bank.idhub.cc
+    AM_SERVER_FQDN: obdemo-iam.idhub.cc
+
+

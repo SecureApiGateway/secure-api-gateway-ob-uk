@@ -1,0 +1,145 @@
+{
+  "name": "OB Register TPP",
+  "baseURI": "https://&{am.server.fqdn}",
+  "condition": "${matches(request.uri.path, '^/am/oauth2/realms/root/realms/openbanking/register')}",
+  "heap": [
+    {
+      "name": "capture",
+      "type": "CaptureDecorator",
+      "config": {
+        "captureEntity": true
+      }
+    },
+    {
+      "name" : "ForgeRockClientHandler",
+      "type" : "Chain",
+      "config" : {
+        "filters" : [ "TransactionIdOutboundFilter" ],
+        "handler" : "ClientHandler"
+      },
+      "capture" : [ "response", "request" ]
+    }
+  ],
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "name": "HeaderFilter-AddResponseHeaders",
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "remove": [
+              "Content-Type"
+            ],
+            "add": {
+              "Content-Type": [
+                "application/json"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ProcessTPPRegistration",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ProcessTPPRegistration.groovy",
+            "args": {
+              "certHeader": "ssl-client-cert"
+            }
+          }
+        },
+        {
+          "name": "CreateTpp",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "CreateTPP.groovy",
+            "args": {
+              "idmBaseUri": "https://&{am.server.fqdn}",
+              "objTpp": "obTpp",
+              "objSsa": "obTppSsa"
+            },
+            "clientHandler": {
+              "type": "Chain",
+              "capture": "all",
+              "config": {
+                "filters": [
+                  {
+                    "type": "ClientCredentialsOAuth2ClientFilter",
+                    "config": {
+                      "clientId": "ig-client",
+                      "clientSecretId": "client.secret.id",
+                      "secretsProvider": {
+                        "type": "Base64EncodedSecretStore",
+                        "config": {
+                          "secrets": {
+                            "client.secret.id": "cGFzc3dvcmQ="
+                          }
+                        }
+                      },
+                      "tokenEndpoint": "https://&{am.server.fqdn}/am/oauth2/realms/root/realms/openbanking/access_token",
+                      "scopes": [
+                        "fr:idm:*"
+                      ]
+                    }
+                  }
+                ],
+                "handler": "ForgeRockClientHandler"
+              }
+            }
+          }
+        },
+        {
+          "name" : "HeaderFilter-ChangeHostToIAM",
+          "type" : "HeaderFilter",
+          "config" : {
+            "messageType" : "REQUEST",
+            "remove" : [ "host", "X-Forwarded-Host" ],
+            "add" : {
+              "X-Forwarded-Host" : [ "&{am.server.fqdn}" ]
+            }
+          }
+        }
+      ],
+      "handler": {
+        "type": "ScriptableHandler",
+        "config": {
+          "type": "application/x-groovy",
+          "clientHandler": {
+            "type": "Chain",
+            "capture": "all",
+            "config": {
+              "filters": [
+                {
+                  "type": "ClientCredentialsOAuth2ClientFilter",
+                  "config": {
+                    "clientId": "ig-client",
+                    "clientSecretId": "client.secret.id",
+                    "secretsProvider": {
+                      "type": "Base64EncodedSecretStore",
+                      "config": {
+                        "secrets": {
+                          "client.secret.id": "cGFzc3dvcmQ="
+                        }
+                      }
+                    },
+                    "tokenEndpoint": "https://&{am.server.fqdn}/am/oauth2/realms/root/realms/openbanking/access_token",
+                    "scopes": [
+                      "dynamic_client_registration"
+                    ]
+                  }
+                }
+              ],
+              "handler": "ForgeRockClientHandler"
+            }
+          },
+          "source": [
+            "return http.send(context, request);"
+          ]
+        }
+      }
+    }
+  }
+}

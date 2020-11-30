@@ -1,0 +1,45 @@
+{
+  "name" : "OB RS Metadata",
+  "baseURI" : "http://obdemo-rs:8089",
+  "condition" : "${matches(request.uri.path, '^/rs/obRSDiscovery')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "type": "UriPathRewriteFilter",
+          "config": {
+            "mappings": {
+              "/rs": "/"
+            },
+            "failureHandler": {
+              "type": "StaticResponseHandler",
+              "config": {
+                "status": 500,
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                },
+                "entity": "Invalid URL produced"
+              }
+            }
+          }
+        },
+        {
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "source": [
+              "next.handle(context, request).thenOnResult(response -> {",
+              "  response.entity = response.entity.getString().replace('http://rs','https://' + request.getHeaders().getFirst('Host') + '/rs');",
+              "  return response;",
+              "})"
+            ]
+          }
+        }
+      ],
+      "handler": "ReverseProxyHandler"
+    }
+  }
+}

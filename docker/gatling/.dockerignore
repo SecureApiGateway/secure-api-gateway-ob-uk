@@ -1,0 +1,4 @@
+build/
+.gradle/
+k8s/
+skaffold.yaml

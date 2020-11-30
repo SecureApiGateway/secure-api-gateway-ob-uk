@@ -1,0 +1,91 @@
+{
+  "name" : "OB IDM Internal Requests",
+  "baseURI" : "https://&{am.server.fqdn}",
+  "condition" : "${matches(request.uri.path, '^/openidm-internal')}",
+  "heap": [
+    {
+      "name": "capture",
+      "type": "CaptureDecorator",
+      "config": {
+        "captureEntity": true
+      }
+    },
+    {
+      "name": "ReverseProxyHandler",
+      "type": "ReverseProxyHandler",
+      "capture": [
+        "request",
+        "response"
+      ]
+    },
+    {
+      "name" : "ForgeRockClientHandler",
+      "type" : "Chain",
+      "config" : {
+        "filters" : [ "TransactionIdOutboundFilter" ],
+        "handler" : "ClientHandler"
+      },
+      "capture" : [ "response", "request" ]
+    }
+  ],
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "type": "UriPathRewriteFilter",
+          "config": {
+            "mappings": {
+              "/openidm-internal": "/openidm"
+            },
+            "failureHandler": {
+              "type": "StaticResponseHandler",
+              "config": {
+                "status": 500,
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                },
+                "entity": "Invalid URL produced"
+              }
+            }
+          }
+        },
+        {
+          "type": "ClientCredentialsOAuth2ClientFilter",
+          "config": {
+            "clientId": "ig-client",
+            "clientSecretId": "client.secret.id",
+            "secretsProvider": {
+              "type": "Base64EncodedSecretStore",
+              "config": {
+                "secrets": {
+                  "client.secret.id": "cGFzc3dvcmQ="
+                }
+              }
+            },
+            "tokenEndpoint": "https://&{am.server.fqdn}/am/oauth2/realms/root/realms/openbanking/access_token",
+            "scopes" : ["fr:idm:*"]
+          }
+        },
+        {
+          "name": "HeaderFilter-ChangeHostToIAM",
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "remove": [
+              "host",
+              "X-Forwarded-Host"
+            ],
+            "add": {
+              "X-Forwarded-Host": [
+                "obdemo-iam.idhub.cc"
+              ]
+            }
+          }
+        }
+      ],
+      "handler": "ReverseProxyHandler"
+    }
+  }}

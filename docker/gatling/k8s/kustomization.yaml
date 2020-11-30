@@ -1,0 +1,11 @@
+kind: ""
+apiversion: ""
+commonLabels:
+    app: gatling
+#namespace: smoke
+resources:
+- perf-test-job.yaml
+secretGenerator:
+- name: gcs-key
+  files:
+    - key.json

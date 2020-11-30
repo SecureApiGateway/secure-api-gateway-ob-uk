@@ -1,0 +1,9 @@
+kind: ""
+apiversion: ""
+commonLabels:
+  app: admin-ui
+  vendor: forgerock
+  tier: ui
+resources:
+- deployment.yaml
+- service.yaml
