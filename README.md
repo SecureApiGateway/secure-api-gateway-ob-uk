@@ -7,20 +7,20 @@ The deployment is based on the [ForgeRock Cloud Developer Kit (CDK)](https://bac
 ## Quick Start
 
 ```bash
-# Initialize the configuration profile
-bin/config.sh init --profile obdemo --version 7.0
-# run skaffold 
-skaffold run
-# Create an entry in your local /etc/hosts file
-sudo echo $(minikube ip) default.iam.example.com >> /etc/hosts
-# Open https://default.iam.example.com/platform  in your browser
+# Start up the IAM
+bin/config.sh init --profile obdemo-iam --version 7.0
+skaffold run -p obdemo-iam
+# Start up the Bank
+bin/config.sh init --profile obdemo-bank --version 7.0
+skaffold run -p obdemo-bank
 ```
 
 ## ForgeOps Deltas
 
 This deployment is based on the ForgeOps Cloud Developer Kit, with the following modifications and additions:
 
-- There is a new kustomize overlay at `kustomize/overlay/7.0/obdemo`. The default `skaffold.yaml` file points to this overlay.
+- There is a new kustomize overlay at `kustomize/overlay/7.0/obdemo-iam`. The default `skaffold.yaml` file has a profile `obdemo-iam` pointing to this overlay.
+- There is a new kustomize overlay at `kustomize/overlay/7.0/obdemo-bank`. The default `skaffold.yaml` file has a profile `obdemo-bank` pointing to this overlay.
 - There is an additional deployment for the AM remote consent service front end (`docker/obdemo-rcs-ui`).
 - There is an additional deployment for the AM remote consent service back end (`docker/obdemo-rcs-api`).
 - There is an additional deployment for a demo resource server providing a mock bank API (`docker/obdemo-rs`).
