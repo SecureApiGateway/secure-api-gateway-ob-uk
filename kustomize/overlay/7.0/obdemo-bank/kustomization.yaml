@@ -32,7 +32,7 @@ patchesStrategicMerge:
   metadata:
     name: platform-config
   data:
-    FQDN: obdemo-bank.idhub.cc
-    AM_SERVER_FQDN: obdemo-iam.idhub.cc
+    FQDN: default.bank.example.com
+    AM_SERVER_FQDN: default.iam.example.com
 
 

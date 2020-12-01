@@ -7,11 +7,20 @@ The deployment is based on the [ForgeRock Cloud Developer Kit (CDK)](https://bac
 ## Quick Start
 
 ```bash
-# Start up the IAM
+# Create namespaces
+kubectl create namespace obdemo-iam
+kubectl create namespace obdemo-bank
+
+# Initialise config
 bin/config.sh init --profile obdemo-iam --version 7.0
-skaffold run -p obdemo-iam
-# Start up the Bank
 bin/config.sh init --profile obdemo-bank --version 7.0
+
+# DNS
+sudo echo $(minikube ip) default.iam.example.com >> /etc/hosts
+sudo echo $(minikube ip) default.bank.example.com >> /etc/hosts
+
+# Start up 
+skaffold run -p obdemo-iam
 skaffold run -p obdemo-bank
 ```
 
