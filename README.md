@@ -46,7 +46,7 @@ This repository includes a [Postman Collection](postman) for testing the deploym
 
 - Enrol for an account at the [OBRI Directory](https://directory.ob.forgerock.financial)
 - From the Directory dashboard, create a new software statement, and download the transport certificate and private key
-- Configure Postman to use this client certificate and key for the hosts `default.iam.example.com`, `jwkms.ob.forgerock.financial` and `matls.service.directory.ob.forgerock.financial`
+- Configure Postman to use this client certificate and key for the hosts `default.iam.example.com`, `default.bank.example.com`, `jwkms.ob.forgerock.financial` and `matls.service.directory.ob.forgerock.financial`
 
 If you changed the FQDN value for the deployment, change the FQDN variable in the provided Postman environment, and define this host for client certificates as above.
 
