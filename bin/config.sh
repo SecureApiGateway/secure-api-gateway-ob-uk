@@ -148,15 +148,17 @@ clean_config()
     if [ "$1" == "amster" ]; then
         rm -rf "$DOCKER_ROOT/$1/config"
     elif [ "$1" == "am" ]; then
-	rm -rf "$DOCKER_ROOT/$1/config"
+	      rm -rf "$DOCKER_ROOT/$1/config"
     elif [ "$1" == "idm" ]; then
         rm -rf "$DOCKER_ROOT/$1/conf"
-	rm -rf "$DOCKER_ROOT/$1/script"
-	rm -rf "$DOCKER_ROOT/$1/ui"
+	      rm -rf "$DOCKER_ROOT/$1/script"
+	      rm -rf "$DOCKER_ROOT/$1/ui"
     elif [ "$1" == "ig" ]; then
         rm -rf "$DOCKER_ROOT/$1/config"
         rm -rf "$DOCKER_ROOT/$1/scripts"
-	rm -rf "$DOCKER_ROOT/$1/lib"
+	      rm -rf "$DOCKER_ROOT/$1/lib"
+	      # IG local
+	      clean_ig_local_config
     fi
 }
 
@@ -166,9 +168,46 @@ init_config()
     if [ -d "${PROFILE_ROOT}/$1" ]; then
         echo "cp -r ${PROFILE_ROOT}/$1" "$DOCKER_ROOT"
         cp -r "${PROFILE_ROOT}/$1" "$DOCKER_ROOT"
+        if [ "$1" == "ig" ]; then
+          init_ig_local_config
+        fi
     fi
 }
+# IG LOCAL DEVELOPMENT MODE
+IG_LOCAL="ig-local"
+# clear the product configs ig-local from the docker directory.
+clean_ig_local_config()
+{
+    ## remove previously copied configs
+    echo "removing ig-local configs from $DOCKER_ROOT/$IG_LOCAL"
+	  rm -rf "$DOCKER_ROOT/$IG_LOCAL/config"
+    rm -rf "$DOCKER_ROOT/$IG_LOCAL/scripts"
+	  rm -rf "$DOCKER_ROOT/$IG_LOCAL/lib"
+}
+# Copy the product config $1 to the docker directory.
+init_ig_local_config()
+{
+    echo "****************************************************************"
+    echo "Initialisation of IG 'docker/7.0/ig-local' for DEVELOPMENT mode"
+    echo "****************************************************************"
+    # manage the initialisation of ig-local for local development using the resources of ig except the configuration files
+    echo "copy ${PROFILE_ROOT}/$1/ig/lib to $DOCKER_ROOT/ig-local/"
+    cp -r "${PROFILE_ROOT}/$1/ig/lib" "$DOCKER_ROOT/ig-local/"
+    echo "copy ${PROFILE_ROOT}/$1/ig/scripts to $DOCKER_ROOT/ig-local/"
+    cp -r "${PROFILE_ROOT}/$1/ig/scripts" "$DOCKER_ROOT/ig-local/"
+    if [ ! -d "$DOCKER_ROOT/ig-local/config" ]; then
+        echo "Creating the Directory $DOCKER_ROOT/ig-local/config and /routes"
+        mkdir "$DOCKER_ROOT/ig-local/config" && mkdir "$DOCKER_ROOT/ig-local/config/routes"
+    elif [ ! -d "$DOCKER_ROOT/ig-local/config/routes" ]; then
+        echo "Creating the Directory $DOCKER_ROOT/ig-local/config/routes"
+        mkdir "$DOCKER_ROOT/ig-local/config/routes"
+    fi
 
+    echo "copy all routes resources ${PROFILE_ROOT}/$1ig/config/*/ subdirectories to $DOCKER_ROOT/ig-local/config/routes/"
+    find "${PROFILE_ROOT}/$1ig/config/"*/ -type f -print0 | xargs -0 -I {} cp {} "$DOCKER_ROOT/ig-local/config/routes/"
+    echo "copy Ig configuration files from ${PROFILE_ROOT}/ig-local/config subdirectories to $DOCKER_ROOT/ig-local/config/"
+    cp "${PROFILE_ROOT}/ig-local/config/"* "$DOCKER_ROOT/ig-local/config/"
+}
 # Show the differences between the source configuration and the current Docker configuration
 # Ignore dot files, shell scripts and the Dockerfile
 # $1 - the product to diff

@@ -33,3 +33,6 @@ forgeops-toolbox/
 docker/7.0/ig/config/
 docker/7.0/ig/lib/
 docker/7.0/ig/scripts/
+/docker/gatling/gradlew
+/docker/gatling/gradlew.bat
+/docker/gatling/gradle/

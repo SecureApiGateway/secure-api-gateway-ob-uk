@@ -5,9 +5,17 @@ This repository contains a demonstration deployment of the ForgeRock platform al
 
 ## Quick Start
 
+### Standard mode
+- OBDemo banking components
+- IG `PRODUCTION` mode
+> The initialisation will initialise all `OBDemo banking` components and also `ig-local` (IG in `DEVELOPMENT` mode).
 ```bash
 # Initialise config
 bin/config.sh init --profile obdemo-bank --version 7.0 --component ig
+
+****************************************************************
+Initialisation of IG 'docker/7.0/ig-local' for DEVELOPMENT mode
+****************************************************************
 
 # DNS
 sudo echo $(minikube ip) default.bank.example.com >> /etc/hosts
@@ -15,6 +23,26 @@ sudo echo $(minikube ip) default.bank.example.com >> /etc/hosts
 # Start up 
 skaffold run 
 ```
+### Development mode
+- OBDemo banking components
+- IG `DEVELOPMENT` mode: IG in development mode to have access the `IG Studio` such as friendly management of routes.
+> The initialisation will initialise all `OBDemo banking` components and also `ig-local` (IG in `DEVELOPMENT` mode).
+```bash
+# Initialise config
+bin/config.sh init --profile obdemo-bank --version 7.0 --component ig
+
+****************************************************************
+Initialisation of IG 'docker/7.0/ig-local' for DEVELOPMENT mode
+****************************************************************
+
+# DNS
+sudo echo $(minikube ip) default.bank.example.com >> /etc/hosts
+
+# Start up the profile
+skaffold run -p obdemo-bank-local
+```
+#### IG UI Development mode
+- https://default.bank.example.com/ig/openig/studio/
 
 ## ForgeOps Deltas
 
@@ -30,6 +58,7 @@ This deployment is based on the ForgeOps Cloud Developer Kit, with the following
 ## Postman Collection
 
 This repository includes a [Postman Collection](postman) for configuring the FIDC tenant and testing the deployment. 
+> Follow the instructions on [postman section](postman/readme.md) to prepare the postman client environment.
 
 Required steps for testing are as follows
 

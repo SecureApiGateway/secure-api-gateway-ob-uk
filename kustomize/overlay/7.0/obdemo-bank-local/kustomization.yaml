@@ -4,7 +4,7 @@ commonLabels:
 resources:
 - ../../../base/kustomizeConfig
 - ../../../base/7.0/ingress
-- ../../../base/ig
+- ../../../base/ig-local
 - ../../../base/obdemo-rcs-ui
 - ../../../base/obdemo-rcs-api
 - ../../../base/obdemo-rs
@@ -26,3 +26,4 @@ patchesJson6902:
 
 patchesStrategicMerge:
   - configmap.yaml
+

@@ -17,6 +17,10 @@ kind: Config
       image: ig
       context: docker/7.0/ig
 
+    - &IG-LOCAL
+      image: ig
+      context: docker/7.0/ig-local
+
     - &OBDEMO-RCS-UI
       image: obdemo-rcs-ui
       context: docker/obdemo-rcs-ui
@@ -35,8 +39,29 @@ kind: Config
     - *OBDEMO-RCS-UI
     - *OBDEMO-RCS-API
     - *OBDEMO-RS
-
+    local-artifacts: &local-artifacts
+      - *IG-LOCAL
+      - *OBDEMO-RCS-UI
+      - *OBDEMO-RCS-API
+      - *OBDEMO-RS
 ## End YAML Anchors
+
+#---------------------
+# Skaffold profiles
+#---------------------
+
+# profiles
+
+profiles:
+- name: obdemo-bank-local
+  build:
+    artifacts: *local-artifacts
+    tagPolicy:
+      gitCommit: { }
+  deploy:
+    statusCheckDeadlineSeconds: 600
+    kustomize:
+      path: ./kustomize/overlay/7.0/obdemo-bank-local
 
 # Default profile
 build: &default-build
