@@ -28,6 +28,8 @@ cue/
 .project
 .settings/
 dev/
+!kustomize/overlay/7.0/obdemo-bank/dev
+!config/7.0/obdemo-bank/ig/config/dev
 .CONFIGURED
 forgeops-toolbox/
 docker/7.0/ig/config/

@@ -6,7 +6,8 @@
 # Note: Upgrade to skaffold/v2alpha3 for skaffold 1.4
 apiVersion: skaffold/v1
 kind: Config
-
+metadata:
+  name: obdemo-bank
 ## Common YAML anchors
 ## The yaml anchors are used to make it easier to compose skaffold profiles.
 ## You should not need to edit this section
@@ -16,10 +17,6 @@ kind: Config
     - &IG
       image: ig
       context: docker/7.0/ig
-
-    - &IG-LOCAL
-      image: ig
-      context: docker/7.0/ig-local
 
     - &OBDEMO-RCS-UI
       image: obdemo-rcs-ui
@@ -39,11 +36,7 @@ kind: Config
     - *OBDEMO-RCS-UI
     - *OBDEMO-RCS-API
     - *OBDEMO-RS
-    local-artifacts: &local-artifacts
-      - *IG-LOCAL
-      - *OBDEMO-RCS-UI
-      - *OBDEMO-RCS-API
-      - *OBDEMO-RS
+
 ## End YAML Anchors
 
 #---------------------
@@ -51,17 +44,18 @@ kind: Config
 #---------------------
 
 # profiles
+# add your profile here
 
 profiles:
-- name: obdemo-bank-local
+- name: prod
   build:
-    artifacts: *local-artifacts
+    artifacts: *default-artifacts
     tagPolicy:
-      gitCommit: { }
+      sha256: {}
   deploy:
     statusCheckDeadlineSeconds: 600
     kustomize:
-      path: ./kustomize/overlay/7.0/obdemo-bank-local
+      path: ./kustomize/overlay/7.0/obdemo-bank/prod
 
 # Default profile
 build: &default-build
@@ -71,5 +65,5 @@ build: &default-build
 deploy: &default-deploy
   statusCheckDeadlineSeconds: 600
   kustomize:
-    path: ./kustomize/overlay/7.0/obdemo-bank
+    path: ./kustomize/overlay/7.0/obdemo-bank/dev
 
