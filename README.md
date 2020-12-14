@@ -71,7 +71,7 @@ skaffold run
 skaffold run -p prod
 ```
 ## IG UI Development mode
-- https://**${FQND}**/ig/openig/studio/
+- https://**${FQDN}**/ig/openig/studio/
 
 ## Create a new environment
 See [Principal Folder structure section](#principal-folder-structure)
