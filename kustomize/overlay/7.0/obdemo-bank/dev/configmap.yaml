@@ -4,7 +4,8 @@ metadata:
   name: platform-config
 data:
   FQDN: obdemo-bank.idhub.cc # default.bank.example.com
-  IAM_FQDN: openam-solutionarchitecture-hlobpoc.forgeblocks.com # default.cdk.example.com
+  IAM_FQDN: iam.idhub.cc # default.cdk.example.com
+  INGRESS_IP: "192.168.64.10"
   AM_REALM: alpha
   IG_CLIENT_ID: ig-client
   IG_CLIENT_SECRET: password

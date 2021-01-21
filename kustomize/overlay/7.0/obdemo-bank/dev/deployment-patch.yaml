@@ -1,0 +1,6 @@
+- op: add
+  path: /spec/template/spec/hostAliases
+  value:
+    - ip: "$(INGRESS_IP)"
+      hostnames:
+      - "$(IAM_FQDN)"
