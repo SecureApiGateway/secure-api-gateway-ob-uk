@@ -6,7 +6,3 @@ varReference:
   path: spec/template/spec/hostAliases/hostnames
 - kind: Deployment
   path: spec/template/spec/hostAliases/ip
-- kind: Certificate
-  path: spec/dnsNames
-- kind: Certificate
-  path: spec/commonName
