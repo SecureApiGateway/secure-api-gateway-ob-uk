@@ -10,7 +10,7 @@
   value:
     - name: cdk-initializer
       image: eu.gcr.io/openbanking-214714/securebanking/sb-initializer:latest
-      imagePullPolicy: Never
+      imagePullPolicy: Always
       env:
       - name: OPEN_AM_PASSWORD
         valueFrom:
