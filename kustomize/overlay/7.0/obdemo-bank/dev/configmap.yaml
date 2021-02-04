@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: platform-config
 data:
-  INGRESS_IP: "192.168.64.10"
+  INGRESS_IP: "127.0.0.1"
   FQDN: default.bank.example.com
   IAM_FQDN: openam-xxxxxx-yyyyy.forgeblocks.com 
   AM_REALM: alpha
