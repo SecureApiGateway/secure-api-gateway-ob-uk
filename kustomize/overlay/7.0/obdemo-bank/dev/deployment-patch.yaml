@@ -9,7 +9,7 @@
   path: /spec/template/spec/initContainers
   value:
     - name: cdk-initializer
-      image: eu.gcr.io/openbanking-214714/secureopenbanking-uk-fidc-initializer:latest
+      image: eu.gcr.io/openbanking-214714/securebanking/sb-initializer:latest
       imagePullPolicy: Never
       env:
       - name: OPEN_AM_PASSWORD
