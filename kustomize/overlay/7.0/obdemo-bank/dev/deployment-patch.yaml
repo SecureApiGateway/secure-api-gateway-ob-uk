@@ -1,9 +1,9 @@
-- op: add
-  path: /spec/template/spec/hostAliases
-  value:
-    - ip: "$(INGRESS_IP)"
-      hostnames:
-      - "$(IAM_FQDN)"
+# - op: add
+#   path: /spec/template/spec/hostAliases
+#   value:
+#     - ip: "$(INGRESS_IP)"
+#       hostnames:
+#       - "$(IAM_FQDN)"
 
 - op: add
   path: /spec/template/spec/initContainers
@@ -17,6 +17,11 @@
           secretKeyRef:
             name: am-env-secrets
             key: AM_PASSWORDS_AMADMIN_CLEAR
+      - name: IAM_FQDN
+        valueFrom:
+          configMapKeyRef:
+            name: platform-config
+            key: IAM_FQDN
       - name: REQUEST_BODY_PATH
         value: config/
       command: ["/bin/sh", "-c"]
