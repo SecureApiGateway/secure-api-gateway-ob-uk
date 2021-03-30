@@ -7,10 +7,6 @@
         - backend:
             serviceName: ig
             servicePort: 8080
-          path: /ig(/|$)(.*)
-        - backend:
-            serviceName: ig
-            servicePort: 8080
           path: /am
         - backend:
             serviceName: ig
