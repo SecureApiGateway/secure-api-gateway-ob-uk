@@ -5,10 +5,10 @@
   "condition" : "${matches(request.uri.path, '^/rs/openbanking/v3.1/domestic-payments$')}",
   "heap": [
     {
-      "name": "JwkSetSecretStore-TppJwks",
+      "name": "JwkSetSecretStore-ApiClientJwks",
       "type": "JwkSetSecretStore",
       "config": {
-        "jwkUrl": "https://&{iam.fqdn}/openidm/endpoint/tppjwks",
+        "jwkUrl": "https://&{iam.fqdn}/openidm/endpoint/apiclientjwks",
         "handler": "IDMClientHandler"
       }
     }
@@ -19,6 +19,21 @@
     "config" : {
       "filters" : [
         {
+          "name": "AddDetachedSig",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "AddDetachedSig.groovy",
+            "args": {
+              "routeArgHeaderName": "x-jws-signature",
+              "routeArgAlgorithm": "PS256",
+              "routeArgSecretId": "&{aspsp.jwtsigner.alias}",
+              "routeArgKid": "&{aspsp.jwtsigner.kid}",
+              "routeArgSecretsProvider": "${heap['SecretsProvider-ASPSP']}"
+            }
+          }
+        },
+        {
           "name": "ObResponseCheck",
           "type": "ScriptableFilter",
           "config": {
@@ -27,11 +42,25 @@
           }
         },
         {
-          "name" : "CertificateExtensionValidatorFilter",
-          "type" : "CertificateExtensionValidatorFilter",
-          "config" : {
-            "routeRole" : "Payment Initiation",
-            "clientCertificateHeaderName" : "ssl-client-cert"
+          "name": "ParseCertificate",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ParseCertificate.groovy",
+            "args": {
+              "routeArgCertificateHeader": "ssl-client-cert"
+            }
+          }
+        },
+        {
+          "name" : "CertificateRoleCheck",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "CertificateRoleCheck.groovy",
+            "args": {
+              "routeArgRole": "PISP"
+            }
           }
         },
         {
@@ -60,10 +89,7 @@
             "file": "ProcessDetachedSig.groovy",
             "clientHandler": "IDMClientHandler",
             "args": {
-              "headerName": "x-jws-signature",
-              "idmBaseUri": "https://&{iam.fqdn}",
-              "objTpp": "obTpp",
-              "secretStore": "${heap['JwkSetSecretStore-ClientJwks']}"
+              "_arg_headerName": "x-jws-signature"
             }
           }
         },
@@ -78,7 +104,7 @@
               "config": {
                 "stores": [
                   {
-                    "name": "JwkSetSecretStore-TppJwks"
+                    "name": "JwkSetSecretStore-ApiClientJwks"
                   }
                 ]
               }

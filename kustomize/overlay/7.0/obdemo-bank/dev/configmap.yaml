@@ -15,3 +15,7 @@ data:
   IG_RCS_SECRET: password
   AM_COOKIE_NAME: replace-with-amcookiename
   CERT_ISSUER: default-issuer
+  ASPSP_KEYSTORE_PATH: /secrets/aspsp.test.p12
+  ASPSP_KEYSTORE_PASSWORD: password
+  ASPSP_JWTSIGNER_ALIAS: jwtsigner
+  ASPSP_JWTSIGNER_KID: R3MviZ4QUPEDJm7RS3Mw

@@ -23,26 +23,34 @@
           }
         },
         {
-          "name": "ProcessTPPRegistration",
+          "name": "ParseCertificate",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "ProcessTPPRegistration.groovy",
+            "file": "ParseCertificate.groovy",
             "args": {
-              "certHeader": "ssl-client-cert"
+              "routeArgCertificateHeader": "ssl-client-cert"
             }
           }
         },
         {
-          "name": "CreateTpp",
+          "name": "ProcessRegistration",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "CreateTPP.groovy",
+            "file": "ProcessRegistration.groovy"
+          }
+        },
+        {
+          "name": "CreateApiClient",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "CreateApiClient.groovy",
             "args": {
               "idmBaseUri": "https://&{iam.fqdn}",
-              "objTpp": "obTpp",
-              "objSsa": "obTppSsa"
+              "routeArgObjApiClientOrg": "apiClientOrg",
+              "routeArgObjApiClient": "apiClient"
             },
             "clientHandler": {
               "type": "Chain",
