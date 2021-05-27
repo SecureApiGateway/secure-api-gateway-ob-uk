@@ -166,23 +166,9 @@ def responseObj = [
 ]
 */
 
-StringWriter certWriter = new StringWriter();
-JcaPEMWriter certPemWriter = new JcaPEMWriter(certWriter);
-
-certPemWriter.writeObject(issuedCert);
-certPemWriter.flush();
-certPemWriter.close();
-
-StringWriter keyWriter = new StringWriter();
-JcaPEMWriter keyPemWriter = new JcaPEMWriter(keyWriter);
-
-keyPemWriter.writeObject(issuedCertKeyPair.getPrivate());
-keyPemWriter.flush();
-keyPemWriter.close();
-
-
-def pemCert = certWriter.toString();
-def pemKey = keyWriter.toString();
+// should be base64url encoded to delivery as a json response
+def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
+def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
 
 def responseObj = [
         "pemCert"   : pemCert,
