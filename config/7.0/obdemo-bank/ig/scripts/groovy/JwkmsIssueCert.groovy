@@ -184,8 +184,17 @@ keyPemWriter.close();
 def pemCert = certWriter.toString();
 def pemKey = keyWriter.toString();
 
+def responseObj = [
+        "pemCert"   : pemCert,
+        "pemKey"    : pemKey
+]
+
+responseJson = JsonOutput.toJson(responseObj);
+
 Response response = new Response(Status.OK)
-response.getHeaders().add("Content-Type","text/plain");
-response.setEntity(pemCert + pemKey);
+response.getHeaders().add("Content-Type","application/json");
+//response.setEntity(pemCert + pemKey);
+logger.debug("Final JSON " + responseJson)
+response.setEntity(responseJson)
 
 return response
