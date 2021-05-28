@@ -1,47 +1,32 @@
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.BasicConstraints;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.KeyUsage;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
-import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
-import org.bouncycastle.asn1.ASN1Object
-import org.bouncycastle.asn1.x509.qualified.QCStatement
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.asn1.x509.KeyPurposeId;
-import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
-
-
-
-
-import java.io.FileInputStream;
-import java.io.InputStream
-import java.math.BigInteger;
-import java.security.*;
-import java.security.cert.X509Certificate;
-import java.util.Calendar;
-import java.util.Date;
 import groovy.json.JsonOutput
-import javax.crypto.Cipher;
-import java.io.ByteArrayOutputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.spec.SecretKeySpec;
-import javax.crypto.SecretKey;
-import java.io.StringWriter;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509.*
+import org.bouncycastle.cert.X509CertificateHolder
+import org.bouncycastle.cert.X509v3CertificateBuilder
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter
+import org.bouncycastle.operator.ContentSigner
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import org.bouncycastle.pkcs.PKCS10CertificationRequest
+import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder
 
-
-import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
+import java.io.FileInputStream
+import java.io.InputStream
+import java.io.StringWriter
+import java.math.BigInteger
+import java.security.*
 import java.security.KeyStore
+import java.security.cert.X509Certificate
+import java.util.Base64
+import java.util.Calendar
+import java.util.Date
 
 String OID_ORGANIZATIONAL_IDENTIFIER = "2.5.4.97"
 String QC_STATEMENTS = "MIHLMAgGBgQAjkYBATATBgYEAI5GAQYwCQYHBACORgEGAzAJBgcEAIvsSQECMIGeBgYEAIGYJwIwgZMwajApBgcEAIGYJwEEDB5DYXJkIEJhc2VkIFBheW1lbnQgSW5zdHJ1bWVudHMwHgYHBACBmCcBAwwTQWNjb3VudCBJbmZvcm1hdGlvbjAdBgcEAIGYJwECDBJQYXltZW50IEluaXRpYXRpb24MHUZvcmdlUm9jayBGaW5hbmNpYWwgQXV0aG9yaXR5DAZHQi1GRkE=";
@@ -59,7 +44,7 @@ def requestObj = request.entity.getJson();
 String subjectCN = requestObj.org_name;
 String subjectOI = requestObj.org_id;
 
-logger.debug("Issuing certificate for CN {} OI {}",subjectCN,subjectOI)
+logger.debug("Issuing certificate for CN {} OI {}", subjectCN, subjectOI)
 
 if (!(subjectCN && subjectOI)) {
     logger.error("Didn't get all input data")
@@ -125,7 +110,7 @@ issuedCertBuilder.addExtension(Extension.extendedKeyUsage, false, new ExtendedKe
 
 
 // Currently build fixed qcstatements with all roles
-issuedCertBuilder.addExtension(Extension.qCStatements,false,Base64.getDecoder().decode(QC_STATEMENTS));
+issuedCertBuilder.addExtension(Extension.qCStatements, false, Base64.getDecoder().decode(QC_STATEMENTS));
 
 // Embed the encrypted private key in the certificate. ECB used for simplicity - not production grade
 
@@ -139,7 +124,7 @@ Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 cipher.init(Cipher.ENCRYPT_MODE, encryptionKey);
 byte[] encryptedPrivateKey = cipher.doFinal(issuedCertKeyPair.getPrivate().getEncoded());
 
-logger.debug("encrypted private key - {} bytes",encryptedPrivateKey.length)
+logger.debug("encrypted private key - {} bytes", encryptedPrivateKey.length)
 
 ASN1ObjectIdentifier privateKeyOid = new ASN1ObjectIdentifier(routeArgPrivateKeyOid);
 Extension privateKeyExtension = new Extension(privateKeyOid, false, encryptedPrivateKey);
@@ -147,39 +132,44 @@ Extension privateKeyExtension = new Extension(privateKeyOid, false, encryptedPri
 issuedCertBuilder.addExtension(privateKeyExtension);
 
 X509CertificateHolder issuedCertHolder = issuedCertBuilder.build(csrContentSigner);
-X509Certificate issuedCert  = new JcaX509CertificateConverter().setProvider(BC_PROVIDER).getCertificate(issuedCertHolder);
+X509Certificate issuedCert = new JcaX509CertificateConverter().setProvider(BC_PROVIDER).getCertificate(issuedCertHolder);
 
 // Verify the issued cert signature against the CA cert
 
 issuedCert.verify(caCertificate.getPublicKey(), BC_PROVIDER);
 
-// Build response with cert and private key
 
+StringWriter certWriter = new StringWriter();
+JcaPEMWriter certPemWriter = new JcaPEMWriter(certWriter);
+
+certPemWriter.writeObject(issuedCert);
+certPemWriter.flush();
+certPemWriter.close();
+
+StringWriter keyWriter = new StringWriter();
+JcaPEMWriter keyPemWriter = new JcaPEMWriter(keyWriter);
+
+keyPemWriter.writeObject(issuedCertKeyPair.getPrivate());
+keyPemWriter.flush();
+keyPemWriter.close();
+
+// bouncycastle.util.encoders raise a exception when the encoder is base64Url ('-' and '_' not valid in base64)
+// Unable to decode base64 string: invalid characters encountered in base64
 /*
-def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
-def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
-
-
-def responseObj = [
-        "x5c": pemCert,
-        "key": pemKey
-]
+def x5c = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
+def key =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
 */
 
-// should be base64url encoded to delivery as a json response
-def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
-def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
-
+// base64 encoder
 def responseObj = [
-        "pemCert"   : pemCert,
-        "pemKey"    : pemKey
+        "x5c": certWriter.toString(),
+        "key": keyWriter.toString()
 ]
 
 responseJson = JsonOutput.toJson(responseObj);
 
 Response response = new Response(Status.OK)
-response.getHeaders().add("Content-Type","application/json");
-//response.setEntity(pemCert + pemKey);
+response.getHeaders().add("Content-Type", "application/json");
 logger.debug("Final JSON " + responseJson)
 response.setEntity(responseJson)
 
