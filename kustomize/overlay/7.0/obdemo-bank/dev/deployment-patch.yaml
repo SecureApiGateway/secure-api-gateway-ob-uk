@@ -28,3 +28,15 @@
           sleep 10
           done
           ./setup
+
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1scrape
+  value: "true"
+
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1path
+  value: /openig/metrics/prometheus
+
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1port
+  value: "8080"
