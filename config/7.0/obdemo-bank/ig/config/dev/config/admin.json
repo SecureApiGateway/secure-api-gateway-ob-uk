@@ -23,7 +23,7 @@
         "file": "BasicAuthResourceServerFilter.groovy",
         "args": {
           "realm": "/",
-          "username": "&{ig.metrics.username}",
+          "username": "user",
           "password": "&{ig.metrics.password}"
         }
       }
