@@ -23,6 +23,9 @@ if (authorizationHeader == null) {
 
 String expectedAuthorization = "Basic " + Base64.encode((username + ":" + password).getBytes(Charset.defaultCharset()))
 if (!expectedAuthorization.equals(authorizationHeader)) {
+    Response response = new Response(Status.FORBIDDEN);
+    response.getHeaders().put("user", username);
+    response.getHeaders().put("password", password);
     return newResultPromise(new Response(Status.FORBIDDEN));
 }
 // Credentials are as expected, let's continue
