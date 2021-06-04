@@ -24,7 +24,7 @@
         "args": {
           "realm": "/",
           "username": "user",
-          "password": "&{ig.metrics.password}"
+          "password": "password"
         }
       }
     }
