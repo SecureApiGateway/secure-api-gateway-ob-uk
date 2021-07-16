@@ -154,25 +154,13 @@ X509Certificate issuedCert  = new JcaX509CertificateConverter().setProvider(BC_P
 issuedCert.verify(caCertificate.getPublicKey(), BC_PROVIDER);
 
 // Build response with cert and private key
-
-/*
-def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
-def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
-
-
-def responseObj = [
-        "x5c": pemCert,
-        "key": pemKey
-]
-*/
-
 // should be base64url encoded to delivery as a json response
 def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
 def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
 
 def responseObj = [
-        "pemCert"   : pemCert,
-        "pemKey"    : pemKey
+        "x5c"   : pemCert,
+        "key"    : pemKey
 ]
 
 responseJson = JsonOutput.toJson(responseObj);
