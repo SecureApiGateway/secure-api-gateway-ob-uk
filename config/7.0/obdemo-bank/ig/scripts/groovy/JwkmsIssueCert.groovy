@@ -186,7 +186,7 @@ if(publicKey instanceof RSAPublicKey){
 } else if (publicKey instanceof ECPublicKey){
     ECKey ecJWK = ECKey.parse(issuedCert)
 
-    ECKey.Builder builder = new RSAKey.Builder((ECPublicKey) issuedCertKeyPair.getPublic())
+    ECKey.Builder builder = new ECKey.Builder((ECPublicKey) issuedCertKeyPair.getPublic())
             .privateKey((ECPrivateKey) issuedCertKeyPair.getPrivate());
 
     List<com.nimbusds.jose.util.Base64> x5c = new ArrayList<>(ecJWK.getX509CertChain());
