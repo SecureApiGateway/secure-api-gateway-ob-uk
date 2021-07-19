@@ -1,3 +1,6 @@
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.RSAKey
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.Extension;
@@ -28,7 +31,9 @@ import java.io.FileInputStream;
 import java.io.InputStream
 import java.math.BigInteger;
 import java.security.*;
-import java.security.cert.X509Certificate;
+import java.security.cert.X509Certificate
+import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.Date;
 import groovy.json.JsonOutput
@@ -150,25 +155,28 @@ X509CertificateHolder issuedCertHolder = issuedCertBuilder.build(csrContentSigne
 X509Certificate issuedCert  = new JcaX509CertificateConverter().setProvider(BC_PROVIDER).getCertificate(issuedCertHolder);
 
 // Verify the issued cert signature against the CA cert
-
 issuedCert.verify(caCertificate.getPublicKey(), BC_PROVIDER);
 
-// Build response with cert and private key
-// should be base64url encoded to delivery as a json response
-def pemCert = Base64.getUrlEncoder().encodeToString(issuedCert.getEncoded())
-def pemKey =  Base64.getUrlEncoder().encodeToString(issuedCertKeyPair.getPrivate().getEncoded())
 
-def responseObj = [
-        "x5c"   : pemCert,
-        "key"    : pemKey
-]
+def JWKJsonResponse = null
 
-responseJson = JsonOutput.toJson(responseObj);
+// build the JWK for the response to align the standard JSON Web Key
+// https://datatracker.ietf.org/doc/html/rfc7517#page-9
+PublicKey publicKey = issuedCert.getPublicKey()
+if(publicKey instanceof RSAPublicKey){
+    RSAKey rsaJWK = RSAKey.parse(issuedCert)
+    JWKJsonResponse = rsaJWK.toJSONString()
+} else if (publicKey instanceof ECPublicKey){
+    ECKey ecJWK = ECKey.parse(issuedCert)
+    JWKJsonResponse = ecJWK.toJSONString()
+} else {
+    // unknown type, should never happen
+}
 
 Response response = new Response(Status.OK)
 response.getHeaders().add("Content-Type","application/json");
 //response.setEntity(pemCert + pemKey);
-logger.debug("Final JSON " + responseJson)
-response.setEntity(responseJson)
+logger.debug("Final JSON " + JWKJson)
+response.setEntity(JWKJson)
 
 return response
