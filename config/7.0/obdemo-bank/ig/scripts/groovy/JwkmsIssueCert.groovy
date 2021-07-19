@@ -32,7 +32,9 @@ import java.io.InputStream
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.X509Certificate
+import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.Date;
@@ -160,18 +162,49 @@ issuedCert.verify(caCertificate.getPublicKey(), BC_PROVIDER);
 
 def JWKJsonResponse = null
 
-// build the JWK for the response to align the standard JSON Web Key
+// build the JWK with private key representation and blinding for the response to align the standard JSON Web Key
 // https://datatracker.ietf.org/doc/html/rfc7517#page-9
 PublicKey publicKey = issuedCert.getPublicKey()
+
 if(publicKey instanceof RSAPublicKey){
     RSAKey rsaJWK = RSAKey.parse(issuedCert)
-    JWKJsonResponse = rsaJWK.toJSONString()
+
+    RSAKey.Builder builder = new RSAKey.Builder((RSAPublicKey) issuedCertKeyPair.getPublic())
+            .privateKey((RSAPrivateKey) issuedCertKeyPair.getPrivate());
+
+    List<com.nimbusds.jose.util.Base64> x5c = new ArrayList<>(rsaJWK.getX509CertChain());
+
+    JWKJsonResponse = builder.x509CertChain(x5c)
+            .x509CertSHA256Thumbprint(rsaJWK.getX509CertSHA256Thumbprint())
+            .x509CertURL(rsaJWK.getX509CertURL())
+            .algorithm(rsaJWK.getAlgorithm())
+            .keyID(rsaJWK.getKeyID())
+            .keyUse(rsaJWK.getKeyUse())
+            .build()
+            .toJSONString();
+
 } else if (publicKey instanceof ECPublicKey){
     ECKey ecJWK = ECKey.parse(issuedCert)
-    JWKJsonResponse = ecJWK.toJSONString()
+
+    ECKey.Builder builder = new RSAKey.Builder((ECPublicKey) issuedCertKeyPair.getPublic())
+            .privateKey((ECPrivateKey) issuedCertKeyPair.getPrivate());
+
+    List<com.nimbusds.jose.util.Base64> x5c = new ArrayList<>(ecJWK.getX509CertChain());
+
+    JWKJsonResponse = builder.x509CertChain(x5c)
+            .x509CertSHA256Thumbprint(ecJWK.getX509CertSHA256Thumbprint())
+            .x509CertURL(ecJWK.getX509CertURL())
+            .algorithm(ecJWK.getAlgorithm())
+            .keyID(ecJWK.getKeyID())
+            .keyUse(ecJWK.getKeyUse())
+            .build()
+            .toJSONString();
 } else {
     // unknown type, should never happen
 }
+
+
+
 
 Response response = new Response(Status.OK)
 response.getHeaders().add("Content-Type","application/json");
