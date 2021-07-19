@@ -175,8 +175,8 @@ if(publicKey instanceof RSAPublicKey){
 
 Response response = new Response(Status.OK)
 response.getHeaders().add("Content-Type","application/json");
-//response.setEntity(pemCert + pemKey);
-logger.debug("Final JSON " + JWKJson)
-response.setEntity(JWKJson)
+
+logger.debug("Final JSON " + JWKJsonResponse)
+response.setEntity(JWKJsonResponse)
 
 return response
