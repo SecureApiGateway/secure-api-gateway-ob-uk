@@ -207,7 +207,7 @@ if(publicKey instanceof RSAPublicKey){
 
 
 Response response = new Response(Status.OK)
-response.getHeaders().add("Content-Type","application/json");
+response.getHeaders().add("Content-Type","application/jwk+json");
 
 logger.debug("Final JSON " + JWKJsonResponse)
 response.setEntity(JWKJsonResponse)
