@@ -11,6 +11,9 @@ patchesStrategicMerge:
 
 images:
 - name: ig
-  newName: eu.gcr.io/sbat-gcr-release/securebanking/gate/ig
+  newName: eu.gcr.io/sbat-gcr-develop/securebanking/gate/ig
+  newTag: latest
+- name: iam-init
+  newName: eu.gcr.io/sbat-gcr-develop/securebanking/secureopenbanking-uk-fidc-initializer
   newTag: latest
   
