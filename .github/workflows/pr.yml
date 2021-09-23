@@ -28,7 +28,7 @@ jobs:
       
       - name: Build Docker Image
         run: |
-          make docker tag=$PR_NUMBER
+          make build-docker-ig tag=$PR_NUMBER
       
       - name: 'run functional tests'
         uses: codefresh-io/codefresh-pipeline-runner@master
