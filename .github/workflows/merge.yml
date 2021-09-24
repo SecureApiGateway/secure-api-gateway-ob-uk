@@ -21,4 +21,5 @@ jobs:
       
       - name: docker build
         run: |
-          make build-docker gcr-repo=${{ secrets.RELEASE_REPO }}
+          make build-docker-ig tag=${{ github.sha }}
+          make build-docker-ig gcr-repo=${{ secrets.RELEASE_REPO }} 
