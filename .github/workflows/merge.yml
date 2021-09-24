@@ -22,4 +22,5 @@ jobs:
       - name: docker build
         run: |
           make build-docker-ig tag=${{ github.sha }}
-          make build-docker-ig gcr-repo=${{ secrets.RELEASE_REPO }} 
+          docker tag eu.gcr.io/${{ secrets.DEV_REPO}}:{{ github.sha }} eu.gcr.io/${{ secrets.RELEASE_REPO}}:latest
+          docker push eu.gcr.io/${{ secrets.RELEASE_REPO}}:latest
