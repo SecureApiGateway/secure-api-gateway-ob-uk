@@ -4,6 +4,9 @@ on:
   push:
     branches: [ master ]
 
+env:
+  SERVICE_NAME: ig
+
 jobs:
   build:
     name: Build
@@ -22,5 +25,14 @@ jobs:
       - name: docker build
         run: |
           make build-docker-ig tag=${{ github.sha }}
-          docker tag eu.gcr.io/${{ secrets.DEV_REPO }}:{{ github.sha }} eu.gcr.io/${{ secrets.DEV_REPO }}:latest
-          docker push eu.gcr.io/${{ secrets.DEV_REPO }}:latest
+          docker tag eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:{{ github.sha }} eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
+          docker push eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
+
+      - name: 'run functional tests'
+        uses: codefresh-io/codefresh-pipeline-runner@master
+        with:
+          args: '-v SERVICE_NAME=${{ env.SERVICE_NAME }}'
+        env:
+          PIPELINE_NAME: 'ForgeCloud/sbat-infra/service-build'
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        id: run-pipeline
