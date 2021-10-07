@@ -21,7 +21,7 @@ if (splitUri.length == 0) {
 
 def userId = splitUri[splitUri.length - 1];
 
-logger.debug("Looking up API Client {}",userId)
+logger.debug("Looking up API User {}",userId)
 
 userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "/" + userId)
 
