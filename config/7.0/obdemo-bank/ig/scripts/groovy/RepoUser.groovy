@@ -1,13 +1,5 @@
 import groovy.json.JsonOutput
 
-/*
-curl \
---header "X-OpenIDM-Username: amadmin" \
---header "X-OpenIDM-Password: 2ssovx1TM3z2AGMGMJj01bic" \
---header "Accept-API-Version: resource=1.0" \
---request GET \
-"https://iam.dev.forgerock.financial/openidm/managed/user/9cb7d12b-5de3-4a62-8c21-245e8953d3a0"
- */
 // Fetch the API Client from IDM
 
 Request userRequest = new Request();
