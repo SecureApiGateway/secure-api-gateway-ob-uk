@@ -11,4 +11,3 @@ images:
 - name: ig
   newName: eu.gcr.io/sbat-gcr-develop/securebanking/gate/ig
   newTag: latest
-  
