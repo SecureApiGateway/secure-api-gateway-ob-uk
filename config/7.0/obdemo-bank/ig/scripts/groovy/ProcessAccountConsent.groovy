@@ -25,6 +25,7 @@ accountIntentData.Data.CreationDateTime = "2022-02-09T09:21:42"
 accountIntentData.Data.StatusUpdateDateTime = "2022-02-09T09:21:42"
 accountIntentData.apiClient = [ "_ref" : "managed/" + routeArgObjApiClient + "/" +  oauth2ClientId ]
 logger.debug("test log")
+logger.debug("test log Jorge")
 logger.debug("final json [" + accountIntentData + "]")
 request.setEntity(accountIntentData)
 
