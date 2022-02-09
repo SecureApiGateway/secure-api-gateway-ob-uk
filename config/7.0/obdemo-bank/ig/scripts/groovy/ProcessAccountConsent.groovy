@@ -12,7 +12,7 @@ def oauth2ClientId = contexts.oauth2.accessToken.info.client_id
 accountIntentData = request.entity.getJson()
 
 def tz = TimeZone.getTimeZone("UTC");
-def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 df.setTimeZone(tz);
 def nowAsISO = df.format(new Date());
 
@@ -21,11 +21,10 @@ def consentId = routeArgConsentIdPrefix + UUID.randomUUID().toString()
 accountIntentData._id = consentId
 accountIntentData.Data.ConsentId = consentId
 accountIntentData.Data.Status = "AwaitingAuthorisation";
-accountIntentData.Data.CreationDateTime = "2022-02-09T09:21:42"
-accountIntentData.Data.StatusUpdateDateTime = "2022-02-09T09:21:42"
+accountIntentData.Data.CreationDateTime = nowAsISO
+accountIntentData.Data.StatusUpdateDateTime = nowAsISO
 accountIntentData.apiClient = [ "_ref" : "managed/" + routeArgObjApiClient + "/" +  oauth2ClientId ]
-logger.debug("test log")
-logger.debug("test log Jorge")
+
 logger.debug("final json [" + accountIntentData + "]")
 request.setEntity(accountIntentData)
 

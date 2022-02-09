@@ -9,7 +9,7 @@
     "config": {
       "filters": [
         {
-          "comment": "Check Open Banking compliant response Test",
+          "comment": "Check Open Banking compliant response",
           "name": "ObResponseCheck",
           "type": "ScriptableFilter",
           "config": {
