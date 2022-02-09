@@ -21,8 +21,8 @@ def consentId = routeArgConsentIdPrefix + UUID.randomUUID().toString()
 accountIntentData._id = consentId
 accountIntentData.Data.ConsentId = consentId
 accountIntentData.Data.Status = "AwaitingAuthorisation";
-accountIntentData.Data.CreationDateTime = nowAsISO
-accountIntentData.Data.StatusUpdateDateTime = nowAsISO
+accountIntentData.Data.CreationDateTime = "2022-02-09T09:21:42"
+accountIntentData.Data.StatusUpdateDateTime = "2022-02-09T09:21:42"
 accountIntentData.apiClient = [ "_ref" : "managed/" + routeArgObjApiClient + "/" +  oauth2ClientId ]
 
 logger.debug("final json [" + accountIntentData + "]")
