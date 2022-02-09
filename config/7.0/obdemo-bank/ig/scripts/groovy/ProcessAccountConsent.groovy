@@ -12,7 +12,7 @@ def oauth2ClientId = contexts.oauth2.accessToken.info.client_id
 accountIntentData = request.entity.getJson()
 
 def tz = TimeZone.getTimeZone("UTC");
-def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'X'");
 df.setTimeZone(tz);
 def nowAsISO = df.format(new Date());
 
