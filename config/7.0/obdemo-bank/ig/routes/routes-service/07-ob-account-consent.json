@@ -1,6 +1,6 @@
 {
   "comment": "Open Banking Account Access Consents",
-  "name" : "07 - Open Banking Account Access Consent",
+  "name" : "07 - Open Banking Account Access Consent (test)",
   "auditService": "AuditService-OB-Route",
   "baseURI" : "https://&{iam.fqdn}",
   "condition" : "${matches(request.uri.path, '^/rs/open-banking/v3.1/aisp/account-access-consents')}",
