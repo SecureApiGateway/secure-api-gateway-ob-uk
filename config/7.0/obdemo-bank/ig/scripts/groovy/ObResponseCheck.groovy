@@ -18,6 +18,7 @@ import groovy.json.JsonSlurper
 
 String HEADER_INTERACTION_ID = "x-fapi-interaction-id"
 
+logger.debug("Request headers: " + request.getHeaders())
 
 Map<String, String> getGenericError(Status status, String responseBody) {
 
