@@ -1,6 +1,6 @@
-# ForgeRock DevOps and Cloud Deployment - Open Banking Accelerator Demo
+# ForgeRock DevOps and Cloud Deployment - Secure Banking Access Toolkit (SBAT)
 
-This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Open Banking Accelerators. These accelerators are a set of plugins and configuration for meeting the UK Open Banking requirements, based on the [PSD2 Accelerator assets](https://github.com/ForgeRock/PSD2-Accelerators/tree/OpenBankingAccelerators).
+This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Secure Banking Access Toolkit. This toolkit is a set of plugins and configuration for meeting the UK Open Banking requirements, based on the [PSD2 Accelerator assets](https://github.com/ForgeRock/PSD2-Accelerators/tree/OpenBankingAccelerators).
 
 ## Read first (Environment Setup)
 - [DevOps Developer's Guide](https://backstage.forgerock.com/docs/forgeops/7/index-forgeops.html)
