@@ -96,8 +96,7 @@ See [Principal Folder structure section](#principal-folder-structure)
    1. `mkdir kustomize/overlay/7.0/obdemo-bank/my-environment`
    1. Copy the kustomization from another environment to `my-environment`
       1. Configmap.yaml
-      1. ingress-path.yaml
-      1. kustomization.yaml
+      2. kustomization.yaml
 1. Add the profile to `skaffold` in the section `profiles`
    ```yaml
     - name: my-env-profile
@@ -158,3 +157,40 @@ service or software related thereto. ForgeRock shall not be liable for any direc
 consequential damages or costs of any type arising out of any action taken by you or others related
 to the samples.
 
+### Extras
+#### Config map properties
+- ConfigMap name: `platform-config`
+> We use this kubernetes ConfigMap to allow us to declaratively manage a group of apps that will be deployed and configured in concert for each namespace (developer environment)
+
+| data key                | value description                |
+|-------------------------|----------------------------------|
+| IG_FQDN                 | Ig host name                     |
+| IDENTITY_PLATFORM_FQDN  | Identity platform host name      |
+| ENVIRONMENT_TYPE        | CDK / CDM *(1)                   |
+| RS_FQDN                 | RS host name                     |                 
+| RCS_FQDN                | RCS host name                    |               
+| RCS_UI_FQDN             | RCS UI host name                 |             
+| AM_REALM                | users realm                      |                     
+| USER_OBJECT             | idm user object                  |                     
+| IG_CLIENT_ID            | IG client id                     |                     
+| IG_CLIENT_SECRET        | IG client secret                 |                        
+| IG_IDM_USER             | Ig service account user          |                 
+| IG_IDM_PASSWORD         | Ig service account user password |                    
+| IG_AGENT_ID             | IG agent id                      |          
+| IG_AGENT_PASSWORD       | IG agent password                |
+| IG_RCS_SECRET           | IG RCS secret passphrase         |
+| IG_SSA_SECRET           | IG SSA secret passphrase         |               
+| CERT_ISSUER             | cert issuer                      |                 
+| ASPSP_KEYSTORE_PATH     | ASPSP key store path for         |                        
+| ASPSP_KEYSTORE_PASSWORD | ASPSP key store password         |  
+| ASPSP_JWTSIGNER_ALIAS   | ASPSP jwt signer alias           |                           
+| ASPSP_JWTSIGNER_KID     | ASPSP jwt signer KID             |                         
+| CA_KEYSTORE_PATH        | CA key store path                |
+| CA_KEYSTORE_TYPE        | CA key store type                |              
+| CA_KEYSTORE_STOREPASS   | CA key store password            |                 
+| CA_KEYSTORE_KEYPASS     | CA key store key password        |
+
+**References**
+- *(1) `ENVIRONMENT_TYPE`:
+  - CDK value: (Cloud Developer's Kit) development identity platform
+  - CDM value: CDM (Cloud Deployment Model) identity cloud platform

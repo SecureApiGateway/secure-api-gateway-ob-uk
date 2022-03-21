@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: platform-config
 data:
-  IG_FQDN: obdemo.jorgesanchezperez.forgerock.financial
+  IG_FQDN: ig.jorgesanchezperez.forgerock.financial
   RS_FQDN: rs.jorgesanchezperez.forgerock.financial
   RCS_FQDN: rcs.jorgesanchezperez.forgerock.financial
