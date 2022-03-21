@@ -1,33 +1,34 @@
-# ForgeRock DevOps and Cloud Deployment - Open Banking Accelerator Demo
+# ForgeRock DevOps and Cloud Deployment - Secure Banking Access toolkit Demo
 
-This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Open Banking Accelerators. These accelerators are a set of plugins and configuration for meeting the UK Open Banking requirements, based on the [PSD2 Accelerator assets](https://github.com/ForgeRock/PSD2-Accelerators/tree/OpenBankingAccelerators).
+This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Secure Banking Access toolkit. These access toolkit are a set of plugins and configuration for meeting the UK Open Banking requirements, 
+based on the [Secure Banking access toolkit assets](https://github.com/SecureBankingAccessToolkit/SecureBankingAccessToolkit).
 
 ## Read first (Environment Setup)
 - [DevOps Developer's Guide](https://backstage.forgerock.com/docs/forgeops/7/index-forgeops.html)
 
 ## Principal Folder structure
 
-| type | folder |
-|--- | ---|
-| profile master | `config/7.0/obdemo-bank/` |
-| component | `${profile master}/ig` |
-| environment | `${component}/config/${environment}` |
-| shared configuration folder | `${component}/lib` |
-| shared configuration folder | `${component}/routes` |
-| shared configuration folder | `${component}/scripts` |
+| type                        | folder                               |
+|-----------------------------|--------------------------------------|
+| profile master              | `config/7.0/obdemo-bank/`            |
+| component                   | `${profile master}/ig`               |
+| environment                 | `${component}/config/${environment}` |
+| shared configuration folder | `${component}/lib`                   |
+| shared configuration folder | `${component}/routes`                |
+| shared configuration folder | `${component}/scripts`               |
 > The `shared configuration folder` are configurations shared through all environments to avoid the duplications.
 > All environments will use the same lib, routes and scripts.
 
-| type | folder |
-|---|---|
-| staging area | `docker/7.0/` |
-| component | `${staging area}/ig` |
+| type         | folder               |
+|--------------|----------------------|
+| staging area | `docker/7.0/`        |
+| component    | `${staging area}/ig` |
 
-| type | folder |
-| --- | --- |
-| overlay | `kustomize/overlay/7.0/obdemo-bank` |
-| defaults | `kustomize/overlay/7.0/obdemo-bank/defaults` |
-| environment | `${overlay}/${environment}` except `defaults`|
+| type        | folder                                        |
+|-------------|-----------------------------------------------|
+| overlay     | `kustomize/overlay/7.0/obdemo-bank`           |
+| defaults    | `kustomize/overlay/7.0/obdemo-bank/defaults`  |
+| environment | `${overlay}/${environment}` except `defaults` |
 > Defaults contains the map values configuration parameters shared through all environments
 
 > Each environment on `kustomize/overlay/7.0/obdemo-bank` can override the defaults map values
@@ -75,7 +76,7 @@ skaffold run
 skaffold run -p prod
 ```
 ## IG UI Development mode
-- https://**${FQDN}**/ig/openig/studio/
+- https://**${IG_FQDN}**/ig/openig/studio/
 
 ## Create a new environment
 See [Principal Folder structure section](#principal-folder-structure)
@@ -143,15 +144,6 @@ This deployment is based on the ForgeOps Cloud Developer Kit, with the following
 
 This repository includes a [Postman Collection](postman) for configuring the FIDC tenant and testing the deployment. 
 > Follow the instructions on [postman section](postman/readme.md) to prepare the postman client environment.
-
-Required steps for testing are as follows
-
-- Enrol for an account at the [OBRI Directory](https://directory.ob.forgerock.financial)
-- From the Directory dashboard, create a new software statement, and download the transport certificate and private key
-- Configure Postman to use this client certificate and key for the hosts `default.iplatform.example.com`, `default.bank.example.com`, `jwkms.ob.forgerock.financial` and `matls.service.directory.ob.forgerock.financial`
-
-If you changed the FQDN value for the deployment, change the FQDN variable in the provided Postman environment, and define this host for client certificates as above.
-
 
 ## Disclaimer
 
