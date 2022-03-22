@@ -6,7 +6,8 @@ data:
   IG_FQDN: obdemo.dev.forgerock.financial
   IDENTITY_PLATFORM_FQDN: iam.dev.forgerock.financial
   # CDK value: (Cloud Developer's Kit) development identity platform
-  # CDM value: CDM (Cloud Deployment Model) identity cloud platform
+  # CDM value: CDM (Cloud Deployment Model)
+  # FIDC value: FIDC (Forgerock Identity Cloud) identity cloud platform
   ENVIRONMENT_TYPE: CDK
   RS_FQDN: rs.dev.forgerock.financial
   RCS_FQDN: rcs.dev.forgerock.financial

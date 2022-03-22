@@ -3,9 +3,7 @@ kind: ConfigMap
 metadata:
   name: platform-config
 data:
-  # CDK value: (Cloud Developer's Kit) development identity platform
-  # CDM value: CDM (Cloud Deployment Model) identity cloud platform
-  ENVIRONMENT_TYPE: CDK
+  ENVIRONMENT_TYPE: FIDC
   IG_FQDN: obdemo.nightly.forgerock.financial
   IDENTITY_PLATFORM_FQDN: openam-forgerock-securebankingaccelerato.forgeblocks.com
   RS_FQDN: rs.nightly.forgerock.financial
