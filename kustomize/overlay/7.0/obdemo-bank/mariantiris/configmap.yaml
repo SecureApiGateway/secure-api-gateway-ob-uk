@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: platform-config
 data:
-  FQDN: obdemo.mariantiris.forgerock.financial
-  IAM_FQDN: iam.dev.forgerock.financial
+  IG_FQDN: obdemo.mariantiris.forgerock.financial
   RS_FQDN: rs.mariantiris.forgerock.financial
+  RCS_FQDN: rcs.mariantiris.forgerock.financial

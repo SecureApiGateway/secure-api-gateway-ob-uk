@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: platform-config
 data:
-  FQDN: obdemo.bohocode.forgerock.financial
-  IAM_FQDN: iam.dev.forgerock.financial
+  IG_FQDN: obdemo.bohocode.forgerock.financial
   RS_FQDN: rs.bohocode.forgerock.financial
+  RCS_FQDN: rcs.bohocode.forgerock.financial

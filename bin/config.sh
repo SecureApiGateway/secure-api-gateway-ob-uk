@@ -334,7 +334,7 @@ save_config()
 			echo "Adding back FQDN placeholder ..."
 			echo "Removing 'userpassword-encrypted' fields ..."
 			find "$DOCKER_ROOT/amster/config" -name "*.json" \
-					\( -exec sed -i '' "s/${fqdn}/\&{fqdn}/g" {} \; -o -exec true \; \) \
+					\( -exec sed -i '' "s/${fqdn}/\&{ig.fqdn}/g" {} \; -o -exec true \; \) \
 					\( -exec sed -i '' 's/"amsterVersion" : ".*"/"amsterVersion" : "\&{version}"/g' {} \; -o -exec true \; \) \
 					-exec sed -i '' '/userpassword-encrypted/d' {} \; \
 
