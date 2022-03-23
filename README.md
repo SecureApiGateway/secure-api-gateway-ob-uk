@@ -159,7 +159,7 @@ to the samples.
 
 ### Extras
 #### Config map properties
-- ConfigMap name: `platform-config`
+- ConfigMap name: `securebanking-platform-config`
 > We use this kubernetes ConfigMap to allow us to declaratively manage a group of apps that will be deployed and configured in concert for each namespace (developer environment)
 
 | data key                | value description                |

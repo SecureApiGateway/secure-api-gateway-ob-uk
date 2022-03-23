@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: platform-config
+  name: securebanking-platform-config
 data:
   ENVIRONMENT_TYPE: FIDC
   IG_FQDN: obdemo.nightly.forgerock.financial
