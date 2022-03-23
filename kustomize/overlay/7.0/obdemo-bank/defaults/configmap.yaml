@@ -36,5 +36,3 @@ data:
   TRUST_KEYSTORE_PATH: /secrets/ca.p12
   TRUST_KEYSTORE_TYPE: PKCS12
   TRUST_KEYSTORE_STOREPASS: Passw0rd
-
-  kubectl create configmap my-config --from-file configmap.yaml --dry-run -o yaml | kubectl apply -f -
