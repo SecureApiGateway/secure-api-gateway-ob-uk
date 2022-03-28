@@ -57,16 +57,27 @@ Map<String, String> getGenericError(Status status, String responseBody) {
   }
 
 
-
+//  XXResponseBody error:
+//  [Code:OBRI.Request.Invalid, Id:null, Message:An error happened when parsing the request arguments,
+//   Errors:[
+//           [ErrorCode:UK.OBIE.Header.Invalid, Message:Invalid header 'Accept' the only supported value for this operation is 'application/pdf', Path:null, Url:null]
+//  ]
+//  ]
   if (responseBody) {
     def slurper = new JsonSlurper()
     Map responseObj = slurper.parseText(responseBody)
+    logger.debug("Response error from backend: " + responseObj)
+    if(responseObj.Code){
+      errorCode = responseObj.Errors[0].ErrorCode
+      message = responseObj.Errors[0].Message
+    }
     if (responseObj.error) {
       message += " [" + responseObj.error + "]"
     }
     if (responseObj.error_description) {
       message += " [" + responseObj.error_description + "]"
     }
+    logger.debug("Response values errorCode= " + errorCode + ", message= " + message)
   }
 
   return [
@@ -136,7 +147,7 @@ next.handle(context, request).thenOnResult({response ->
     }
 
     newBody.put("Errors",errorList)
-
+    logger.debug("Final Error Response: " + newBody)
     response.setEntity(newBody)
   }
 })
