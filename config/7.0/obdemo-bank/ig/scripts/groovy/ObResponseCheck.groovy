@@ -56,13 +56,6 @@ Map<String, String> getGenericError(Status status, String responseBody) {
       message = "Internal error"
   }
 
-
-//  XXResponseBody error:
-//  [Code:OBRI.Request.Invalid, Id:null, Message:An error happened when parsing the request arguments,
-//   Errors:[
-//           [ErrorCode:UK.OBIE.Header.Invalid, Message:Invalid header 'Accept' the only supported value for this operation is 'application/pdf', Path:null, Url:null]
-//  ]
-//  ]
   if (responseBody) {
     def slurper = new JsonSlurper()
     Map responseObj = slurper.parseText(responseBody)
