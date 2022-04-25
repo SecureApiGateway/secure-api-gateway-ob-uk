@@ -21,6 +21,21 @@
           }
         },
         {
+          "comment": "Set the x-fapi-interaction-id if not set",
+          "name": "XFapiInteractionId Filter",
+          "type": "FapiInteractionIdFilter"
+        },
+        {
+          "comment": "Set x-forgerock-transactionid to fapi interaction id",
+          "name": "SetTransactionIdToFapiInteractionId",
+          "type": "ScriptableFilter",
+          "capture": "all",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "SetTransactionIdToFapiInteractionId.groovy"
+          }
+        },
+        {
           "comment": "Update well-known config to go via IG",
           "name": "WellKnownFilter",
           "type": "ScriptableFilter",

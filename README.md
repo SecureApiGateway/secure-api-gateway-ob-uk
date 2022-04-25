@@ -1,10 +1,9 @@
 # ForgeRock DevOps and Cloud Deployment - Secure Banking Access toolkit Demo
 
-This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Secure Banking Access toolkit. These access toolkit are a set of plugins and configuration for meeting the UK Open Banking requirements, 
-based on the [Secure Banking access toolkit assets](https://github.com/SecureBankingAccessToolkit/SecureBankingAccessToolkit).
+This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Secure Banking Access toolkit. These access toolkit are a set of plugins and configuration for meeting the UK Open Banking requirements, based on the [Secure Banking access toolkit assets](https://github.com/SecureBankingAccessToolkit/SecureBankingAccessToolkit).
 
 ## Read first (Environment Setup)
-- [DevOps Developer's Guide](https://backstage.forgerock.com/docs/forgeops/7/index-forgeops.html)
+- [DevOps Developer's Guide](https://backstage.forgerock.com/docs/forgeops/7.1/index.html)
 
 ## Principal Folder structure
 

@@ -1,5 +1,9 @@
 FROM gcr.io/forgerock-io/ig:7.1.0
 
+ENV JAVA_OPTS="-Dorg.forgerock.http.TrustTransactionHeader=true"
+RUN echo "JAVA_OPTS set to ${JAVA_OPTS}"
+
+RUN apt install vim
 # Copy all config files into the docker image.
 # The default ig directory is /var/ig, and it expects subfolders config/ and scripts/ (if required)
 
