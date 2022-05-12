@@ -5,4 +5,4 @@ metadata:
 data:
   IG_FQDN: obdemo.jorgesanchezperez.forgerock.financial
   RS_FQDN: rs.jorgesanchezperez.forgerock.financial
-  RCS_FQDN: rcs.jorgesanchezperez.forgerock.financial
+  RCS_FQDN: rcs.jorgesanchezperez.forgerock.financial 

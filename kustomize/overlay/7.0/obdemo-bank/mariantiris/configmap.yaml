@@ -5,4 +5,4 @@ metadata:
 data:
   IG_FQDN: obdemo.mariantiris.forgerock.financial
   RS_FQDN: rs.mariantiris.forgerock.financial
-  RCS_FQDN: rcs.mariantiris.forgerock.financial
+  RCS_FQDN: rcs.mariantiris.forgerock.financial 
