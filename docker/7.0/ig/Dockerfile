@@ -11,4 +11,4 @@ COPY --chown=forgerock:root lib /opt/ig/lib
 USER root
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
 
-RUN apt-get update && apt-get install nano && apt-get install vim
+RUN apt-get update && apt-get install nano && apt-get install vim -y
