@@ -1,5 +1,5 @@
 {
-  "name": "31 - Open Banking RS Payment Consent",
+  "name": "31 - Open Banking RS Domestic Payment Consent",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
   "condition": "${matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/pisp/domestic-payment-consents((?!funds-confirmation).)*$')}",
