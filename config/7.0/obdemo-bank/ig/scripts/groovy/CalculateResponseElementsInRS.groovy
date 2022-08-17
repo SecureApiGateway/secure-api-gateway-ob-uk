@@ -4,6 +4,7 @@ import org.forgerock.json.jose.*
 SCRIPT_NAME = "[CalculateResponseElementsInRS] - "
 logger.debug(SCRIPT_NAME + "Running...")
 def method = request.method
+String HEADER_X_FAPI_INTERACTION_ID = "x-fapi-interaction-id"
 
 switch(method.toUpperCase()) {
 
@@ -21,9 +22,12 @@ switch(method.toUpperCase()) {
         RSRequest.setUri(requestURI)
         RSRequest.setMethod('POST')
         RSRequest.setEntity(request.entity.getJson())
-        if (request.headers.get("x-fapi-financial-id") != null)
-            RSRequest.putHeaders(request.headers.get("x-fapi-financial-id"))
-        logger.debug(SCRIPT_NAME + "Entity to be send to RS Calculate endpoint " + request.entity.getJson())
+        if (request.headers.get(HEADER_X_FAPI_INTERACTION_ID) != null) {
+            RSRequest.putHeaders(request.headers.get(HEADER_X_FAPI_INTERACTION_ID))
+        } else {
+            RSRequest.getHeaders().add(HEADER_X_FAPI_INTERACTION_ID, UUID.randomUUID().toString())
+        }
+            logger.debug(SCRIPT_NAME + "Entity to be send to RS Calculate endpoint " + request.entity.getJson())
 
         return http.send(RSRequest).thenAsync(RSResponse -> {
             def RSResponseStatus = RSResponse.getStatus();
