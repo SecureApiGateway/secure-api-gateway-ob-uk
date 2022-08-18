@@ -123,6 +123,8 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
         def intentResponseContent = intentResponse.getEntity();
         def intentResponseObject = intentResponseContent.getJson();
 
+        attributes.put("intentJsonObject", intentResponseObject);
+
         if (intentResponseObject.apiClient == null) {
             message = "Orfan consent, The consent requested to get with id [" + intentResponseObject._id + "] doesn't have a apiClient related."
             logger.error(SCRIPT_NAME + message)
