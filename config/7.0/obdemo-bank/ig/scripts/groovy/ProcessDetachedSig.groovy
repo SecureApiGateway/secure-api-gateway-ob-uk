@@ -260,26 +260,34 @@ def validateEncodedPayload(String payload, String routeArgJwkUrl, String jwtPayl
 def getRSAKeyFromJwks(String routeArgJwkUrl, JWSHeader jwsHeader) {
     JWKSet jwkSet
     try {
-        //adding connectTimeout = 5000 ms, readTimeout = 5000 ms, sizeLimit = 1000000 bytes (1Mb) to avoid blocked threads.
-        //There's an issue which leaves connections hanging and leads to threads getting blocked
-        jwkSet = JWKSet.load(new URL(routeArgJwkUrl), 10000, 10000, 1000000);
+        Request jwksRequest = new Request();
+        jwksRequest.setMethod('GET');
+        jwksRequest.setUri(routeArgJwkUrl);
+
+        // Get RSA Key from jwks URL
+        return http.send(jwksRequest).thenAsync(jwksResponse -> {
+            def responseBody = jwksResponse.getEntity().getJson();
+
+            jwkSet = JWKSet.parse(responseBody);
+            logger.debug(SCRIPT_NAME + "Parsed keys: " + jwkSet)
+            logger.debug(SCRIPT_NAME + "jwkSet: " + jwkSet.toString())
+
+            List<JWK> matches = new JWKSelector(JWKMatcher.forJWSHeader(jwsHeader))
+                    .select(jwkSet);
+
+            if (matches.size() != 1) {
+                logger.error(SCRIPT_NAME + "Unexpected number of matching JWKs: " + matches.size());
+                return null
+            }
+
+            RSAKey rsaPublicJWK = (RSAKey) matches.get(0).toPublicJWK();
+            })
     }
     catch (java.lang.Exception e) {
         logger.error(SCRIPT_NAME + "Exception getting JWK set: " + e);
         return null;
     }
 
-    logger.debug(SCRIPT_NAME + "jwkSet: " + jwkSet.toString())
-
-    List<JWK> matches = new JWKSelector(JWKMatcher.forJWSHeader(jwsHeader))
-            .select(jwkSet);
-
-    if (matches.size() != 1) {
-        logger.error(SCRIPT_NAME + "Unexpected number of matching JWKs: " + matches.size());
-        return null
-    }
-
-    RSAKey rsaPublicJWK = (RSAKey) matches.get(0).toPublicJWK();
     return rsaPublicJWK;
 }
 
