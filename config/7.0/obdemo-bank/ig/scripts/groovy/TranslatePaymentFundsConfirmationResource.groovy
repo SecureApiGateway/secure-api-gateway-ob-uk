@@ -17,5 +17,4 @@ logger.debug(SCRIPT_NAME + " The updated raw request uri: " + request.uri.rawPat
 request.setMethod("POST");
 request.setEntity(intentObject);
 
-
 next.handle(context, request)
