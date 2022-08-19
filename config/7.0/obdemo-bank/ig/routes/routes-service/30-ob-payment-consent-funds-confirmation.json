@@ -156,7 +156,6 @@
             "type": "application/x-groovy",
             "file": "TranslatePaymentFundsConfirmationResource.groovy",
             "args": {
-              "routeArgAmountQueryParameter": "amount",
               "routeArgVersionQueryParameter": "version"
             }
           }

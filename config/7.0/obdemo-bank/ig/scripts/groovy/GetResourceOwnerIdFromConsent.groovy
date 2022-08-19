@@ -143,9 +143,6 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
 
             splitUri = request.uri.path.split("/")
             if (splitUri.size() == 7 && splitUri[6] != null && splitUri[6] == "funds-confirmation") {
-                attributes.put("amount", intentResponseObject.Data.Initiation.InstructedAmount.Amount)
-                logger.debug(SCRIPT_NAME + "amount: " + intentResponseObject.Data.Initiation.InstructedAmount.Amount)
-
                 attributes.put("version", splitUri[2])
                 logger.debug(SCRIPT_NAME + "version: " + splitUri[2])
             }
