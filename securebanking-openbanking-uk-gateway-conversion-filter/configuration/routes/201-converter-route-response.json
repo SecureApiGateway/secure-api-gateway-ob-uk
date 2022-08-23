@@ -1,0 +1,38 @@
+{
+  "name": "201 - Converter response",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/response')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "name": "IntentConverterFilter-AccountAccessConsent",
+          "type": "IntentConverterFilter",
+          "config": {
+            "messageType": "response"
+          }
+        },
+        {
+          "name": "Build response!!",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ConverterFilterResponse.groovy",
+            "args": {
+              "messageType": "response"
+            }
+          }
+        }
+      ],
+      "handler": {
+        "type": "StaticResponseHandler",
+        "config": {
+          "status": 200,
+          "reason": "OK"
+        }
+      }
+    }
+  }
+}

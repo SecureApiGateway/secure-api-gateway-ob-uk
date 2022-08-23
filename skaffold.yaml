@@ -18,19 +18,9 @@ metadata:
       image: ig
       context: docker/7.0/ig
 
-    - &OBDEMO-RCS-UI
-      image: obdemo-rcs-ui
-      context: docker/obdemo-rcs-ui
-
-    - &OBDEMO-RS
-      image: obdemo-rs
-      context: docker/obdemo-rs
-
   commonArtifactSets:
     default-artifacts: &default-artifacts
     - *IG
-    - *OBDEMO-RCS-UI
-    - *OBDEMO-RS
 
 ## End YAML Anchors
 

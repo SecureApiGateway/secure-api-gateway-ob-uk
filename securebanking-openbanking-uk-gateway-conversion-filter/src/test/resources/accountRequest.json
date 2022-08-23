@@ -1,0 +1,18 @@
+{
+  "_id": "AR_f5a3913a-0299-4169-8f53-0c14e6e90890",
+  "_rev": "000000005c8c032e",
+  "Data": {
+    "Permissions": [
+      "ReadAccountsDetail",
+      "ReadBalances"
+    ],
+    "ExpirationDateTime": "2019-08-01T00:00:00.000Z",
+    "TransactionFromDateTime": "2019-04-03T00:00:00.000Z",
+    "TransactionToDateTime": "2019-08-01T00:00:00.000Z",
+    "ConsentId": "AR_f5a3913a-0299-4169-8f53-0c14e6e90890",
+    "Status": "AwaitingAuthorisation",
+    "CreationDateTime": "2022-08-24T11:56:29.533Z",
+    "StatusUpdateDateTime": "2022-08-24T11:56:29.533Z"
+  },
+  "Risk": {}
+}

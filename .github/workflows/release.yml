@@ -11,6 +11,10 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      - name: Build maven
+        run: |
+          mvn clean install
+
       - name: Build Docker Image
         run: |
           make docker tag=${{ github.event.release.tag_name }} gcr-repo=${{ secrets.RELEASE_REPO }}

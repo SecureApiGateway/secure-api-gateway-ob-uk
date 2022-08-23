@@ -1,0 +1,71 @@
+{
+  "name": "205 converter switch filter response example",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/switchfilter/response')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "name": "SwitchFilter-RequestRouter",
+          "type": "SwitchFilter",
+          "config": {
+            "onRequest": [
+              {
+                "comment": "Fetch Open Banking consent from IDM",
+                "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/switchfilter/response')}",
+                "handler": {
+                  "name": "ConversionHandler",
+                  "type": "Chain",
+                  "config": {
+                    "filters": [
+                      {
+                        "name": "get intent from IDM",
+                        "type": "ScriptableFilter",
+                        "config": {
+                          "type": "application/x-groovy",
+                          "clientHandler": "IDMClientHandler",
+                          "file": "ConverterFilterRepoConsent.groovy",
+                          "args": {
+                            "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+                            "routeArgObjUser": "&{user.object}"
+                          }
+                        }
+                      },
+                      {
+                        "name": "IntentConverterFilter-AccountAccessConsent",
+                        "type": "IntentConverterFilter",
+                        "config": {
+                          "messageType": "response"
+                        }
+                      },
+                      {
+                        "name": "Build response!!",
+                        "type": "ScriptableFilter",
+                        "config": {
+                          "type": "application/x-groovy",
+                          "file": "ConverterFilterResponse.groovy",
+                          "args": {
+                            "messageType": "request"
+                          }
+                        }
+                      }
+                    ],
+                    "handler": {
+                      "type": "StaticResponseHandler",
+                      "config": {
+                        "status": 200
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "handler": "ReverseProxyHandler"
+    }
+  }
+}

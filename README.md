@@ -33,8 +33,39 @@ based on the [Secure Banking access toolkit assets](https://github.com/SecureBan
 
 > Each environment on `kustomize/overlay/7.0/obdemo-bank` can override the defaults map values
 
+## IG extensions
+### Maven modules
+| module                                                                                | Type           | Description                                                                | Dependencies                                                                                               |
+|---------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| [conversions](securebanking-openbanking-uk-gateway-conversions/README.md)             | business logic | module to convert IDM objects to OB data model objects                     | [securebanking-openbanking-uk](https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk) |
+| [conversion-filter](securebanking-openbanking-uk-gateway-conversion-filter/README.md) | Filter         | To convert IDM objects to OB data model objects                            | [conversions](securebanking-openbanking-uk-gateway-conversions/README.md) module, IG                       |
+| [jwks](securebanking-openbanking-uk-gateway-jwks/README.md)                           | Heap config    | Support for fetching (and optionally caching) JSON Web Key Set (JWKS) data | IG                                                                                                         |
+| [utils](securebanking-openbanking-uk-gateway-utils/README.md)                         | Utils          | Collections of utils to be used by IG module extensions                    | [securebanking-openbanking-uk](https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk) |
+
 ## Quick Start
-To make more easy the deployment for developers there is a config script to initialise the IG docker with the below arguments.
+**Steps**
+- Build IG extensions
+- Build IG deployment
+
+**Build IG extensions**
+```shell
+mvn clean install
+```
+> Each module is configured using maven plugins to copy the generated library in `config/7.0/obdemo-bank/ig/lib` when necessary
+
+:nut_and_bolt: **Test purpose**
+
+If you want test the provided module configuration for test purposes you need to run maven with the profile `test-configuration`
+```shell
+mvn clean install -Ptest-configuration
+```
+> This command will copy the generated libraries and the provided configuration of routes and scripts module for test purposes in `config/7.0/obdemo-bank/ig/*`
+
+:warning: Remember don't push the configuration for test purposes to git.
+
+**Build IG deployment**
+
+To make easier the deployment for developers there is a config script to initialise the IG docker with the below arguments.
 - IG Environment argument: allow deploy any IG environment created on `configuration profile master` `config/7.0/obdemo-bank/ig/config/${environment}`
   - config/7.0/obdemo-bank/ig/config/dev (default)
   - config/7.0/obdemo-bank/ig/config/prod

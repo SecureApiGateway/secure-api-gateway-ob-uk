@@ -1,0 +1,68 @@
+{
+  "_id": "PDC_99833f3a-bab5-4f2e-98bc-af64698570ba",
+  "_rev": "00000000ecd8f28c",
+  "Data": {
+    "ConsentId": "PDC_99833f3a-bab5-4f2e-98bc-af64698570ba",
+    "CreationDateTime": "2022-09-09T12:50:59.793Z",
+    "Status": "AwaitingAuthorisation",
+    "StatusUpdateDateTime": "2022-09-09T12:50:59.793Z",
+    "ReadRefundAccount": "Yes",
+    "CutOffDateTime": null,
+    "ExpectedExecutionDateTime": null,
+    "ExpectedSettlementDateTime": null,
+    "Charges": [
+      {
+        "ChargeBearer": "BorneByDebtor",
+        "Type": "UK.OBIE.CHAPSOut",
+        "Amount": {
+          "Amount": "1.5",
+          "Currency": "GBP"
+        }
+      }
+    ],
+    "Initiation": {
+      "InstructionIdentification": "ACME412",
+      "EndToEndIdentification": "FRESCO.21302.GFX.20",
+      "LocalInstrument": null,
+      "InstructedAmount": {
+        "Amount": "165.88",
+        "Currency": "GBP"
+      },
+      "DebtorAccount": null,
+      "CreditorAccount": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "08080021325698",
+        "Name": "ACME Inc",
+        "SecondaryIdentification": "0002"
+      },
+      "CreditorPostalAddress": null,
+      "RemittanceInformation": {
+        "Unstructured": "Internal ops code 5120101",
+        "Reference": "FRESCO-101"
+      },
+      "SupplementaryData": null
+    },
+    "Authorisation": null,
+    "SCASupportData": null,
+    "Debtor": null
+  },
+  "Risk": {
+    "PaymentContextCode": "EcommerceGoods",
+    "MerchantCategoryCode": "5967",
+    "MerchantCustomerIdentification": "053598653254",
+    "DeliveryAddress": {
+      "AddressLine": [
+        "Flat 7",
+        "Acacia Lodge"
+      ],
+      "StreetName": "Acacia Avenue",
+      "BuildingNumber": "27",
+      "PostCode": "GU31 2ZZ",
+      "TownName": "Sparsholt",
+      "CountrySubDivision": null,
+      "Country": "UK"
+    }
+  },
+  "Links": null,
+  "Meta": null
+}

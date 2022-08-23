@@ -58,9 +58,9 @@ jobs:
       - name: Create lowercase Github Username
         id: toLowerCase
         run: echo "GITHUB_USER=$(echo ${{github.actor}} | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
-      
+
       - run: echo "GITHUB_USER set to ${{ env.GITHUB_USER }}"
-      
+
       - name: 'build environment and run functional tests'
         uses: codefresh-io/codefresh-pipeline-runner@master
         with:

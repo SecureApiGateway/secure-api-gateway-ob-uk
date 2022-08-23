@@ -1,0 +1,70 @@
+{
+  "_id": "PDSC_721f791e-fc89-4198-9148-642812d873e9",
+  "_rev": "0000000012250751",
+  "Data": {
+    "ConsentId": "PDSC_721f791e-fc89-4198-9148-642812d873e9",
+    "CreationDateTime": "2022-09-09T15:52:32.519Z",
+    "Status": "AwaitingAuthorisation",
+    "StatusUpdateDateTime": "2022-09-09T15:52:32.519Z",
+    "Permission": null,
+    "ReadRefundAccount": null,
+    "CutOffDateTime": null,
+    "ExpectedExecutionDateTime": null,
+    "ExpectedSettlementDateTime": null,
+    "Charges": [
+      {
+        "ChargeBearer": "BorneByDebtor",
+        "Type": "UK.OBIE.CHAPSOut",
+        "Amount": {
+          "Amount": "1.5",
+          "Currency": "GBP"
+        }
+      }
+    ],
+    "Initiation": {
+      "InstructionIdentification": "ACME412",
+      "EndToEndIdentification": "FRESCO.21302.GFX.20",
+      "LocalInstrument": null,
+      "RequestedExecutionDateTime": "2022-10-30T15:15:13+00:00",
+      "InstructedAmount": {
+        "Amount": "165.88",
+        "Currency": "GBP"
+      },
+      "DebtorAccount": null,
+      "CreditorAccount": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "08080021325698",
+        "Name": "ACME Inc",
+        "SecondaryIdentification": "0002"
+      },
+      "CreditorPostalAddress": null,
+      "RemittanceInformation": {
+        "Unstructured": "Internal ops code 5120101",
+        "Reference": "FRESCO-101"
+      },
+      "SupplementaryData": null
+    },
+    "Authorisation": null,
+    "SCASupportData": null,
+    "Debtor": null
+  },
+  "Risk": {
+    "PaymentContextCode": "EcommerceGoods",
+    "MerchantCategoryCode": "5967",
+    "MerchantCustomerIdentification": "053598653254",
+    "DeliveryAddress": {
+      "AddressLine": [
+        "Flat 7",
+        "Acacia Lodge"
+      ],
+      "StreetName": "Acacia Avenue",
+      "BuildingNumber": "27",
+      "PostCode": "GU31 2ZZ",
+      "TownName": "Sparsholt",
+      "CountrySubDivision": null,
+      "Country": "UK"
+    }
+  },
+  "Links": null,
+  "Meta": null
+}

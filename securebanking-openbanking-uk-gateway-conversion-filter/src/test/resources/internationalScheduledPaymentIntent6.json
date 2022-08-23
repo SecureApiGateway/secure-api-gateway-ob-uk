@@ -1,0 +1,135 @@
+{
+  "_id": "PISC_d1b0b65e-3c8f-4a11-8cc2-c61bf449a5f8",
+  "_rev": "000000006b7908fb",
+  "Data": {
+    "ConsentId": "PISC_d1b0b65e-3c8f-4a11-8cc2-c61bf449a5f8",
+    "CreationDateTime": "2022-09-12T06:35:46.487Z",
+    "Status": "AwaitingAuthorisation",
+    "StatusUpdateDateTime": "2022-09-12T06:35:46.487Z",
+    "Permission": "Create",
+    "ReadRefundAccount": "No",
+    "CutOffDateTime": null,
+    "ExpectedExecutionDateTime": null,
+    "ExpectedSettlementDateTime": null,
+    "Charges": [
+      {
+        "ChargeBearer": "BorneByDebtor",
+        "Type": "UK.OBIE.CHAPSOut",
+        "Amount": {
+          "Amount": "1.5",
+          "Currency": "GBP"
+        }
+      }
+    ],
+    "ExchangeRateInformation": {
+      "UnitCurrency": "EUR",
+      "ExchangeRate": 10,
+      "RateType": "Agreed",
+      "ContractIdentification": "/tbill/2018/T102993",
+      "ExpirationDateTime": null
+    },
+    "Initiation": {
+      "InstructionIdentification": "ANSM020",
+      "EndToEndIdentification": "FRESCO.21302.GFX.01",
+      "LocalInstrument": "UK.OBIE.BACS",
+      "InstructionPriority": "Urgent",
+      "Purpose": "CDCD",
+      "ExtendedPurpose": "Extended purpose",
+      "ChargeBearer": "Shared",
+      "RequestedExecutionDateTime": "2022-09-21T08:46:53+00:00",
+      "CurrencyOfTransfer": "EUR",
+      "DestinationCountryCode": "GB",
+      "InstructedAmount": {
+        "Amount": "10.01",
+        "Currency": "GBP"
+      },
+      "ExchangeRateInformation": {
+        "UnitCurrency": "EUR",
+        "ExchangeRate": 10,
+        "RateType": "Agreed",
+        "ContractIdentification": "/tbill/2018/T102993"
+      },
+      "DebtorAccount": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "11280001234567",
+        "Name": "Mr Shaun Ryder",
+        "SecondaryIdentification": "22"
+      },
+      "Creditor": {
+        "Name": "Creditor Name",
+        "PostalAddress": {
+          "AddressType": "Residential",
+          "Department": null,
+          "SubDepartment": null,
+          "StreetName": "The Mall",
+          "BuildingNumber": "1",
+          "PostCode": "WC1 1AB",
+          "TownName": "London",
+          "CountrySubDivision": null,
+          "Country": "UK",
+          "AddressLine": null
+        }
+      },
+      "CreditorAgent": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "40400411270111",
+        "Name": "Creditor Agent Name",
+        "PostalAddress": {
+          "AddressType": "Residential",
+          "Department": null,
+          "SubDepartment": null,
+          "StreetName": "The Mall",
+          "BuildingNumber": "1",
+          "PostCode": "WC1 1AB",
+          "TownName": "London",
+          "CountrySubDivision": null,
+          "Country": "UK",
+          "AddressLine": null
+        }
+      },
+      "CreditorAccount": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "08080021325698",
+        "Name": "Mr Tim Burgess",
+        "SecondaryIdentification": "11"
+      },
+      "RemittanceInformation": {
+        "Unstructured": "Internal ops code 5120103",
+        "Reference": "FRESCO-037"
+      },
+      "SupplementaryData": {}
+    },
+    "Authorisation": {
+      "AuthorisationType": "Any",
+      "CompletionDateTime": "2022-07-20T08:46:53+00:00"
+    },
+    "SCASupportData": {
+      "RequestedSCAExemptionType": "BillPayment",
+      "AppliedAuthenticationApproach": "CA",
+      "ReferencePaymentOrderId": "8c15fac9-6b7f-4ea3-902a-74093673648a"
+    },
+    "Debtor": null
+  },
+  "Risk": {
+    "PaymentContextCode": "Other",
+    "MerchantCategoryCode": "mct1",
+    "MerchantCustomerIdentification": "merchantId123",
+    "ContractPresentInidicator": null,
+    "BeneficiaryPrepopulatedIndicator": null,
+    "PaymentPurposeCode": null,
+    "BeneficiaryAccountType": null,
+    "DeliveryAddress": {
+      "AddressLine": [
+        "60 Queens Sq"
+      ],
+      "StreetName": "Queen Square",
+      "BuildingNumber": "60",
+      "PostCode": "BS1 1AA",
+      "TownName": "Bristol",
+      "CountrySubDivision": "en",
+      "Country": "UK"
+    }
+  },
+  "Links": null,
+  "Meta": null
+}
