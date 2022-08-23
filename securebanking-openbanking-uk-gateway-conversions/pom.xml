@@ -22,6 +22,8 @@
 
     <artifactId>securebanking-openbanking-uk-gateway-conversions</artifactId>
     <name>securebanking-openbanking-uk-gateway-conversions</name>
+    <packaging>jar</packaging>
+    <version>1.0.0-SNAPSHOT</version>
     <description>A Gateway (IG) Extension util library module to convert Identity Platform objects to OB data model objects</description>
     <url>
         https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway/securebanking-openbanking-uk-gateway-conversions
