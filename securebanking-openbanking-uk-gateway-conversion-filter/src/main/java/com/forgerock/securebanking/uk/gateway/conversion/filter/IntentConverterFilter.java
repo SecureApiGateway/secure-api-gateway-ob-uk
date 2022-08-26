@@ -110,14 +110,4 @@ public class IntentConverterFilter implements Filter {
             return new IntentConverterFilter(intentType, intentContent != null ? intentContent : null);
         }
     }
-
-    private static Function<JsonValue, String, JsonValueException> intentType() {
-        return jsonValue -> {
-            String result = jsonValue.asString();
-            if (result.isEmpty()) {
-                throw new JsonValueException(jsonValue, "Expected a intentType prefix");
-            }
-            return result;
-        };
-    }
 }
