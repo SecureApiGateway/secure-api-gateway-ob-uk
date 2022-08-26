@@ -45,19 +45,4 @@ public class GenericIntentConverter<T> {
         return jsonStrings.stream().map(this::convertFromJsonString).collect(Collectors.toList());
     }
 
-    public static ObjectMapper genericConverterMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JodaModule());
-        mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-        mapper.enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL);
-        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        //TODO Is it necessary deserialize the date time to specific ISO 8601 date format?
-        /*
-        SimpleModule customModule = new SimpleModule();
-        customModule.addDeserializer(DateTime.class, new DateTimeDeserializerConverter());
-        mapper.registerModule(customModule);
-         */
-        return mapper;
-    }
 }

@@ -15,13 +15,9 @@
  */
 package com.forgerock.securebanking.uk.gateway.conversion.filter;
 
-import com.adelean.inject.resources.junit.jupiter.GivenJsonResource;
 import com.adelean.inject.resources.junit.jupiter.GivenTextResource;
 import com.adelean.inject.resources.junit.jupiter.TestWithResources;
-import com.adelean.inject.resources.junit.jupiter.WithJacksonMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
-import com.forgerock.securebanking.uk.gateway.conversion.converters.AccountAccessIntentConverter;
 import org.forgerock.http.Handler;
 import org.forgerock.http.handler.Handlers;
 import org.forgerock.http.protocol.Request;
@@ -32,8 +28,15 @@ import org.forgerock.openig.handler.StaticResponseHandler;
 import org.forgerock.openig.heap.EnvironmentHeap;
 import org.forgerock.openig.heap.Name;
 import org.forgerock.services.context.RootContext;
+import org.joda.time.DateTime;
 import org.junit.jupiter.api.Test;
+import uk.org.openbanking.datamodel.account.OBExternalPermissions1Code;
 import uk.org.openbanking.datamodel.account.OBReadConsentResponse1;
+import uk.org.openbanking.datamodel.account.OBReadConsentResponse1Data;
+import uk.org.openbanking.datamodel.account.OBRisk2;
+import uk.org.openbanking.datamodel.common.OBExternalRequestStatus1Code;
+
+import java.util.List;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,12 +52,6 @@ public class IntentConverterFilterTest {
     @GivenTextResource("accountAccessIntent.json")
     String accountAccessIntent;
 
-    @WithJacksonMapper // to specify which ObjectMapper is used to parse the JSON string
-    ObjectMapper objectMapper = AccountAccessIntentConverter.genericConverterMapper();
-
-    @GivenJsonResource("accountAccessIntent.json")
-    OBReadConsentResponse1 obReadConsentResponse1Expected;
-
     @Test
     public void shouldConvertIntentToOBObject() throws Exception {
         // Given
@@ -67,7 +64,7 @@ public class IntentConverterFilterTest {
         Response response = chain.handle(new RootContext(), request).get();
         // then
         assertThat(response.getStatus()).isEqualTo(Status.OK);
-        assertThat(response.getEntity().getJson()).isEqualTo(obReadConsentResponse1Expected);
+        assertThat(response.getEntity().getJson()).isEqualTo(getExpectedResponse());
     }
 
     @Test
@@ -98,4 +95,23 @@ public class IntentConverterFilterTest {
         assertThat(filter).isNotNull();
     }
 
+    private static OBReadConsentResponse1 getExpectedResponse() {
+        return new OBReadConsentResponse1().data(
+                new OBReadConsentResponse1Data()
+                        .consentId("AAC_f5a3913a-0299-4169-8f53-0c14e6e90890")
+                        .expirationDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
+                        .transactionFromDateTime(DateTime.parse("2019-04-03T00:00:00.000Z"))
+                        .transactionToDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
+                        .status(OBExternalRequestStatus1Code.AWAITINGAUTHORISATION)
+                        .creationDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
+                        .statusUpdateDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
+                        .permissions(
+                                List.of(
+                                        OBExternalPermissions1Code.READACCOUNTSDETAIL,
+                                        OBExternalPermissions1Code.READBALANCES
+                                )
+                        )
+
+        ).risk(new OBRisk2());
+    }
 }

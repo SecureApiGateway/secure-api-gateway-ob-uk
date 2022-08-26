@@ -4,17 +4,7 @@
   "Data": {
     "Permissions": [
       "ReadAccountsDetail",
-      "ReadBalances",
-      "ReadTransactionsDetail",
-      "ReadTransactionsCredits",
-      "ReadBeneficiariesDetail",
-      "ReadDirectDebits",
-      "ReadStandingOrdersDetail",
-      "ReadProducts",
-      "ReadOffers",
-      "ReadParty",
-      "ReadScheduledPaymentsDetail",
-      "ReadStatementsDetail"
+      "ReadBalances"
     ],
     "ExpirationDateTime": "2019-08-01T00:00:00.000Z",
     "TransactionFromDateTime": "2019-04-03T00:00:00.000Z",

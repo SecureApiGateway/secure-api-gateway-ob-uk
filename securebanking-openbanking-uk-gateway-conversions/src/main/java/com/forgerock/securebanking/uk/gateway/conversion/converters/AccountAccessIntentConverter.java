@@ -16,6 +16,7 @@
 package com.forgerock.securebanking.uk.gateway.conversion.converters;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.openbanking.datamodel.account.OBReadConsentResponse1;
@@ -30,7 +31,7 @@ public class AccountAccessIntentConverter extends GenericIntentConverter<OBReadC
 
     private static OBReadConsentResponse1 convertToOBObject(String jsonString) {
         try {
-            return genericConverterMapper().readValue(jsonString, OBReadConsentResponse1.class);
+            return GenericConverterMapper.getMapper().readValue(jsonString, OBReadConsentResponse1.class);
         } catch (JsonProcessingException e) {
             logger.trace("The following RuntimeException was caught : ", e);
             throw new RuntimeException(e);
