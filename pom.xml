@@ -55,7 +55,6 @@
         <copyright-current-year>2022</copyright-current-year>
         <uk.bom.version>1.1.4-SNAPSHOT</uk.bom.version>
         <inject.resources.version>0.1.0</inject.resources.version>
-        <forgerock-commons.version>26.0.0-20200924223446-8dc1e17</forgerock-commons.version>
         <openig.version>7.1.0</openig.version>
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-assembly-plugin.version>3.4.2</maven-assembly-plugin.version>
@@ -140,32 +139,15 @@
             </snapshots>
         </repository>
         <repository>
-            <id>forgerock-internal-releases</id>
-            <name>ForgeRock Internal Releases Repository</name>
-            <url>https://maven.forgerock.org/repo/internal-releases</url>
+            <id>forgerock-private-releases</id>
+            <name>ForgeRock Private Releases Repository</name>
+            <url>https://maven.forgerock.org/repo/private-releases</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
             <releases>
                 <enabled>true</enabled>
             </releases>
-        </repository>
-
-        <repository>
-            <id>forgerock-internal-snapshots</id>
-            <name>ForgeRock Internal Snapshots Repository</name>
-            <url>https://maven.forgerock.org/repo/internal-snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-        </repository>
-        <repository>
-            <id>forgerock-build-dependencies</id>
-            <name>ForgeRock Build Dependencies Repository</name>
-            <url>https://maven.forgerock.org/repo/forgerock-openig-7.0.1-dependencies</url>
         </repository>
     </repositories>
 
