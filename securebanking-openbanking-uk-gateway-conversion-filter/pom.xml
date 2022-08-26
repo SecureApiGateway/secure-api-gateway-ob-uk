@@ -16,18 +16,17 @@
     limitations under the License.
 
 -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>securebanking-openbanking-uk-gateway-conversions</artifactId>
-    <name>securebanking-openbanking-uk-gateway-conversions</name>
+    <artifactId>securebanking-openbanking-uk-gateway-conversion-filter</artifactId>
+    <name>securebanking-openbanking-conversion-filter</name>
     <packaging>jar</packaging>
-    <description>A Gateway (IG) Extension util library module to convert Identity Platform objects to OB data model
-        objects
-    </description>
+    <description>A Gateway (IG) Extension intent conversion filter</description>
     <url>
-        https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway/securebanking-openbanking-uk-gateway-conversions
+        https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway/securebanking-openbanking-uk-gateway-conversion-filter
     </url>
 
     <parent>
@@ -42,10 +41,11 @@
     </properties>
 
     <dependencies>
-        <!-- sbat dependencies -->
+        <!-- IG provided dependencies -->
         <dependency>
-            <groupId>com.forgerock.securebanking.uk</groupId>
-            <artifactId>securebanking-openbanking-uk-obie-datamodel</artifactId>
+            <groupId>org.forgerock.openig</groupId>
+            <artifactId>openig-core</artifactId>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -57,17 +57,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- uk gateway dependencies -->
         <dependency>
-            <groupId>com.forgerock.securebanking.uk</groupId>
-            <artifactId>securebanking-openbanking-uk-common</artifactId>
+            <groupId>com.forgerock.securebanking.uk.gateway</groupId>
+            <artifactId>securebanking-openbanking-uk-gateway-conversions</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
-        <!-- IG provided dependencies -->
-<!--        <dependency>-->
-<!--            <groupId>org.forgerock.openig</groupId>-->
-<!--            <artifactId>openig-core</artifactId>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -104,29 +99,19 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-<!--    <build>-->
-<!--        <plugins>-->
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-assembly-plugin</artifactId>-->
-<!--                <version>3.3.0</version>-->
 
-<!--                <configuration>-->
-<!--                    <descriptorRefs>-->
-<!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
-<!--                    </descriptorRefs>-->
-<!--                </configuration>-->
-
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>make-assembly</id>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>single</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
-<!--        </plugins>-->
-<!--    </build>-->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <outputDirectory>../config/7.0/obdemo-bank/ig/lib</outputDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

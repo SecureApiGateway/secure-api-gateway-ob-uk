@@ -48,16 +48,32 @@
 
     <modules>
         <module>securebanking-openbanking-uk-gateway-conversions</module>
+        <module>securebanking-openbanking-uk-gateway-conversion-filter</module>
     </modules>
 
     <properties>
         <copyright-current-year>2022</copyright-current-year>
         <uk.bom.version>1.1.4-SNAPSHOT</uk.bom.version>
+        <inject.resources.version>0.1.0</inject.resources.version>
+        <forgerock-commons.version>26.0.0-20200924223446-8dc1e17</forgerock-commons.version>
+        <openig.version>7.1.0</openig.version>
+        <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
+        <maven-assembly-plugin.version>3.4.2</maven-assembly-plugin.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- ForgeRock BOM -->
+            <!-- IG BOM -->
+            <dependency>
+                <groupId>org.forgerock.openig</groupId>
+                <artifactId>openig-bom</artifactId>
+                <!-- This version should be consistent
+                 with versions at other places -->
+                <version>${openig.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <!-- SBAT BOM -->
             <dependency>
                 <groupId>com.forgerock.securebanking.uk</groupId>
                 <artifactId>securebanking-openbanking-uk-bom</artifactId>
@@ -65,9 +81,22 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- 4 test -->
+            <dependency>
+                <groupId>com.adelean</groupId>
+                <artifactId>inject-resources-core</artifactId>
+                <version>${inject.resources.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <!-- https://hosuaby.github.io/inject-resources/0.1.0/asciidoc/#inject-resources-junit-jupiter -->
+            <dependency>
+                <groupId>com.adelean</groupId>
+                <artifactId>inject-resources-junit-jupiter</artifactId>
+                <version>${inject.resources.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
-
     <scm>
         <connection>scm:git:git@github.com:SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway.git
         </connection>
@@ -110,9 +139,63 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
+        <repository>
+            <id>forgerock-internal-releases</id>
+            <name>ForgeRock Internal Releases Repository</name>
+            <url>https://maven.forgerock.org/repo/internal-releases</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+
+        <repository>
+            <id>forgerock-internal-snapshots</id>
+            <name>ForgeRock Internal Snapshots Repository</name>
+            <url>https://maven.forgerock.org/repo/internal-snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
+        <repository>
+            <id>forgerock-build-dependencies</id>
+            <name>ForgeRock Build Dependencies Repository</name>
+            <url>https://maven.forgerock.org/repo/forgerock-openig-7.0.1-dependencies</url>
+        </repository>
     </repositories>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}</outputDirectory>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven-assembly-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>make-assembly</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>single</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>com.mycila</groupId>
