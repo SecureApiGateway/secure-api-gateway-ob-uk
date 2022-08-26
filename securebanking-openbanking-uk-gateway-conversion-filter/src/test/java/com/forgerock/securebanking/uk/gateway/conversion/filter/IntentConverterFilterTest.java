@@ -50,7 +50,7 @@ public class IntentConverterFilterTest {
     String accountAccessIntent;
 
     @WithJacksonMapper // to specify which ObjectMapper is used to parse the JSON string
-    ObjectMapper objectMapper = AccountAccessIntentConverter.customizedMapper();
+    ObjectMapper objectMapper = AccountAccessIntentConverter.genericConverterMapper();
 
     @GivenJsonResource("accountAccessIntent.json")
     OBReadConsentResponse1 obReadConsentResponse1Expected;

@@ -32,16 +32,9 @@ import java.util.stream.Collectors;
  */
 public class GenericIntentConverter<T> {
     private final Function<String, T> fromJsonString;
-    private final ObjectMapper mapper;
-
-    public GenericIntentConverter(final Function<String, T> fromJsonString, ObjectMapper mapper) {
-        this.fromJsonString = fromJsonString;
-        this.mapper = mapper;
-    }
 
     public GenericIntentConverter(final Function<String, T> fromJsonString) {
         this.fromJsonString = fromJsonString;
-        this.mapper = customizedMapper();
     }
 
     public final T convertFromJsonString(final String jsonString) {
@@ -52,7 +45,7 @@ public class GenericIntentConverter<T> {
         return jsonStrings.stream().map(this::convertFromJsonString).collect(Collectors.toList());
     }
 
-    public static ObjectMapper customizedMapper() {
+    public static ObjectMapper genericConverterMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JodaModule());
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);

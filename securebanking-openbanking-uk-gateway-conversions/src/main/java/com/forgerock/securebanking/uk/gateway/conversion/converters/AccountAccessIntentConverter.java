@@ -30,7 +30,7 @@ public class AccountAccessIntentConverter extends GenericIntentConverter<OBReadC
 
     private static OBReadConsentResponse1 convertToOBObject(String jsonString) {
         try {
-            return customizedMapper().readValue(jsonString, OBReadConsentResponse1.class);
+            return genericConverterMapper().readValue(jsonString, OBReadConsentResponse1.class);
         } catch (JsonProcessingException e) {
             logger.trace("The following RuntimeException was caught : ", e);
             throw new RuntimeException(e);
