@@ -28,28 +28,27 @@ import java.util.stream.Collectors;
 
 /**
  * Generic converter to provide a common way conversion between json string and OB object types
- * @param <T> represents OB object
- * @param <S> represents a json string
+ * @param <T> represents OB data model object
  */
-public class GenericIntentConverter<T, S> {
-    private final Function<S, T> fromJsonString;
+public class GenericIntentConverter<T> {
+    private final Function<String, T> fromJsonString;
     private final ObjectMapper mapper;
 
-    public GenericIntentConverter(final Function<S, T> fromJsonString, ObjectMapper mapper) {
+    public GenericIntentConverter(final Function<String, T> fromJsonString, ObjectMapper mapper) {
         this.fromJsonString = fromJsonString;
         this.mapper = mapper;
     }
 
-    public GenericIntentConverter(final Function<S, T> fromJsonString) {
+    public GenericIntentConverter(final Function<String, T> fromJsonString) {
         this.fromJsonString = fromJsonString;
         this.mapper = customizedMapper();
     }
 
-    public final T convertFromJsonString(final S jsonString) {
-        return fromJsonString.apply(jsonString);
+    public final T convertFromJsonString(final String jsonString) {
+        return (T) fromJsonString.apply(jsonString);
     }
 
-    public final List<T> createFromJsonStrings(final Collection<S> jsonStrings) {
+    public final List<T> createFromJsonStrings(final Collection<String> jsonStrings) {
         return jsonStrings.stream().map(this::convertFromJsonString).collect(Collectors.toList());
     }
 
