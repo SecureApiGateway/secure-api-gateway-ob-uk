@@ -45,13 +45,19 @@ jobs:
           key: ${{ runner.os }}-maven2-${{ hashFiles('**/pom.xml') }}
 
       - name: Build maven
-        run: mvn clean install
+        run: |
+          mvn clean install
+          pwd
+          ls -al
+          ls -al config/7.0/obdemo-bank/ig/lib
         env:
           MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
           MAVEN_CENTRAL_TOKEN: ${{ secrets.FR_ARTIFACTORY_TOKEN }}
 
       - name: Build Docker Image
         run: |
+          pwd
+          ls -al config/7.0/obdemo-bank/ig/lib
           make build-docker-ig tag=$PR_NUMBER
 
       - name: Create lowercase Github Username
