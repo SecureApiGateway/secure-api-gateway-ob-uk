@@ -149,6 +149,14 @@
                 <enabled>true</enabled>
             </releases>
         </repository>
+        <repository>
+            <id>forgerock-private-releases-repo</id>
+            <name>repo</name>
+            <url>https://maven.forgerock.org/artifactory/repo</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <build>
