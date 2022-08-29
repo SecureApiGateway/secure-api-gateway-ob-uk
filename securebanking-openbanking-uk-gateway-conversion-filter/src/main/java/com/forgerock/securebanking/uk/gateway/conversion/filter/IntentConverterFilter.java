@@ -48,7 +48,8 @@ import static org.forgerock.json.JsonValueFunctions.enumConstant;
  *
  * <pre>
  * {@code {
- *      "type": "ConversionToOBObjectFilter",
+ *      "name": "IntentConverterFilter"
+ *      "type": "IntentConverterFilter",
  *      "config": {
  *         "intentType"     IntentType#toString()    [REQUIRED - (ItIdentifies the consent type by enum name (ACCOUNT_ACCESS_CONSENT, PAYMENT_INTERNATIONAL_CONSENT... ]
  *         "intentContent"  string                   [OPTIONAL - String representation of json intent object to be converted to OB Object]

@@ -68,6 +68,33 @@ public class IntentConverterFilterTest {
     }
 
     @Test
+    public void shouldConvertIntentToOBObjectWhenIntentContent() throws Exception {
+        // Given
+        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, accountAccessIntent);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), new Request()).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
+        assertThat(response.getEntity().getJson()).isEqualTo(getExpectedResponse());
+    }
+
+    @Test
+    public void shouldResponseWithErrorWhenIntentContent() throws Exception {
+        // Given
+        String entity = "Is not a json string";
+        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, entity);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), new Request()).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause().getMessage()).contains(entity);
+    }
+
+    @Test
     public void shouldResponseWithError() throws Exception {
         // Given
         String entity = "Is not a json string";
