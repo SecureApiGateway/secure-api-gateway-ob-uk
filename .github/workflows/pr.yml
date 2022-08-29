@@ -28,7 +28,11 @@ jobs:
         # Configure docker to use the gcloud command-line tool as a credential helper
       - run: |
           gcloud auth configure-docker
-      
+
+      - name: Build maven
+        run: |
+          mvn clean install
+
       - name: Build Docker Image
         run: |
           make build-docker-ig tag=$PR_NUMBER
