@@ -19,7 +19,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
+import com.forgerock.securebanking.uk.gateway.conversion.DateTimeDeserializerConverter;
+import com.forgerock.securebanking.uk.gateway.conversion.DateTimeSerializerConverter;
+import org.joda.time.DateTime;
 
 public final class GenericConverterMapper {
 
@@ -33,16 +37,15 @@ public final class GenericConverterMapper {
         mapper.enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL);
         mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        //TODO Is it necessary deserialize the date time to specific ISO 8601 date format?
-        /*
+
         SimpleModule customModule = new SimpleModule();
         customModule.addDeserializer(DateTime.class, new DateTimeDeserializerConverter());
+        customModule.addSerializer(DateTime.class, new DateTimeSerializerConverter());
         mapper.registerModule(customModule);
-         */
     }
 
-    public static ObjectMapper getMapper(){
-        if(instance == null){
+    public static ObjectMapper getMapper() {
+        if (instance == null) {
             instance = new GenericConverterMapper();
         }
         return instance.mapper;

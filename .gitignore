@@ -40,3 +40,4 @@ docker/7.0/ig/scripts/
 /docker/gatling/gradle/
 lib/*.jar
 /.java-version
+/securebanking-openbanking-uk-gateway-conversions/.java-version

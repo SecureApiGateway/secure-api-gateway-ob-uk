@@ -32,7 +32,7 @@ jobs:
       - name: Setup defaults action java and maven properties
         uses: actions/setup-java@v1
         with:
-          java-version: "14"
+          java-version: "17"
           architecture: x64
           server-id: forgerock-private-releases # Value of the distributionManagement/repository/id field of the pom.xml
           server-username: MAVEN_USERNAME # env variable for username in deploy
@@ -47,17 +47,12 @@ jobs:
       - name: Build maven
         run: |
           mvn clean install
-          pwd
-          ls -al
-          ls -al config/7.0/obdemo-bank/ig/lib
         env:
           MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
           MAVEN_CENTRAL_TOKEN: ${{ secrets.FR_ARTIFACTORY_TOKEN }}
 
       - name: Build Docker Image
         run: |
-          pwd
-          ls -al config/7.0/obdemo-bank/ig/lib
           make build-docker-ig tag=$PR_NUMBER
 
       - name: Create lowercase Github Username

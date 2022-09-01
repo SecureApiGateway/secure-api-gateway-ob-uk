@@ -33,7 +33,26 @@ based on the [Secure Banking access toolkit assets](https://github.com/SecureBan
 
 > Each environment on `kustomize/overlay/7.0/obdemo-bank` can override the defaults map values
 
+## IG extensions
+### Maven modules
+| module                                                                                | Type           | Description                                            | Dependencies                                                                                               |
+|---------------------------------------------------------------------------------------|----------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| [conversions](securebanking-openbanking-uk-gateway-conversions/README.md)             | business logic | module to convert IDM objects to OB data model objects | [securebanking-openbanking-uk](https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk) |
+| [conversion-filter](securebanking-openbanking-uk-gateway-conversion-filter/README.md) | Filter         | To convert IDM objects to OB data model objects        | [conversions](securebanking-openbanking-uk-gateway-conversions/README.md) module                           |
+
 ## Quick Start
+**Steps**
+- Build IG extensions
+- Build IG deployment
+
+**Build IG extensions**
+```shell
+mvn clean install
+```
+> Each module type `Filter` will generate a library with dependencies in `config/7.0/obdemo-bank/ig/lib`
+
+**Build IG deployment**
+
 To make more easy the deployment for developers there is a config script to initialise the IG docker with the below arguments.
 - IG Environment argument: allow deploy any IG environment created on `configuration profile master` `config/7.0/obdemo-bank/ig/config/${environment}`
   - config/7.0/obdemo-bank/ig/config/dev (default)

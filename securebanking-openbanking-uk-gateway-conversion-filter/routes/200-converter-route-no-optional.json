@@ -1,0 +1,28 @@
+{
+  "name": "200 - Converter no optional",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/rs/converter/no/optional')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "name": "IntentConverterFilter-AccountAccessConsent",
+          "type": "IntentConverterFilter",
+          "config": {
+            "intentType": "ACCOUNT_ACCESS_CONSENT",
+            "payloadFrom": "REQUEST"
+          }
+        }
+      ],
+      "handler": {
+        "type": "StaticResponseHandler",
+        "config": {
+          "status": 404,
+          "reason": "Not Found"
+        }
+      }
+    }
+  }
+}

@@ -27,34 +27,34 @@ public final class ConverterFactory {
 
     public static GenericIntentConverter getConverter(IntentType intentType) {
         switch (intentType) {
-            case ACCOUNT_ACCESS_CONSENT -> {
+            case ACCOUNT_ACCESS_CONSENT: {
                 return new AccountAccessIntentConverter();
             }
-            case PAYMENT_DOMESTIC_CONSENT -> {
+            case PAYMENT_DOMESTIC_CONSENT: {
                 return null;
             }
-            case PAYMENT_DOMESTIC_SCHEDULED_CONSENT -> {
+            case PAYMENT_DOMESTIC_SCHEDULED_CONSENT: {
                 return null;
             }
-            case PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT -> {
+            case PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT: {
                 return null;
             }
-            case PAYMENT_INTERNATIONAL_CONSENT -> {
+            case PAYMENT_INTERNATIONAL_CONSENT: {
                 return null;
             }
-            case PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT -> {
+            case PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT: {
                 return null;
             }
-            case PAYMENT_INTERNATIONAL_STANDING_ORDERS_CONSENT -> {
+            case PAYMENT_INTERNATIONAL_STANDING_ORDERS_CONSENT: {
                 return null;
             }
-            case PAYMENT_FILE_CONSENT -> {
+            case PAYMENT_FILE_CONSENT: {
                 return null;
             }
-            case FUNDS_CONFIRMATION_CONSENT -> {
+            case FUNDS_CONFIRMATION_CONSENT: {
                 return null;
             }
-            default -> {
+            default: {
                 logger.warn("Couldn't identify the intent type" + intentType);
                 throw new RuntimeException("Couldn't identify the intent type" + intentType);
             }

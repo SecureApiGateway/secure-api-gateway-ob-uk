@@ -15,23 +15,30 @@
  */
 package com.forgerock.securebanking.uk.gateway.conversion.filter;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
 import com.forgerock.securebanking.uk.gateway.conversion.factory.ConverterFactory;
+import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
+import com.google.common.base.Enums;
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
-import org.forgerock.http.protocol.Request;
-import org.forgerock.http.protocol.Response;
-import org.forgerock.http.protocol.ResponseException;
-import org.forgerock.http.protocol.Status;
+import org.forgerock.http.header.ContentTypeHeader;
+import org.forgerock.http.protocol.*;
+import org.forgerock.json.JsonValue;
+import org.forgerock.json.JsonValueException;
 import org.forgerock.openig.heap.GenericHeaplet;
+import org.forgerock.openig.util.MessageType;
 import org.forgerock.services.context.Context;
+import org.forgerock.util.Function;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
-import org.forgerock.util.promise.PromiseImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Set;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.forgerock.http.protocol.Response.newResponsePromise;
 import static org.forgerock.json.JsonValueFunctions.enumConstant;
@@ -51,8 +58,22 @@ import static org.forgerock.json.JsonValueFunctions.enumConstant;
  *      "name": "IntentConverterFilter"
  *      "type": "IntentConverterFilter",
  *      "config": {
- *         "intentType"     IntentType#toString()    [REQUIRED - (ItIdentifies the consent type by enum name (ACCOUNT_ACCESS_CONSENT, PAYMENT_INTERNATIONAL_CONSENT... ]
- *         "intentContent"  string                   [OPTIONAL - String representation of json intent object to be converted to OB Object]
+ *         "intentType"   IntentType#toString()    [REQUIRED - (ItIdentifies the consent type by enum name (ACCOUNT_ACCESS_CONSENT, PAYMENT_INTERNATIONAL_CONSENT... ]
+ *         "payloadFrom"  MessageType              [REQUIRED - Indicates where need to be get the JSON payload of intent object to be converted to OB Object, default REQUEST]
+ *         "resultTo"     List<MessageType>        [OPTIONAL - Indicates where will set the conversion result. Default RESPONSE.]
+ *      }
+ *  }
+ *  }
+ * </pre>
+ * <p>Example</p>
+ * <pre>
+ * {@code {
+ *      "name": "IntentConverterFilter-accessAccountConsent"
+ *      "type": "IntentConverterFilter",
+ *      "config": {
+ *         "intentType": "ACCOUNT_ACCESS_CONSENT",
+ *         "payloadFrom":"REQUEST",
+ *         "resultTo": ["RESPONSE"]
  *      }
  *  }
  *  }
@@ -62,31 +83,40 @@ public class IntentConverterFilter implements Filter {
 
     private static final Logger logger = LoggerFactory.getLogger(IntentConverterFilter.class);
 
-    private final IntentType intentType;
-    private final String intentContent;
+    public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=UTF-8";
 
-    public IntentConverterFilter(final IntentType intentType, final String stringObject) {
+    private final IntentType intentType;
+    public static final String CONFIG_FIELD_INTENT_TYPE = "intentType";
+    private final MessageType payloadFrom;
+    public static final String CONFIG_FIELD_PAYLOAD_FROM = "payloadFrom";
+    private final List<MessageType> resultTo;
+    public static final String CONFIG_FIELD_RESULT_TO = "resultTo";
+
+    private static final ObjectMapper MAPPER = GenericConverterMapper.getMapper();
+
+    public IntentConverterFilter(final IntentType intentType, final MessageType payloadFrom) {
+        this(intentType, payloadFrom, List.of(MessageType.RESPONSE));
+    }
+
+    public IntentConverterFilter(final IntentType intentType, final MessageType payloadFrom, final List<MessageType> resultTo) {
         this.intentType = intentType;
-        this.intentContent = stringObject;
+        this.payloadFrom = payloadFrom;
+        this.resultTo = resultTo;
     }
 
     @Override
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
-        // To be able to compile with the generics type erasure, we have to get the help of another PromiseImpl.
-        PromiseImpl<Set<String>, ResponseException> promise = PromiseImpl.create();
-        String entity = intentContent;
         try {
-            if (entity == null) {
-                entity = request.getEntity().getString();
+            if (logger.isInfoEnabled()) {
+                printFilterInfo();
             }
-            Object converted = ConverterFactory.getConverter(intentType).convertFromJsonString(entity);
-            request.setEntity(converted);
-            // add the entity to the response
-            return next.handle(context, request)
-                    .thenOnResult(response -> {
-                        response.setEntity(converted);
-                        response.setStatus(Status.OK);
-                    });
+            String jsonPayload = getEntity(context, request, next);
+
+            Object objectMapped = convert(jsonPayload);
+
+            byte[] serialised = toBytes(objectMapped);
+
+            return processResult(serialised, context, request, next);
         } catch (Exception e) {
             logger.error("Conversion to OB Object filter Error\n", e);
             ResponseException responseException = new ResponseException(e.getMessage(), e);
@@ -101,11 +131,81 @@ public class IntentConverterFilter implements Filter {
 
         @Override
         public Object create() {
-            IntentType intentType = config.get("intentType")
+            IntentType intentType = config.get(CONFIG_FIELD_INTENT_TYPE)
                     .required()
                     .as(enumConstant(IntentType.class));
-            String intentContent = config.get("intentContent").asString();
-            return new IntentConverterFilter(intentType, intentContent != null ? intentContent : null);
+            logger.trace("intentType = {}", intentType);
+            MessageType payloadFrom = config.get(CONFIG_FIELD_PAYLOAD_FROM)
+                    .required()
+                    .defaultTo(MessageType.REQUEST.toString())
+                    .as(enumConstant(MessageType.class));
+            logger.trace("payload From {}", payloadFrom);
+            List<MessageType> payloadTo = config.get(CONFIG_FIELD_RESULT_TO)
+                    .defaultTo(List.of(MessageType.RESPONSE.toString()))
+                    .as(messageTypeList());
+            return new IntentConverterFilter(intentType, payloadFrom, payloadTo);
         }
+    }
+
+    private static Function<JsonValue, List<MessageType>, JsonValueException> messageTypeList() {
+        return jsonValue -> {
+            List<String> jsonValueList = jsonValue.asList(String.class);
+            List<MessageType> resultList = new ArrayList<>();
+            for (String value : jsonValueList) {
+                if (!Enums.getIfPresent(MessageType.class, value).isPresent()) {
+                    String message = String.format("Configuration 'resultTo' %s list contains not supported values," +
+                            " all configuration values should be a MessageType values.", jsonValueList );
+                    logger.error(message);
+                    throw new JsonValueException(jsonValue, message);
+                }
+                resultList.add(MessageType.valueOf(value));
+            }
+            return resultList;
+        };
+    }
+
+    private String getEntity(Context context, Request request, Handler next) throws IOException, InterruptedException {
+        logger.trace("Payload from {}", this.payloadFrom);
+        if (payloadFrom.equals(MessageType.RESPONSE)) {
+            return getEntity(next.handle(context, request).getOrThrow());
+        }
+        return getEntity(request);
+    }
+
+    private String getEntity(final Message<?> message) throws IOException {
+        return message.getEntity().getString();
+    }
+
+    private Object convert(String jsonPayload) {
+        return ConverterFactory.getConverter(intentType).convertFromJsonString(jsonPayload);
+    }
+
+    private byte[] toBytes(Object objectMapped) throws JsonProcessingException {
+        return MAPPER.writeValueAsBytes(objectMapped);
+    }
+
+    private Promise<Response, NeverThrowsException> processResult(byte[] serialised, Context context, Request request, Handler next) {
+        logger.trace("Set the result to {}", resultTo);
+        // add the result to the request overwriting the entity
+        if (resultTo.contains(MessageType.REQUEST)) {
+            request.setEntity(serialised);
+        }
+        // add the entity to the response
+        if (resultTo.contains(MessageType.RESPONSE)) {
+            return next.handle(context, request)
+                    .thenOnResult(response -> {
+                        response.setEntity(serialised);
+                        response.setStatus(Status.OK);
+                        response.getHeaders().put(ContentTypeHeader.NAME, APPLICATION_JSON_CHARSET_UTF_8);
+                    });
+        }
+        return next.handle(context, request);
+    }
+
+    private void printFilterInfo() {
+        logger.info("Filter {}", this.getClass().getSimpleName());
+        logger.info("Conversion of Intent type {}", intentType);
+        logger.info("Payload from {}", payloadFrom);
+        logger.info("Set result of conversion to {}", resultTo);
     }
 }

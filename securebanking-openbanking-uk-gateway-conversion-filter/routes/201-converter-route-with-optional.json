@@ -1,0 +1,32 @@
+{
+  "name": "201 - Converter with optional",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/rs/converter/with/optional')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        {
+          "name": "IntentConverterFilter-AccountAccessConsent",
+          "type": "IntentConverterFilter",
+          "config": {
+            "intentType": "ACCOUNT_ACCESS_CONSENT",
+            "payloadFrom": "REQUEST",
+            "resultTo": [
+              "RESPONSE",
+              "REQUEST"
+            ]
+          }
+        }
+      ],
+      "handler": {
+        "type": "StaticResponseHandler",
+        "config": {
+          "status": 404,
+          "reason": "Not Found"
+        }
+      }
+    }
+  }
+}

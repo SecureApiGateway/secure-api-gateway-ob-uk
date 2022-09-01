@@ -15,28 +15,31 @@
  */
 package com.forgerock.securebanking.uk.gateway.conversion;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.IOException;
-import java.util.Locale;
 
-public class DateTimeDeserializerConverter extends StdDeserializer<DateTime> {
+public class DateTimeSerializerConverter extends StdSerializer<DateTime> {
 
-    public DateTimeDeserializerConverter() {
-        this((Class) null);
+    public DateTimeSerializerConverter() {
+        this(null);
     }
 
-    public DateTimeDeserializerConverter(Class<?> vc) {
-        super(vc);
+    public DateTimeSerializerConverter(Class<DateTime> t) {
+        super(t);
     }
 
     @Override
-    public DateTime deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
-        return DateTime.parse(jsonParser.getText());
+    public void serialize(DateTime dateTime, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
+        jsonGenerator.writeString(dateTime.toString());
     }
 }
