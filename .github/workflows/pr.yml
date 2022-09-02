@@ -46,6 +46,8 @@ jobs:
 
       - name: Build maven
         run: |
+          # FIXME - fudging the working dir for now, eventually the top level dir will become a maven project
+          cd securebanking-openbanking-uk-gateway-jwks
           mvn clean install
         env:
           MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
