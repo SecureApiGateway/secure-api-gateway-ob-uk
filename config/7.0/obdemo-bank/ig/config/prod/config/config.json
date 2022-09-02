@@ -189,6 +189,10 @@
           }
         ]
       }
+    },
+    {
+      "name": "OBJwkSetService",
+      "type": "com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService"
     }
   ],
   "monitor": true

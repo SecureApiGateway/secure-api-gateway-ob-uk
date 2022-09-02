@@ -96,7 +96,8 @@
               "routeArgObjApiClient": "apiClient",
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "routeArgTrustedAnchor": "openbanking.org.uk",
-              "routeArgClientIdFieldName": "aud"
+              "routeArgClientIdFieldName": "aud",
+              "jwkSetService": "${heap['OBJwkSetService']}"
             }
           }
         },

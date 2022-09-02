@@ -294,6 +294,14 @@
           "aliases": [ "jwt-signer" ]
         }]
       }
+    },
+    {
+      "name": "OBJwkSetService",
+      "type": "com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService",
+      "config": {
+        "maxCacheSize": 500,
+        "expireAfterWriteDuration": "12 hours"
+      }
     }
   ],
   "monitor": true
