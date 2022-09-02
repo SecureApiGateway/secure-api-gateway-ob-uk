@@ -40,8 +40,7 @@
     </licenses>
 
     <modules>
-        <module>securebanking-openbanking-uk-gateway-conversions</module>
-        <module>securebanking-openbanking-uk-gateway-conversion-filter</module>
+        <module>securebanking-openbanking-uk-gateway-jwks</module>
     </modules>
 
     <properties>
