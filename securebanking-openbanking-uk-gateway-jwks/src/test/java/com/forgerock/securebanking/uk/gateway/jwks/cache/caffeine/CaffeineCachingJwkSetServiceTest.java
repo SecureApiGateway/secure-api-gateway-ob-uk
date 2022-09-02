@@ -32,6 +32,7 @@ import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.Test;
 
+import com.forgerock.securebanking.uk.gateway.jwks.RestJwkSetServiceTest;
 import com.forgerock.securebanking.uk.gateway.jwks.cache.BaseCachingJwkSetServiceTest;
 import com.forgerock.securebanking.uk.gateway.jwks.cache.Cache;
 
@@ -66,7 +67,7 @@ class CaffeineCachingJwkSetServiceTest extends BaseCachingJwkSetServiceTest {
                 final int lastSlashIndex = url.lastIndexOf('/');
                 final String jwksId = url.substring(lastSlashIndex + 1);
                 final String keyId = jwksIdToKid.apply(Integer.parseInt(jwksId));
-                final JWKSet jwkSet = new JWKSet(createJWK(keyId));
+                final JWKSet jwkSet = new JWKSet(RestJwkSetServiceTest.createJWK(keyId));
                 return Promises.newResultPromise(jwkSet);
             }
         }, cache);

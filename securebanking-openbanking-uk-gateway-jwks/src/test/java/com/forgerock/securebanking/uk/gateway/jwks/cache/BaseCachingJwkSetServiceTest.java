@@ -32,12 +32,12 @@ import java.util.stream.Collectors;
 import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jwk.RsaJWK;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.Test;
 
 import com.forgerock.securebanking.uk.gateway.jwks.JwkSetService;
+import com.forgerock.securebanking.uk.gateway.jwks.RestJwkSetServiceTest;
 
 /**
  * Set of test cases which should pass regardless of the caching implementation is used.
@@ -190,7 +190,7 @@ public abstract class BaseCachingJwkSetServiceTest {
         final URL jwkStoreKey = new URL("http://jwk_store/1234556789");
         final String expectedKeyId = "expectedKeyId";
         final String[] keyIds = {"k1", "dfsdfsdf", expectedKeyId, "anotherkeyid"};
-        final JWKSet jwkSet = new JWKSet(Arrays.stream(keyIds).map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList()));
+        final JWKSet jwkSet = new JWKSet(Arrays.stream(keyIds).map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList()));
         cache.put(jwkStoreKey, jwkSet);
         final JwkSetService brokenJwkStore = new ReturnsErrorsJwkStore();
 
@@ -204,7 +204,7 @@ public abstract class BaseCachingJwkSetServiceTest {
         final Cache<URL, JWKSet> cache = createSimpleCache();
         final URL jwkStoreKey = new URL("http://jwk_store/1234556789");
         final List<String> keyIds = List.of("k1", "dfsdfsdf", "anotherkeyid");
-        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList()));
+        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList()));
         cache.put(jwkStoreKey, initialJwkSet);
 
         // New key is not in the initialJwtSet
@@ -215,7 +215,7 @@ public abstract class BaseCachingJwkSetServiceTest {
             @Override
             public Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUri) {
                 // New JwkSet containing newKeyId
-                return Promises.newResultPromise(new JWKSet(updatedKeyIds.stream().map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList())));
+                return Promises.newResultPromise(new JWKSet(updatedKeyIds.stream().map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList())));
             }
         };
 
@@ -229,14 +229,14 @@ public abstract class BaseCachingJwkSetServiceTest {
         final Cache<URL, JWKSet> cache = createSimpleCache();
         final URL jwkStoreKey = new URL("http://jwk_store/1234556789");
         final List<String> keyIds = List.of("k1", "dfsdfsdf", "anotherkeyid");
-        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList()));
+        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList()));
         cache.put(jwkStoreKey, initialJwkSet);
 
         final JwkSetService jwkSetService = new BaseCachingTestJwkSetService() {
             @Override
             public Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUri) {
                 // New JWKSet which contains the same JWKs as before
-                return Promises.newResultPromise(new JWKSet(keyIds.stream().map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList())));
+                return Promises.newResultPromise(new JWKSet(keyIds.stream().map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList())));
             }
         };
 
@@ -250,7 +250,7 @@ public abstract class BaseCachingJwkSetServiceTest {
         final Cache<URL, JWKSet> cache = createSimpleCache();
         final URL jwkStoreKey = new URL("http://jwk_store/1234556789");
         final List<String> keyIds = List.of("k1", "dfsdfsdf", "anotherkeyid");
-        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(BaseCachingJwkSetServiceTest::createJWK).collect(Collectors.toList()));
+        final JWKSet initialJwkSet = new JWKSet(keyIds.stream().map(RestJwkSetServiceTest::createJWK).collect(Collectors.toList()));
         cache.put(jwkStoreKey, initialJwkSet);
 
         final JwkSetService jwkSetService = new ReturnsNullJwkStore();
@@ -282,7 +282,4 @@ public abstract class BaseCachingJwkSetServiceTest {
         assertSame("getJwkSet failed", actualException.getMessage());
     }
 
-    public static JWK createJWK(String keyId) {
-        return RsaJWK.builder("modulusValue", "exponentValue").keyId(keyId).build();
-    }
 }
