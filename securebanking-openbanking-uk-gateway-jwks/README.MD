@@ -1,0 +1,62 @@
+# securebanking-openbanking-uk-gateway-jwks
+This is an extension module for IG which provides support for fetching (and optionally caching) jwks data.
+
+To install this module the jar needs to be placed into [config/7.0/obdemo-bank/ig/lib](../config/7.0/obdemo-bank/ig/lib).
+
+# Key classes
+The JwkSetService interface is used to control the behaviour when fetching jwks, the default implementation: [RestJwkSetService](src/main/java/com/forgerock/securebanking/uk/gateway/jwks/RestJwkSetService.java) will always fetch data using a HTTP call to a REST API.
+
+The [CachingJwkSetService](src/main/java/com/forgerock/securebanking/uk/gateway/jwks/cache/CachingJwkSetService.java) provides caching support via a pluggable Cache interface, if a request for a jwks can be fulfilled by the cache then it will, otherwise the service delegates to a RestJwkSetService to fetch the data.
+
+CaffeineCachingJwkSetService provides a concrete implementation which uses the [caffeine](https://github.com/ben-manes/caffeine) library (this lib is already used within IG).
+
+# IG heap configuration
+Caching behaviour can be controlled via IG config.
+A heap object with name: `OBJwkSetService` of type `com.forgerock.securebanking.uk.gateway.jwks.JwkSetService` is a dependency of routes which need to fetch jwks data.
+
+
+The following snippets can be placed into [config.json](../config/7.0/obdemo-bank/ig/config/prod/config/config.json) to control which JwkSetService implementation is used.
+
+## Enable caching
+```
+{
+      "name": "OBJwkSetService",
+      "type": "com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService",
+      "config": {
+        "maxCacheSize": 500,
+        "expireAfterWriteDuration": "12 hours"
+      }
+}
+```
+
+| option                   | description                                                                                                                                                            | default                                             |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| maxCacheSize             | The maximum number of values that can be stored in the cache                                                                                                           | 100                                                 |
+| expireAfterWriteDuration | Values will be removed from the cache when this time elapses after the value was last written.<br/>This is a String representation of org.forgerock.util.time.Duration | "5 minutes"                                         |
+| handler                  | The org.forgerock.openig.handler.ClientHandler instance to use to send the HTTP requests to fetch the JWKS data                                                        | "ClientHandler", which is the default ClientHandler |
+
+
+
+
+## No Caching
+```
+{
+      "name": "OBJwkSetService",
+      "type": "com.forgerock.securebanking.uk.gateway.jwks.RestJwkSetService"
+}
+```
+
+| option                   | description                                                                                                                                        | default                                             |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| handler                  | The org.forgerock.openig.handler.ClientHandler instance to use to send the HTTP requests to fetch the JWKS data                                    | "ClientHandler", which is the default ClientHandler |
+
+
+## Route configuration
+The existing ProcessDetachedSig route has been updated to use the caching functionality. 
+
+Routes which add the ProcessDetachedSig filter must add the new filter arg: `"jwkSetService": "${heap['OBJwkSetService']}"`
+
+# Extensions
+Clients can use an alternative caching library by writing an adaptor class which implements the [com.forgerock.securebanking.uk.gateway.jwks.cache.Cache](src/main/java/com/forgerock/securebanking/uk/gateway/jwks/cache/Cache.java) interface. 
+
+The contents of package [com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine](src/main/java/com/forgerock/securebanking/uk/gateway/jwks/cache/caffeine/) demonstrate how this can be done. In this package there is: a CaffeineCache adaptor class, CaffeineCachingJwkSetService (which extends CachingJwkSetService) and a heaplet object which is used to construct and configure the caffeiene caching. 
