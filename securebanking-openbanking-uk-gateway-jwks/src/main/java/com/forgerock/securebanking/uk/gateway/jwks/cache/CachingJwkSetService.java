@@ -58,12 +58,9 @@ public class CachingJwkSetService implements JwkSetService {
         }
         final JWKSet cachedJwkSet = jwkSetCache.get(jwkStoreUrl);
         if (cachedJwkSet == null) {
-            final Promise<JWKSet, FailedToLoadJWKException> getJwkSetPromise = underlyingJwkSetService.getJwkSet(jwkStoreUrl);
-            return getJwkSetPromise.thenOnResult(jwkSet -> {
+            return underlyingJwkSetService.getJwkSet(jwkStoreUrl).thenOnResult(jwkSet -> {
                 logger.debug("Fetched jwkStore from url: {}", jwkStoreUrl);
-                if (jwkSet != null) {
-                    jwkSetCache.put(jwkStoreUrl, jwkSet);
-                }
+                jwkSetCache.put(jwkStoreUrl, jwkSet);
             });
         } else {
             logger.info("Found jwkStore in cache, for url: {}", jwkStoreUrl);
@@ -81,33 +78,25 @@ public class CachingJwkSetService implements JwkSetService {
 
     private AsyncFunction<JWKSet, JWK, FailedToLoadJWKException> jwkSetResultHandler(URL jwkStoreUrl, String keyId) {
         return jwkSet -> {
-            // TODO review contract
-            if (jwkSet == null) {
-                return Promises.newResultPromise(null);
+            JWK jwk = jwkSet.findJwk(keyId);
+            if (jwk != null) {
+                return Promises.newResultPromise(jwk);
             } else {
-                JWK jwk = jwkSet.findJwk(keyId);
-                if (jwk != null) {
-                    return Promises.newResultPromise(jwk);
-                } else {
-                    logger.debug("keyId: {} not found in cached JWKSet for url: {}, invalidating and fetching JWKSet from url again", keyId, jwkStoreUrl);
-                    // JWKSet exists but key not in set, new key may have been added to set since it was cached, fetch it again
-                    jwkSetCache.invalidate(jwkStoreUrl);
-                    return getJwkSet(jwkStoreUrl).thenAsync(singleTryJwkSetResultHandler(keyId));
-                }
+                logger.debug("keyId: {} not found in cached JWKSet for url: {}, invalidating and fetching JWKSet from url again", keyId, jwkStoreUrl);
+                // JWKSet exists but key not in set, new key may have been added to set since it was cached, fetch it again
+                jwkSetCache.invalidate(jwkStoreUrl);
+                return getJwkSet(jwkStoreUrl).thenAsync(singleTryJwkSetResultHandler(keyId));
             }
         };
     }
 
     private AsyncFunction<JWKSet, JWK, FailedToLoadJWKException> singleTryJwkSetResultHandler(String keyId) {
         return jwkSet -> {
-            if (jwkSet == null) {
-                return Promises.newResultPromise(null);
-            }
             JWK updatedJwk = jwkSet.findJwk(keyId);
             if (updatedJwk != null) {
                 return Promises.newResultPromise(updatedJwk);
             } else {
-                return Promises.newResultPromise(null);
+                throw new FailedToLoadJWKException("Failed to find keyId: " + keyId + " in JWKSet");
             }
         };
     }

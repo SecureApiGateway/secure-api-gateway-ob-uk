@@ -1,10 +1,12 @@
 package com.forgerock.securebanking.uk.gateway.jwks;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URL;
 import java.util.List;
 
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jwk.JWKSetParser;
@@ -52,6 +54,8 @@ public class RestJwkSetServiceTest {
         final URL jwkSetUrl = new URL("http://abc");
         mockJwkSet(jwkSetUrl);
         final RestJwkSetService restJwkSetService = new RestJwkSetService(jwkSetParser);
-        assertNull(restJwkSetService.getJwk(jwkSetUrl, "kid2").get());
+        final FailedToLoadJWKException failedToLoadJWKException = assertThrows(FailedToLoadJWKException.class,
+                () -> restJwkSetService.getJwk(jwkSetUrl, "kid2").getOrThrow());
+        assertEquals("Failed to find keyId: kid2 in JWKSet", failedToLoadJWKException.getMessage());
     }
 }

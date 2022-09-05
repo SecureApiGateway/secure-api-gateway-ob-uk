@@ -27,8 +27,21 @@ import org.forgerock.util.promise.Promise;
  */
 public interface JwkSetService {
 
+    /**
+     * Retrieves a JWKSet for the specified url
+     *
+     * @param jwkStoreUrl url of the JWKSet store
+     * @return Promise which either returns a non-null JWKSet or fails with a FailedToLoadJWKException
+     */
     Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUrl);
 
+    /**
+     * Retrieves a JWK with the specified keyId from the JWKSet at the specified url.
+     *
+     * @param jwkStoreUrl url of the JWKSet store
+     * @param keyId the id (kid) of the JWK within the store to return
+     * @return Promise which either returns a non-null JWK or fails with a FailedToLoadJWKException
+     */
     Promise<JWK, FailedToLoadJWKException> getJwk(URL jwkStoreUrl, String keyId);
 
 }

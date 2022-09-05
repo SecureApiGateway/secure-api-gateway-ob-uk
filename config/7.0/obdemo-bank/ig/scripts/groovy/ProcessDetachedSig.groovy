@@ -232,15 +232,9 @@ def validateUnencodedPayload(String jws, String routeArgJwkUrl, String payload) 
 
     Promise<RSAPublicKey, FailedToLoadJWKException> keyPromise = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader);
     return keyPromise.thenAsync(rsaPublicKey -> {
-        logger.debug(SCRIPT_NAME + "Processing RSAKey promise");
-        if (rsaPublicKey != null) {
-            logger.debug(SCRIPT_NAME + "rsaPublicKey: " + rsaPublicKey)
-            RSASSAVerifier verifier = new RSASSAVerifier(rsaPublicKey, getCriticalHeaderParameters());
-            return newResultPromise(parsedJWSObject.verify(verifier));
-        } else {
-            logger.debug(SCRIPT_NAME + "RSAKey from promise is null");
-            return newResultPromise(false)
-        }
+        logger.debug(SCRIPT_NAME + "Processing RSAKey promise, rsaPublicKey: " + rsaPublicKey)
+        RSASSAVerifier verifier = new RSASSAVerifier(rsaPublicKey, getCriticalHeaderParameters());
+        return newResultPromise(parsedJWSObject.verify(verifier));
     }).thenCatchAsync(failedToLoadJwkEx -> {
         logger.debug(SCRIPT_NAME + " failed to load key for routeArgJwkUrl: " + routeArgJwkUrl, failedToLoadJwkEx);
         return newResultPromise(false)
@@ -265,14 +259,8 @@ def validateEncodedPayload(String payload, String routeArgJwkUrl, String jwtPayl
 
     Promise<RSAPublicKey, FailedToLoadJWKException> keyPromise = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader);
     keyPromise.thenAsync(rsaPublicKey -> {
-        logger.debug(SCRIPT_NAME + "Processing RSAKey promise");
-        if (rsaPublicKey != null) {
-            logger.debug(SCRIPT_NAME + "rsaPublicKey: " + rsaPublicKey)
-            return isJwsValid(payload, rsaPublicKey, jwtPayload, jwsHeader);
-        } else {
-            logger.debug(SCRIPT_NAME + "RSAKey from promise is null");
-            return newResultPromise(false);
-        }
+        logger.debug(SCRIPT_NAME + "Processing RSAKey promise, rsaPublicKey: " + rsaPublicKey)
+        return isJwsValid(payload, rsaPublicKey, jwtPayload, jwsHeader);
     }).thenCatchAsync(failedToLoadJwkEx -> {
         logger.debug(SCRIPT_NAME + " failed to load key for routeArgJwkUrl: " + routeArgJwkUrl, failedToLoadJwkEx);
         return newResultPromise(false)
@@ -292,7 +280,7 @@ def getRSAKeyFromJwks(String routeArgJwkUrl, JWSHeader jwsHeader) {
     logger.debug(SCRIPT_NAME + "Fetching key for keyId: " + keyId)
 
     Promise<RSAPublicKey, FailedToLoadJWKException> jwkPromise = jwkSetService.getJwk(new URL(routeArgJwkUrl), keyId).then(jwk -> {
-        return jwk == null ? null : ((RsaJWK) jwk).toRSAPublicKey()
+        return ((RsaJWK) jwk).toRSAPublicKey()
     })
     return jwkPromise
 }
