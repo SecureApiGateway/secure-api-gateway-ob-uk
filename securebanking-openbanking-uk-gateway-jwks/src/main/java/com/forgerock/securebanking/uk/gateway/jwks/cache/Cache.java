@@ -22,9 +22,27 @@ package com.forgerock.securebanking.uk.gateway.jwks.cache;
  * @param <V> value
  */
 public interface Cache<K, V> {
+
+    /**
+     * Retrieves a value from the cache for the supplied key or null if the key does not exist in the cache.
+     *
+     * @param key - the key to retrieve the value for
+     * @return the cached value or null if the key does not exist in the cache.
+     */
     V get(K key);
 
+    /**
+     * Adds a value to the cache for the supplied key, overwriting the existing value if the key already exists in the cache.
+     *
+     * @param key - the key to associate the value with
+     * @param value - the value to cache
+     */
     void put(K key, V value);
 
+    /**
+     * Removes a value from the cache
+     *
+     * @param key - the key of the item to remove.
+     */
     void invalidate(K key);
 }
