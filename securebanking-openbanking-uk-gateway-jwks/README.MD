@@ -52,9 +52,9 @@ The following snippets can be placed into [config.json](../config/7.0/obdemo-ban
 
 
 ## Route configuration
-The existing ProcessDetachedSig route has been updated to use the caching functionality. 
+The [ProcessDetachedSig](../config/7.0/obdemo-bank/ig/scripts/groovy/ProcessDetachedSig.groovy) filter has a dependency on a JwkSetService object in order to get JWKS data to verify the `x-jws-signature` header sent in OBIE API requests. 
 
-Routes which add the ProcessDetachedSig filter must add the new filter arg: `"jwkSetService": "${heap['OBJwkSetService']}"`
+Routes which use the ProcessDetachedSig filter must ensure that they configure the filter arg: `"jwkSetService": "${heap['OBJwkSetService']}"`
 
 # Extensions
 Clients can use an alternative caching library by writing an adaptor class which implements the [com.forgerock.securebanking.uk.gateway.jwks.cache.Cache](src/main/java/com/forgerock/securebanking/uk/gateway/jwks/cache/Cache.java) interface. 
