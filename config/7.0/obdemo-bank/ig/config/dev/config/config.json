@@ -300,7 +300,7 @@
       "type": "com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService",
       "config": {
         "maxCacheEntries": 500,
-        "expireAfterWriteDuration": "12 hours"
+        "expireAfterWriteDuration": "24 hours"
       }
     }
   ],
