@@ -24,7 +24,7 @@ The following snippets can be placed into the heap section of [config.json](../c
       "name": "OBJwkSetService",
       "type": "com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService",
       "config": {
-        "maxCacheSize": 500,
+        "maxCacheEntries": 500,
         "expireAfterWriteDuration": "12 hours"
       }
 }
@@ -32,7 +32,7 @@ The following snippets can be placed into the heap section of [config.json](../c
 
 | config option            | description                                                                                                                                                            | default                                                |
 |--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
-| maxCacheSize             | The maximum number of values that can be stored in the cache                                                                                                           | 100                                                    |
+| maxCacheEntries          | The maximum number of values that can be stored in the cache                                                                                                           | 100                                                    |
 | expireAfterWriteDuration | Values will be removed from the cache when this time elapses after the value was last written.<br/>This is a String representation of org.forgerock.util.time.Duration | "5 minutes"                                            |
 | handler                  | The org.forgerock.openig.handler.ClientHandler instance to use to send the HTTP requests to fetch the JWKS data                                                        | "ClientHandler", which is the default IG ClientHandler |
 

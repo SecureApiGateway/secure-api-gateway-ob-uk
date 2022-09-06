@@ -28,7 +28,7 @@ class CaffeineCacheTest {
     public static <K, V> CaffeineCache<K, V> createCache(long maxSize, Duration expireAfterWrite) {
         return new CaffeineCache<>(new CacheOptions().executor(Runnable::run)
                 .expireAfterWrite(expireAfterWrite)
-                .maximumSize(maxSize));
+                .maximumCacheEntries(maxSize));
     }
 
     @Test

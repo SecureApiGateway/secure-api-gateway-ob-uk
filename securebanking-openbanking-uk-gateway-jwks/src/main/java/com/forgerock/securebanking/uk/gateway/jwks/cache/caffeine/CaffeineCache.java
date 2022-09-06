@@ -29,7 +29,7 @@ public class CaffeineCache<K, V> implements Cache<K, V> {
     public static class CacheOptions {
         private final Caffeine builder = Caffeine.newBuilder();
 
-        public CacheOptions maximumSize(long maximumSize) {
+        public CacheOptions maximumCacheEntries(long maximumSize) {
             builder.maximumSize(maximumSize);
             return this;
         }

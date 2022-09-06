@@ -37,7 +37,7 @@ public class CaffeineCachingJwkSetServiceHeaplet extends RestJwkSetServiceHeaple
     }
 
     private CaffeineCache<URL, JWKSet> createCaffeineCache() {
-        final long maxCacheSize = config.get("maxCacheSize")
+        final long maxCacheEntries = config.get("maxCacheEntries")
                 .as(evaluatedWithHeapProperties())
                 .defaultTo(DEFAULT_MAX_CACHE_SIZE)
                 .asLong();
@@ -45,7 +45,7 @@ public class CaffeineCachingJwkSetServiceHeaplet extends RestJwkSetServiceHeaple
                 .as(evaluatedWithHeapProperties())
                 .defaultTo(DEFAULT_EXPIRE_AFTER_WRITE_DURATION)
                 .as(javaDuration());
-        final CacheOptions options = new CacheOptions().maximumSize(maxCacheSize)
+        final CacheOptions options = new CacheOptions().maximumCacheEntries(maxCacheEntries)
                 .expireAfterWrite(expireAfterWrite);
         logger.info("Creating a cache with options: {}", options);
         return new CaffeineCache<>(options);
