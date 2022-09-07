@@ -84,6 +84,26 @@
           }
         },
         {
+          "comment": "Check grant type",
+          "name": "OAuth2ResourceServerFilter-OBIE",
+          "type": "OAuth2ResourceServerFilter",
+          "config": {
+            "scopes": [
+              "payments",
+              "openid"
+            ],
+            "requireHttps": false,
+            "realm": "OpenIG",
+            "accessTokenResolver": {
+              "type": "ScriptableAccessTokenResolver",
+              "config": {
+                "type": "ScriptableAccessTokenResolver",
+                "file": "GrantTypeVerifier.groovy"
+              }
+            }
+          }
+        },
+        {
           "comment": "Adjust URL for downstream resource server",
           "type": "UriPathRewriteFilter",
           "config": {
