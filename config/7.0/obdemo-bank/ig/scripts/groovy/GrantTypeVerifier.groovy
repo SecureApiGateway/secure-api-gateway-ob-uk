@@ -1,3 +1,5 @@
+import org.forgerock.http.protocol.*
+
 SCRIPT_NAME = "[GrantTypeVerifier] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
