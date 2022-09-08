@@ -10,7 +10,7 @@ if (tokenGrantType == allowedGrantType){
     next.handle(context,request)
 }
 else {
-    def response = new Response(httpCode)
+    Response response = new Response(Status.UNAUTHORIZED)
     def message = "invalid_grant_type"
     response.headers['Content-Type'] = "application/json"
     response.entity = "{ \"error\":\"" + message + "\"}"

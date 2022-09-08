@@ -89,7 +89,10 @@
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "GrantTypeVerifier.groovy"
+            "file": "GrantTypeVerifier.groovy",
+            "args": {
+              "allowedGrantType": "client_credentials"
+            }
           }
         },
         {
