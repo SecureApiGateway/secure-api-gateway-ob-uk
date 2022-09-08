@@ -83,6 +83,18 @@
           }
         },
         {
+          "comment": "",
+          "name": "Grant Type Verifier",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "GrantTypeVerifier.groovy",
+            "args": {
+              "allowedGrantType": "authorization_code"
+            }
+          }
+        },
+        {
           "comment": "Adjust URL for downstream resource server",
           "type": "UriPathRewriteFilter",
           "config": {
