@@ -84,23 +84,12 @@
           }
         },
         {
-          "comment": "Check grant type",
-          "name": "OAuth2ResourceServerFilter-OBIE-granttype",
-          "type": "OAuth2ResourceServerFilter",
+          "comment": "",
+          "name": "Grant Type Verifier",
+          "type": "ScriptableFilter",
           "config": {
-            "scopes": [
-              "payments",
-              "openid"
-            ],
-            "requireHttps": false,
-            "realm": "OpenIG",
-            "accessTokenResolver": {
-              "type": "ScriptableAccessTokenResolver",
-              "config": {
-                "type": "application/x-groovy",
-                "file": "GrantTypeVerifier.groovy"
-              }
-            }
+            "type": "application/x-groovy",
+            "file": "GrantTypeVerifier.groovy"
           }
         },
         {
