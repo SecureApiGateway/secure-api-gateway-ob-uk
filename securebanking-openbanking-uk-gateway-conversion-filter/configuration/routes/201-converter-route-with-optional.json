@@ -1,8 +1,8 @@
 {
-  "name": "200 - Converter no optional",
+  "name": "201 - Converter with optional",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/rs/converter/no/optional')}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/with/optional')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -11,8 +11,11 @@
           "name": "IntentConverterFilter-AccountAccessConsent",
           "type": "IntentConverterFilter",
           "config": {
-            "intentType": "ACCOUNT_ACCESS_CONSENT",
-            "payloadFrom": "REQUEST"
+            "messageType": "request",
+            "resultTo": [
+              "RESPONSE",
+              "REQUEST"
+            ]
           }
         }
       ],

@@ -2,7 +2,7 @@
   "name": "203 converter handler chain combination example",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/repo/converter/chain')}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/chain')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -13,7 +13,7 @@
           "config": {
             "type": "application/x-groovy",
             "clientHandler": "IDMClientHandler",
-            "file": "RepoConsentConversion.groovy",
+            "file": "RepoConsentConversionExample.groovy",
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "routeArgObjUser": "&{user.object}"
@@ -31,7 +31,10 @@
               "type": "IntentConverterFilter",
               "config": {
                 "messageType": "request",
-                "resultTo": ["request", "response"]
+                "resultTo": [
+                  "request",
+                  "response"
+                ]
               }
             }
           ],

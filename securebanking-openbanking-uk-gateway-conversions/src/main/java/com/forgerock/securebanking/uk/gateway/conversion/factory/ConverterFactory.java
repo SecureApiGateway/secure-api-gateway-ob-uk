@@ -15,20 +15,23 @@
  */
 package com.forgerock.securebanking.uk.gateway.conversion.factory;
 
+import com.forgerock.securebanking.openbanking.uk.common.api.meta.obie.OBVersion;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
-import com.forgerock.securebanking.uk.gateway.conversion.converters.AccountAccessIntentConverter;
 import com.forgerock.securebanking.uk.gateway.conversion.converters.GenericIntentConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Factory to instance the specific converter implementation
+ */
 public final class ConverterFactory {
 
     private static final Logger logger = LoggerFactory.getLogger(ConverterFactory.class);
 
-    public static GenericIntentConverter getConverter(IntentType intentType) {
+    public static GenericIntentConverter getConverter(IntentType intentType, OBVersion obVersion) {
         switch (intentType) {
             case ACCOUNT_ACCESS_CONSENT: {
-                return new AccountAccessIntentConverter();
+                return AccountAccessIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_DOMESTIC_CONSENT: {
                 return null;
@@ -55,8 +58,9 @@ public final class ConverterFactory {
                 return null;
             }
             default: {
-                logger.warn("Couldn't identify the intent type" + intentType);
-                throw new RuntimeException("Couldn't identify the intent type" + intentType);
+                String message = String.format("Couldn't identify the intent type %s", intentType);
+                logger.error(message);
+                throw new RuntimeException(message);
             }
         }
     }

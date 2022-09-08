@@ -21,16 +21,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.openbanking.datamodel.account.OBReadConsentResponse1;
 
+/**
+ * Specific implementation of generic intent converter for ACCOUNT_ACCESS_CONSENT
+ */
 public class AccountAccessIntentConverter extends GenericIntentConverter<OBReadConsentResponse1> {
 
     private static final Logger logger = LoggerFactory.getLogger(AccountAccessIntentConverter.class);
 
     public AccountAccessIntentConverter() {
-        super(AccountAccessIntentConverter::convertToOBObject);
+        super(AccountAccessIntentConverter::convert);
     }
 
-    private static OBReadConsentResponse1 convertToOBObject(String jsonString) {
+    private static OBReadConsentResponse1 convert(String jsonString) {
         try {
+            logger.debug("Payload to be converted\n {}", jsonString);
             return GenericConverterMapper.getMapper().readValue(jsonString, OBReadConsentResponse1.class);
         } catch (JsonProcessingException e) {
             logger.trace("The following RuntimeException was caught : ", e);

@@ -2,7 +2,7 @@
   "name": "204 converter optional entity handler chain combination example",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/repo/converter/request/entity')}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/request/entity')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -13,7 +13,7 @@
           "config": {
             "type": "application/x-groovy",
             "clientHandler": "IDMClientHandler",
-            "file": "RepoConsentConversion.groovy",
+            "file": "RepoConsentConversionExample.groovy",
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "routeArgObjUser": "&{user.object}"

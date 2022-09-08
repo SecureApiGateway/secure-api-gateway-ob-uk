@@ -1,33 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
 
-    Copyright © 2020-2022 ForgeRock AS (obst@forgerock.com)
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>securebanking-openbanking-uk-gateway-conversions</artifactId>
-    <name>securebanking-openbanking-uk-gateway-conversions</name>
+    <artifactId>securebanking-openbanking-uk-gateway-utils</artifactId>
+    <name>securebanking-openbanking-uk-gateway-utils</name>
     <packaging>jar</packaging>
-    <description>A Gateway (IG) Extension util library module to convert Identity Platform objects to OB data model
-        objects
-    </description>
+    <description>A Gateway (IG) util library module</description>
     <url>
-        https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway/securebanking-openbanking-uk-gateway-conversions
+        https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-gateway/securebanking-openbanking-uk-gateway-utils
     </url>
 
     <parent>
@@ -45,13 +27,8 @@
         <!-- sbat dependencies -->
         <dependency>
             <groupId>com.forgerock.securebanking.uk</groupId>
-            <artifactId>securebanking-openbanking-uk-obie-datamodel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.forgerock.securebanking.uk</groupId>
             <artifactId>securebanking-openbanking-uk-common</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -72,22 +49,8 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.adelean</groupId>
-            <artifactId>inject-resources-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.adelean</groupId>
-            <artifactId>inject-resources-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>

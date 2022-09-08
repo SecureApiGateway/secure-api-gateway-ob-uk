@@ -1,8 +1,8 @@
 {
-  "name": "201 - Converter with optional",
+  "name": "200 - Converter no optional",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/repo/converter/with/optional')}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/no/optional')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -13,8 +13,7 @@
           "config": {
             "messageType": "request",
             "resultTo": [
-              "RESPONSE",
-              "REQUEST"
+              "response"
             ]
           }
         }
@@ -22,8 +21,8 @@
       "handler": {
         "type": "StaticResponseHandler",
         "config": {
-          "status": 404,
-          "reason": "Not Found"
+          "status": 200,
+          "reason": "OK"
         }
       }
     }

@@ -2,7 +2,7 @@ import groovy.json.JsonOutput
 
 import java.text.SimpleDateFormat
 
-SCRIPT_NAME = "[RepoConsentConversion] - "
+SCRIPT_NAME = "[RepoConsentConversionExample] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
 /**
@@ -98,71 +98,6 @@ def buildPatchRequest(incomingRequest) {
         }
     }
     return body
-}
-
-def convertIDMResponse(intentResponseObject, intentType) {
-    def responseObj = [];
-    switch (intentType) {
-        case IntentType.ACCOUNT_ACCESS_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "accountIds"           : intentResponseObject.accounts,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-        case IntentType.PAYMENT_DOMESTIC_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-        case IntentType.PAYMENT_DOMESTIC_SCHEDULED_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-        case IntentType.PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-        case IntentType.PAYMENT_INTERNATIONAL_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-        case IntentType.PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT:
-            responseObj = [
-                    "id"                   : intentResponseObject._id,
-                    "data"                 : intentResponseObject.Data,
-                    "resourceOwnerUsername": intentResponseObject.user ? intentResponseObject.user._id : null,
-                    "oauth2ClientId"       : intentResponseObject.apiClient.oauth2ClientId,
-                    "oauth2ClientName"     : intentResponseObject.apiClient.name
-            ]
-            break
-
-    }
-
-    return responseObj;
-
 }
 
 enum IntentType {
@@ -272,13 +207,11 @@ if (request.getMethod() == "GET") {
                         return response
                     }
 
-                    def responseObj = convertIDMResponse(intentResponseObject, intentType);
+                    logger.debug(SCRIPT_NAME + "Final JSON " + intentResponseObject)
 
-                    def responseJson = JsonOutput.toJson(responseObj);
-                    logger.debug(SCRIPT_NAME + "Final JSON " + responseJson)
-
-                    response.entity = responseObj
-                    request.entity = intentResponseObject
+                    response.setEntity(intentResponseObject);
+                    response.headers['Content-Type'] = "application/json";
+                    request.setEntity(intentResponseObject);
                     return response
 
                 }
@@ -324,11 +257,10 @@ if (request.getMethod() == "GET") {
                         return response
                     }
 
-                    //def responseObj = convertIDMResponse(patchResponseObject, intentType);
                     Response response = new Response(Status.OK)
-                    response.setEntity(JsonOutput.toJson(patchResponseObject));
+                    response.setEntity(patchResponseObject);
                     response.headers['Content-Type'] = "application/json";
-                    request.setEntity(JsonOutput.toJson(patchResponseObject));
+                    request.setEntity(patchResponseObject);
                     return response
                 }
             }.thenAsync { response ->

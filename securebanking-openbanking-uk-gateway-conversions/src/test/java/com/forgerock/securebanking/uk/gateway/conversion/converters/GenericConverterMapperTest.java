@@ -31,7 +31,7 @@ public class GenericConverterMapperTest {
         assertThat(obReadConsentResponse1).isEqualTo(getExpected());
     }
 
-    private OBReadConsentResponse1 getExpected(){
+    private OBReadConsentResponse1 getExpected() {
         return new OBReadConsentResponse1().data(
                 new OBReadConsentResponse1Data()
                         .consentId("AAC_f5a3913a-0299-4169-8f53-0c14e6e90890")

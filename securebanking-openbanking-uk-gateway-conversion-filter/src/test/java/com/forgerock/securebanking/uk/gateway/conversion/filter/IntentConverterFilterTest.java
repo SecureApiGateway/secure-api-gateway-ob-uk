@@ -17,8 +17,8 @@ package com.forgerock.securebanking.uk.gateway.conversion.filter;
 
 import com.adelean.inject.resources.junit.jupiter.GivenTextResource;
 import com.adelean.inject.resources.junit.jupiter.TestWithResources;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
 import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
 import org.forgerock.http.Handler;
 import org.forgerock.http.handler.Handlers;
@@ -41,6 +41,7 @@ import uk.org.openbanking.datamodel.account.OBReadConsentResponse1Data;
 import uk.org.openbanking.datamodel.account.OBRisk2;
 import uk.org.openbanking.datamodel.common.OBExternalRequestStatus1Code;
 
+import java.net.URI;
 import java.util.List;
 
 import static java.util.Collections.singletonList;
@@ -50,39 +51,53 @@ import static org.forgerock.json.JsonValue.*;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link IntentConverterFilter}
+ * Unit tests for {@link IntentConverterFilter}<br/>
+ * By default the result will be in the request to be passed the next handler
  */
 @TestWithResources
 public class IntentConverterFilterTest {
 
+    private static final URI _URI = URI.create("/rs/open-banking/v3.1.8/aisp/account-access-consents");
+
     @GivenTextResource("accountAccessIntent.json")
     String accountAccessIntent;
 
-    @Test
-    public void shouldConvertIntentToOBObjectFromRequest() throws Exception {
-        // Given
-        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, MessageType.REQUEST);
-        Request request = new Request();
-        request.setEntity(accountAccessIntent);
-        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
-        // When
-        Handler chain = Handlers.chainOf(handler, singletonList(filter));
-        Response response = chain.handle(new RootContext(), request).get();
-        // then
-        assertThat(response.getStatus()).isEqualTo(Status.OK);
-        assertThat(response.getEntity().getString()).isEqualTo(getExpectedResponse());
-    }
+    @GivenTextResource("accountRequest.json") // to tests the intent type error
+    String accountRequest;
 
+    @GivenTextResource("data-error.json") // to tests the intent type error
+    String dataError;
+
+    @GivenTextResource("consentId-error.json") // to tests the intent type error
+    String consentIdError;
+
+    @GivenTextResource("intent-type-error.json") // to tests the intent type error
+    String intentTypeError;
+
+    /**
+     Case: The optional entity is set in the configuration and the payload content is get from a request expression
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request",
+     *         "entity": "#{request.entity.string}"
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
     @Test
-    public void shouldConvertIntentToOBObjectFromRequestToRequest() throws Exception {
+    public void shouldOptionalEntityRequestExpressionToOBObject() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(
-                IntentType.ACCOUNT_ACCESS_CONSENT,
-                MessageType.REQUEST,
-                List.of(MessageType.REQUEST)
-        );
+        Expression<String> expression =
+                Expression.valueOf("#{request.entity.string}",
+                        String.class);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, expression);
         Request request = new Request();
         request.setEntity(accountAccessIntent);
+        request.setUri(_URI);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -92,19 +107,167 @@ public class IntentConverterFilterTest {
         assertThat(request.getEntity().getString()).isEqualTo(getExpectedResponse());
     }
 
+    /**
+     Case: The optional entity is set in the configuration and the payload content is get from a response expression
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "response",
+     *         "entity": "#{response.entity.string}"
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
     @Test
-    public void shouldConvertIntentToOBObjectFromRequestToBoth() throws Exception {
+    public void shouldConvertOptionalEntityResponseExpressionToOBObject() throws Exception {
+        // Given
+        Expression<String> expression =
+                Expression.valueOf("#{response.entity.string}",
+                        String.class);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.RESPONSE, expression);
+
+        Expression<String> entity =
+                Expression.valueOf(accountAccessIntent,
+                        String.class);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK, "", entity);
+        Request request = new Request();
+        request.setUri(_URI);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
+        assertThat(request.getEntity().getString()).isEqualTo(getExpectedResponse());
+    }
+
+    /**
+     Case: The payload content is get from request
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request"
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
+    @Test
+    public void shouldConvertEntityFromRequestToOBObject() throws Exception {
+        // Given
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST);
+        Request request = new Request();
+        request.setEntity(accountAccessIntent);
+        request.setUri(_URI);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
+        assertThat(request.getEntity().getString()).isEqualTo(getExpectedResponse());
+    }
+
+    /**
+     Case: The payload content is get from response
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "response"
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
+    @Test
+    public void shouldConvertEntityFromResponseToOBObject() throws Exception {
+        // Given
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.RESPONSE);
+        Expression<String> entity =
+                Expression.valueOf(accountAccessIntent,
+                        String.class);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK, "", entity);
+        Request request = new Request();
+        request.setUri(_URI);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
+        assertThat(request.getEntity().getString()).isEqualTo(getExpectedResponse());
+    }
+
+    /**
+     Case: The payload content is get from request and the result will be set on response
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request",
+     *         "resultTo": ["request"]
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
+    @Test
+    public void shouldConvertEntityToOBObjectConvertedToResponse() throws Exception {
         // Given
         IntentConverterFilter filter = new IntentConverterFilter(
-                IntentType.ACCOUNT_ACCESS_CONSENT,
+                MessageType.REQUEST,
+                List.of(MessageType.RESPONSE)
+        );
+        Request request = new Request();
+        request.setEntity(accountAccessIntent);
+        request.setUri(_URI);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
+        assertThat(response.getEntity().getString()).isEqualTo(getExpectedResponse());
+    }
+
+    /**
+     Case: The payload content is get from request and the result will be set on request and response
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request",
+     *         "resultTo": ["request", "response"]
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
+    @Test
+    public void shouldConvertEntityToOBObjectToRequestAndResponse() throws Exception {
+        // Given
+        IntentConverterFilter filter = new IntentConverterFilter(
                 MessageType.REQUEST,
                 List.of(MessageType.REQUEST, MessageType.RESPONSE)
         );
         Request request = new Request();
         request.setEntity(accountAccessIntent);
-        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        request.setUri(_URI);
+        Expression<String> expression =
+                Expression.valueOf(accountAccessIntent,
+                        String.class);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK, "", expression);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
+
         Response response = chain.handle(new RootContext(), request).get();
         // then
         assertThat(response.getStatus()).isEqualTo(Status.OK);
@@ -112,78 +275,159 @@ public class IntentConverterFilterTest {
         assertThat(response.getEntity().getString()).isEqualTo(getExpectedResponse());
     }
 
+    /**
+     Case: The payload content is empty and is expected an error
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request"
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
     @Test
-    public void shouldConvertIntentToOBObjectFromResponseToBoth() throws Exception {
+    public void shouldResponseWithErrorWhenEmptyEntity() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(
-                IntentType.ACCOUNT_ACCESS_CONSENT,
-                MessageType.RESPONSE,
-                List.of(MessageType.REQUEST, MessageType.RESPONSE)
-        );
-        Expression<String> expression =
-                Expression.valueOf(accountAccessIntent,
-                        String.class);
-        StaticResponseHandler handler = new StaticResponseHandler(Status.OK, "", expression);
-        Request request = new Request();
-        // When
-        Handler chain = Handlers.chainOf(handler, singletonList(filter));
-        Response response = chain.handle(new RootContext(), request).get();
-        // then
-        assertThat(response.getStatus()).isEqualTo(Status.OK);
-        assertThat(request.getEntity().getString()).isEqualTo(getExpectedResponse());
-        assertThat(response.getEntity().getString()).isEqualTo(getExpectedResponse());
-    }
-
-    @Test
-    public void shouldConvertIntentToOBObjectFromResponse() throws Exception {
-        // Given
-        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, MessageType.RESPONSE);
-        Expression<String> expression =
-                Expression.valueOf(accountAccessIntent,
-                        String.class);
-        StaticResponseHandler handler = new StaticResponseHandler(Status.OK, "", expression);
-        // When
-        Handler chain = Handlers.chainOf(handler, singletonList(filter));
-        Response response = chain.handle(new RootContext(), new Request()).get();
-        // then
-        assertThat(response.getStatus()).isEqualTo(Status.OK);
-        assertThat(response.getEntity().getString()).isEqualTo(getExpectedResponse());
-    }
-
-    @Test
-    public void shouldResponseWithErrorWhenWrongRequestEntity() throws Exception {
-        // Given
-        String entity = "Is not a json string";
-        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, MessageType.REQUEST);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
         Response response = chain.handle(new RootContext(), new Request()).get();
         // then
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(Exception.class)
+                .hasMessageContaining("The entity to be converted should not be null");
+    }
+
+    /**
+     Case: The payload content is not a json payload and is expected an error
+     * <pre>
+     * {@code {
+     *      "name": "IntentConverterFilter-name"
+     *      "type": "IntentConverterFilter",
+     *      "config": {
+     *         "messageType: "request",
+     *         "resultTo": ["request"]
+     *      }
+     *  }
+     *  }
+     * </pre>
+     */
+    @Test
+    public void shouldResponseWithErrorWhenWrongEntity() throws Exception {
+        // Given
+        String entity = "Is not a json string";
+        Request request = new Request();
+        request.setEntity(entity);
+        request.setUri(_URI);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(JsonParseException.class)
+                .hasMessageContaining("Unrecognized token 'Is': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')");
     }
 
     @Test
-    public void shouldResponseWithErrorWhenWrongResponseEntity() throws Exception {
+    public void shouldRaiseAnErrorWhenNotFindConverter() throws Exception {
         // Given
-        String entity = "Is not a json string";
-        IntentConverterFilter filter = new IntentConverterFilter(IntentType.ACCOUNT_ACCESS_CONSENT, MessageType.RESPONSE);
+        Request request = new Request();
+        request.setEntity(accountAccessIntent);
+        request.setUri(URI.create("/rs/open-banking/v3.1/aisp/account-access-consents"));
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
-        handler.handle(new RootContext(), new Request()).getOrThrow().setEntity(entity);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
-        Response response = chain.handle(new RootContext(), new Request()).get();
+        Response response = chain.handle(new RootContext(), request).get();
         // then
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Couldn't find the ACCOUNT_ACCESS_CONSENT converter for version v3_1");
     }
 
+    @Test
+    public void shouldRaiseAnErrorWhenNotIdentifyTheIntentType() throws Exception {
+        // Given
+        Request request = new Request();
+        request.setEntity(accountRequest);
+        request.setUri(_URI);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Couldn't identify the intent type");
+    }
+
+    @Test
+    public void shouldRaiseAnErrorWhenPayloadNotHaveData() throws Exception {
+        // Given
+        Request request = new Request();
+        request.setEntity(dataError);
+        request.setUri(_URI);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(Exception.class)
+                .hasMessageContaining("The entity doesn't have 'Data' Object to identify the intent type");
+    }
+
+    @Test
+    public void shouldRaiseAnErrorWhenPayloadNotHaveConsentId() throws Exception {
+        // Given
+        Request request = new Request();
+        request.setEntity(consentIdError);
+        request.setUri(_URI);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(Exception.class)
+                .hasMessageContaining("The entity doesn't have 'ConsentId' to identify the intent type");
+    }
+
+    @Test
+    public void shouldRaiseAnErrorWhenPayloadHaveWrongConsentId() throws Exception {
+        // Given
+        Request request = new Request();
+        request.setEntity(intentTypeError);
+        request.setUri(_URI);
+        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
+        // When
+        Handler chain = Handlers.chainOf(handler, singletonList(filter));
+        Response response = chain.handle(new RootContext(), request).get();
+        // then
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        assertThat(response.getCause()).isExactlyInstanceOf(Exception.class)
+                .hasMessageContaining("It cannot be possible to identify the intent type with the consentId ");
+    }
+
+    /**
+     Case: The heaplet is created properly with required configuration
+     */
     @Test
     public void shouldCreateHeaplet() throws Exception {
         // Given
         final JsonValue config = json(
                 object(
-                        field("intentType", IntentType.ACCOUNT_ACCESS_CONSENT.toString()),
-                        field("payloadFrom", MessageType.REQUEST.toString())
+                        field("messageType", MessageType.REQUEST.toString().toLowerCase())
                 ));
         EnvironmentHeap heap = mock(EnvironmentHeap.class);
         final IntentConverterFilter.Heaplet heaplet = new IntentConverterFilter.Heaplet();
@@ -193,14 +437,18 @@ public class IntentConverterFilterTest {
         assertThat(filter).isNotNull();
     }
 
+    /**
+     * The heaplet is created properly with optional configuration
+     * @throws Exception
+     */
     @Test
     public void shouldCreateHeapletWithOptionals() throws Exception {
         // Given
         final JsonValue config = json(
                 object(
-                        field("intentType", IntentType.ACCOUNT_ACCESS_CONSENT.toString()),
-                        field("payloadFrom", MessageType.REQUEST.toString()),
-                        field("resultTo", List.of(MessageType.REQUEST.toString(), MessageType.RESPONSE.toString()))
+                        field("messageType", MessageType.REQUEST.toString().toLowerCase()),
+                        field("entity", accountAccessIntent),
+                        field("resultTo", List.of(MessageType.REQUEST.toString().toLowerCase(), MessageType.RESPONSE.toString()))
                 ));
         EnvironmentHeap heap = mock(EnvironmentHeap.class);
         final IntentConverterFilter.Heaplet heaplet = new IntentConverterFilter.Heaplet();
@@ -210,23 +458,26 @@ public class IntentConverterFilterTest {
         assertThat(filter).isNotNull();
     }
 
+    /**
+     * Raise an error creating the heaplet with wrong configuration values
+     */
     @Test
-    public void shouldReturnErrorWhenCreateHeapletWithWrongOptionals() throws Exception {
+    public void shouldReturnErrorWhenCreateHeapletWithWrongOptionals() {
         // Given
+        String wrongMessageType = "WRONG_MESSAGE_TYPE";
         final JsonValue config = json(
                 object(
-                        field("intentType", IntentType.ACCOUNT_ACCESS_CONSENT.toString()),
-                        field("payloadFrom", MessageType.REQUEST.toString()),
-                        field("resultTo", List.of(MessageType.REQUEST.toString(), "WRONG_MESSAGE_TYPE"))
+                        field("messageType", MessageType.REQUEST.toString()),
+                        field("resultTo", List.of(MessageType.REQUEST.toString(), wrongMessageType))
                 ));
         EnvironmentHeap heap = mock(EnvironmentHeap.class);
         final IntentConverterFilter.Heaplet heaplet = new IntentConverterFilter.Heaplet();
         assertThatThrownBy(() ->
                 heaplet.create(Name.of("IntentConverterFilter"),
-                config,
-                heap)).isInstanceOf(JsonValueException.class)
-                .hasMessageContaining("Configuration 'resultTo' [REQUEST, WRONG_MESSAGE_TYPE] list contains not supported values," +
-                        " all configuration values should be a MessageType values.");
+                        config,
+                        heap)).isInstanceOf(JsonValueException.class)
+                .hasMessageContaining(String.format("Configuration field 'resultTo' contains not supported value '%s'," +
+                        " all configuration values should be a MessageType values.", wrongMessageType));
     }
 
     private static String getExpectedResponse() throws JsonProcessingException {

@@ -2,7 +2,7 @@
   "name": "202 converter switch filter combination example",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/repo/converter/switchfilter')}",
+  "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/switchfilter')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -14,7 +14,7 @@
             "onRequest": [
               {
                 "comment": "Fetch Open Banking consent from IDM",
-                "condition": "${matches(request.uri.path, '^/repo/converter/switchfilter')}",
+                "condition": "${matches(request.uri.path, '^/repo/converter/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/switchfilter')}",
                 "handler": {
                   "name": "ConversionHandler",
                   "type": "Chain",
@@ -26,7 +26,7 @@
                         "config": {
                           "type": "application/x-groovy",
                           "clientHandler": "IDMClientHandler",
-                          "file": "RepoConsentConversion.groovy",
+                          "file": "RepoConsentConversionExample.groovy",
                           "args": {
                             "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
                             "routeArgObjUser": "&{user.object}"

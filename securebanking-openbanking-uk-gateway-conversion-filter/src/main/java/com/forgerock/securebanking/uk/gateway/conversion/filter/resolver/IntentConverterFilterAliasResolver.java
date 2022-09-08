@@ -25,7 +25,7 @@ public class IntentConverterFilterAliasResolver implements ClassAliasResolver {
      * Get the class for a short name alias.
      *
      * @param alias Short name alias.
-     * @return      The class, or null if the alias is not defined.
+     * @return The class, or null if the alias is not defined.
      */
     @Override
     public Class<?> resolve(final String alias) {

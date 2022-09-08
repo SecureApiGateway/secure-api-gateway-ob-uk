@@ -15,12 +15,6 @@
  */
 package com.forgerock.securebanking.uk.gateway.conversion.converters;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;

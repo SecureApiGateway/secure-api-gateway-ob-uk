@@ -1,87 +1,47 @@
 ## Conversion Filter module
+
 This filter module implements the below components:
-- A filter to convert IDM object represented as json payload intent to OB data model consent response objects.
+
+- A filter to convert IDM intent object represented as json payload intent to OB data model consent response object.
+- A inner heaplet static class to initialize a `IntentConverterFilter` in a heap environment
 - A Class alias resolver to allow the use of short name `IntentConverterFilter` instead of fully qualified class name.
+
+## Flow sequence
+
+![flow sequence](docs/flowSequence.png)
+
 ## Configuration
-The filter must have received:
-- `intentType`: An **IntentType** in string format as required field
-- `payloadFrom`: A **MessageType** in string format to get the intent payload as required field
-- `restulTo`: A list of **MessageType** in string format to set the conversion result as optional, the default value is `"RESPONSE"`,
-it means that the result object of the conversion will be set in the response.
-### Intent types supported values
-The `intentType` field indicates the intent type to be converted
-> @See com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType
 
-> Required
+| field         | description                                                                                   | required | default         |
+|---------------|-----------------------------------------------------------------------------------------------|----------|-----------------|
+| `messageType` | The type of message for which to convert the entity                                           | Yes      | N/A             |
+| `entity`      | Expression<String> to be replaced for a jsonPayload content to be converted in string format. | No       | [not replaced.] |
+| `resultTo`    | Indicates where will set the conversion result                                                | No       | `REQUEST`       |
 
-| IntentType                                    | Value                                           |
-|-----------------------------------------------|-------------------------------------------------|
-| ACCOUNT_ACCESS_CONSENT                        | "ACCOUNT_ACCESS_CONSENT"                        |
-| PAYMENT_DOMESTIC_CONSENT                      | "PAYMENT_DOMESTIC_CONSENT"                      |
-| PAYMENT_DOMESTIC_SCHEDULED_CONSENT            | "PAYMENT_DOMESTIC_SCHEDULED_CONSENT"            |
-| PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT      | "PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT"      |
-| PAYMENT_INTERNATIONAL_CONSENT                 | "PAYMENT_INTERNATIONAL_CONSENT"                 |
-| PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT       | "PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT"       |
-| PAYMENT_INTERNATIONAL_STANDING_ORDERS_CONSENT | "PAYMENT_INTERNATIONAL_STANDING_ORDERS_CONSENT" |
-| PAYMENT_FILE_CONSENT                          | "PAYMENT_FILE_CONSENT"                          |
-| FUNDS_CONFIRMATION_CONSENT                    | "FUNDS_CONFIRMATION_CONSENT"                    |
+## Build
 
-### Payload from
-The `payloadFrom` field indicates where the filter needs to get the payload to be converted.
->@See org.forgerock.openig.util.MessageType
+```shell
+mvn clean install
+```
 
-> Required
+> Each module is configured using maven plugins to copy the generated library in `config/7.0/obdemo-bank/ig/lib` when
+> necessary
 
-| Value      | type   | Description                                       |
-|------------|--------|---------------------------------------------------|
-| "REQUEST"  | String | The filter will get the payload from the request  |
-| "RESPONSE" | String | The filter will get the payload from the response |
+:nut_and_bolt: **Test purpose**
 
-### result to
-The `resultTo` field is `optional` and indicates where the filter will set the result OB Object of the conversion
->@See org.forgerock.openig.util.MessageType
+If you want test the provided module configuration for test purposes you need to run maven with the
+profile `test-configuration`
 
-> Optional: default value ["RESPONSE"]
+```shell
+mvn clean install -Ptest-configuration
+```
 
-| Value                   | type           | Description                                                                        |
-|-------------------------|----------------|------------------------------------------------------------------------------------|
-| ["REQUEST"]             | List of String | The result Object of the conversion will be set in the request                     |
-| ["RESPONSE"] *Default   | List of String | The result Object of the conversion will be set in the response                    |
-| ["REQUEST", "RESPONSE"] | List of String | The result Object of the conversion will be set in the request and in the response |
+> This command will copy the generated libraries and the provided configuration of routes and scripts module for test
+> purposes in `config/7.0/obdemo-bank/ig/*`
+
+:warning: Remember don't push the configuration for test purposes to git.
 
 ### Filter configuration examples
-```json
-{
-  "name": "IntentConverterFilter-AccountAccessConsent",
-  "type": "IntentConverterFilter",
-  "config": {
-    "intentType": "ACCOUNT_ACCESS_CONSENT",
-    "payloadFrom": "REQUEST"
-  }
-}
-```
-```json
-{
-  "name": "IntentConverterFilter-AccountAccessConsent",
-  "type": "IntentConverterFilter",
-  "config": {
-    "intentType": "ACCOUNT_ACCESS_CONSENT",
-    "payloadFrom": "RESPONSE",
-    "resultTo": ["REQUEST"]
-  }
-}
-```
-```json
-{
-  "name": "IntentConverterFilter-AccountAccessConsent",
-  "type": "IntentConverterFilter",
-  "config": {
-    "intentType": "ACCOUNT_ACCESS_CONSENT",
-    "payloadFrom": "REQUEST",
-    "resultTo": [
-      "RESPONSE",
-      "REQUEST"
-    ]
-  }
-}
-```
+
+Check the content folder `${basedir}/configuration/routes`
+

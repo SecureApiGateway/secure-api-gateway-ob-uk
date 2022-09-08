@@ -17,8 +17,6 @@ package com.forgerock.securebanking.uk.gateway.conversion.converters;
 
 import com.adelean.inject.resources.junit.jupiter.GivenTextResource;
 import com.adelean.inject.resources.junit.jupiter.TestWithResources;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -43,7 +41,7 @@ public class AccountAccessIntentConverterTest {
     String accountAccessIntent;
 
     @Test
-    public void shouldConvertAccountAccessIntent() throws JsonProcessingException {
+    public void shouldConvertAccountAccessIntent() {
         assertThat(accountAccessIntent).isNotEmpty();
         AccountAccessIntentConverter converter = new AccountAccessIntentConverter();
         OBReadConsentResponse1 obReadConsentResponse1 = converter.convertFromJsonString(accountAccessIntent);
@@ -63,7 +61,7 @@ public class AccountAccessIntentConverterTest {
     }
 
     @Test
-    public void shouldConvertListOfAccountAccessIntents() throws JsonProcessingException {
+    public void shouldConvertListOfAccountAccessIntents() {
         assertThat(accountAccessIntent).isNotEmpty();
         AccountAccessIntentConverter converter = new AccountAccessIntentConverter();
         List<OBReadConsentResponse1> obReadConsentResponse1List = converter.createFromJsonStrings(Arrays.asList(accountAccessIntent, accountAccessIntent));
@@ -82,25 +80,24 @@ public class AccountAccessIntentConverterTest {
         );
     }
 
-    private static String getExpectedResponse() throws JsonProcessingException {
-        return GenericConverterMapper.getMapper().writeValueAsString(
-                new OBReadConsentResponse1().data(
-                        new OBReadConsentResponse1Data()
-                                .consentId("AAC_f5a3913a-0299-4169-8f53-0c14e6e90890")
-                                .expirationDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
-                                .transactionFromDateTime(DateTime.parse("2019-04-03T00:00:00.000Z"))
-                                .transactionToDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
-                                .status(OBExternalRequestStatus1Code.AWAITINGAUTHORISATION)
-                                .creationDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
-                                .statusUpdateDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
-                                .permissions(
-                                        List.of(
-                                                OBExternalPermissions1Code.READACCOUNTSDETAIL,
-                                                OBExternalPermissions1Code.READBALANCES
-                                        )
+    private static OBReadConsentResponse1 getExpectedResponse() {
+        return new OBReadConsentResponse1().data(
+                new OBReadConsentResponse1Data()
+                        .consentId("AAC_f5a3913a-0299-4169-8f53-0c14e6e90890")
+                        .expirationDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
+                        .transactionFromDateTime(DateTime.parse("2019-04-03T00:00:00.000Z"))
+                        .transactionToDateTime(DateTime.parse("2019-08-01T00:00:00.000Z"))
+                        .status(OBExternalRequestStatus1Code.AWAITINGAUTHORISATION)
+                        .creationDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
+                        .statusUpdateDateTime(DateTime.parse("2022-08-24T11:56:29.533Z"))
+                        .permissions(
+                                List.of(
+                                        OBExternalPermissions1Code.READACCOUNTSDETAIL,
+                                        OBExternalPermissions1Code.READBALANCES
                                 )
+                        )
 
-                ).risk(new OBRisk2())
+        ).risk(new OBRisk2()
         );
     }
 }

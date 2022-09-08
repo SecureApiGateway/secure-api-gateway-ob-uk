@@ -64,6 +64,11 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.forgerock.securebanking.uk.gateway</groupId>
+            <artifactId>securebanking-openbanking-uk-gateway-utils</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
@@ -105,6 +110,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -114,4 +128,59 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>test-configuration</id>
+            <properties>
+                <profile>test</profile>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-routes-to-ig</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>../config/7.0/obdemo-bank/ig/routes/routes-service
+                                    </outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${basedir}/configuration/routes</directory>
+                                            <include>*.json</include>
+                                            <filtering>false</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-scripts-to-ig</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>../config/7.0/obdemo-bank/ig/scripts/groovy</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${basedir}/configuration/scripts/groovy</directory>
+                                            <include>*.groovy</include>
+                                            <filtering>false</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>
