@@ -6,7 +6,12 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.forgerock.http.protocol.*
 import org.forgerock.json.JsonValueFunctions.*
 import org.forgerock.json.jose.*
+import org.forgerock.json.jose.jwk.RsaJWK
 import org.forgerock.json.jose.jwk.store.JwksStore.*
+import com.forgerock.securebanking.uk.gateway.jwks.*
+import java.security.interfaces.RSAPublicKey
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
+
 import java.text.ParseException
 import static org.forgerock.util.promise.Promises.newResultPromise
 
@@ -137,9 +142,14 @@ if (['v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3'].contains(apiVersion)) {
 
             try {
                 logger.debug(SCRIPT_NAME + "Processing Unencoded payload request")
-                if (!validateUnencodedPayload(detachedSig, jwks_uri, jwtPayload)) {
-                    return newResultPromise(getSignatureValidationErrorResponse())
-                }
+
+                Promise<Boolean, NeverThrowsException> validJwsPromise = validateUnencodedPayload(detachedSig, jwks_uri, jwtPayload);
+                return validJwsPromise.thenAsync(validJws -> {
+                    if (Boolean.FALSE.equals(validJws)) {
+                        return newResultPromise(getSignatureValidationErrorResponse())
+                    }
+                    return next.handle(context, request)
+                })
             }
             catch (java.lang.Exception e) {
                 logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e);
@@ -174,9 +184,13 @@ if (['v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3'].contains(apiVersion)) {
 
         try {
             logger.debug(SCRIPT_NAME + "Standard base64 encoded payload for detached sig")
-            if (!validateEncodedPayload(detachedSig, jwks_uri, jwtPayload)) {
-                return newResultPromise(getSignatureValidationErrorResponse())
-            }
+            Promise<Boolean, NeverThrowsException> validJwsPromise = validateEncodedPayload(detachedSig, jwks_uri, jwtPayload);
+            return validJwsPromise.thenAsync(validJws -> {
+                if (Boolean.FALSE.equals(validJws)) {
+                    return newResultPromise(getSignatureValidationErrorResponse())
+                }
+                return next.handle(context, request)
+            })
         }
         catch (java.lang.Exception e) {
             logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e);
@@ -216,14 +230,15 @@ def validateUnencodedPayload(String jws, String routeArgJwkUrl, String payload) 
         return false
     }
 
-    RSAKey rsaPublicJWK = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader)
-
-    if (rsaPublicJWK == null) {
-        return false;
-    }
-
-    RSASSAVerifier verifier = new RSASSAVerifier(rsaPublicJWK.toRSAPublicKey(), getCriticalHeaderParameters());
-    return parsedJWSObject.verify(verifier)
+    Promise<RSAPublicKey, FailedToLoadJWKException> keyPromise = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader);
+    return keyPromise.thenAsync(rsaPublicKey -> {
+        logger.debug(SCRIPT_NAME + "Processing RSAKey promise, rsaPublicKey: " + rsaPublicKey)
+        RSASSAVerifier verifier = new RSASSAVerifier(rsaPublicKey, getCriticalHeaderParameters());
+        return newResultPromise(parsedJWSObject.verify(verifier));
+    }).thenCatchAsync(failedToLoadJwkEx -> {
+        logger.debug(SCRIPT_NAME + " failed to load key for routeArgJwkUrl: " + routeArgJwkUrl, failedToLoadJwkEx);
+        return newResultPromise(false)
+    })
 }
 
 /**
@@ -242,11 +257,14 @@ def validateEncodedPayload(String payload, String routeArgJwkUrl, String jwtPayl
     JWSObject parsedJWSObject = JWSObject.parse(payload);
     JWSHeader jwsHeader = parsedJWSObject.getHeader();
 
-    RSAKey rsaPublicJWK = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader)
-    if (rsaPublicJWK == null) {
-        return false;
-    }
-    return isJwsValid(payload, rsaPublicJWK, jwtPayload, jwsHeader);
+    Promise<RSAPublicKey, FailedToLoadJWKException> keyPromise = getRSAKeyFromJwks(routeArgJwkUrl, jwsHeader);
+    keyPromise.thenAsync(rsaPublicKey -> {
+        logger.debug(SCRIPT_NAME + "Processing RSAKey promise, rsaPublicKey: " + rsaPublicKey)
+        return isJwsValid(payload, rsaPublicKey, jwtPayload, jwsHeader);
+    }).thenCatchAsync(failedToLoadJwkEx -> {
+        logger.debug(SCRIPT_NAME + " failed to load key for routeArgJwkUrl: " + routeArgJwkUrl, failedToLoadJwkEx);
+        return newResultPromise(false)
+    })
 }
 
 /**
@@ -258,29 +276,13 @@ def validateEncodedPayload(String payload, String routeArgJwkUrl, String jwtPayl
  * @return the RSAKey that matches the kid from the JWS header given
  */
 def getRSAKeyFromJwks(String routeArgJwkUrl, JWSHeader jwsHeader) {
-    JWKSet jwkSet
-    try {
-        //adding connectTimeout = 5000 ms, readTimeout = 5000 ms, sizeLimit = 1000000 bytes (1Mb) to avoid blocked threads.
-        //There's an issue which leaves connections hanging and leads to threads getting blocked
-        jwkSet = JWKSet.load(new URL(routeArgJwkUrl), 10000, 10000, 1000000);
-    }
-    catch (java.lang.Exception e) {
-        logger.error(SCRIPT_NAME + "Exception getting JWK set: " + e);
-        return null;
-    }
+    var keyId = jwsHeader.getKeyID()
+    logger.debug(SCRIPT_NAME + "Fetching key for keyId: " + keyId)
 
-    logger.debug(SCRIPT_NAME + "jwkSet: " + jwkSet.toString())
-
-    List<JWK> matches = new JWKSelector(JWKMatcher.forJWSHeader(jwsHeader))
-            .select(jwkSet);
-
-    if (matches.size() != 1) {
-        logger.error(SCRIPT_NAME + "Unexpected number of matching JWKs: " + matches.size());
-        return null
-    }
-
-    RSAKey rsaPublicJWK = (RSAKey) matches.get(0).toPublicJWK();
-    return rsaPublicJWK;
+    Promise<RSAPublicKey, FailedToLoadJWKException> jwkPromise = jwkSetService.getJwk(new URL(routeArgJwkUrl), keyId).then(jwk -> {
+        return ((RsaJWK) jwk).toRSAPublicKey()
+    })
+    return jwkPromise
 }
 
 /**
@@ -288,24 +290,23 @@ def getRSAKeyFromJwks(String routeArgJwkUrl, JWSHeader jwsHeader) {
  * critical claims during the process of the signature validation.
  *
  * @param jwt The detached signature header value - x-jws-signature
- * @param jwk The JWK used to validate the signature
+ * @param rsaPublicKey The JWK used to validate the signature
  * @param jwtPayload The request payload or request body. Will be encoded before rebuilding the JWT
  * @param jwsHeader The header of the detached signature
  * @return true if the signatures validation is successful, false otherwise
  */
-def isJwsValid(String jwt, JWK jwk, String jwtPayload, JWSHeader jwsHeader) throws JOSEException, ParseException {
+def isJwsValid(String jwt, RSAPublicKey rsaPublicKey, String jwtPayload, JWSHeader jwsHeader) throws JOSEException, ParseException {
     // Validate crit claims - If this fails stop the flow, no point in continuing with the signature validation.
     boolean criticalParamsValid = validateCriticalParameters(jwsHeader);
     if (!criticalParamsValid) {
         logger.error(SCRIPT_NAME + "Critical params validations failed. Stopping further validations.")
-        return false
+        return newResultPromise(false)
     }
 
     //Validate Signature
     logger.debug(SCRIPT_NAME + "JWT from header signature: " + jwt)
 
-    RSASSAVerifier jwsVerifier = new RSASSAVerifier(jwk.toRSAKey().toRSAPublicKey(),
-            getCriticalHeaderParameters());
+    RSASSAVerifier jwsVerifier = new RSASSAVerifier(rsaPublicKey, getCriticalHeaderParameters());
 
     String[] jwtElements = jwt.split("\\.")
 
@@ -317,7 +318,7 @@ def isJwsValid(String jwt, JWK jwk, String jwtPayload, JWSHeader jwsHeader) thro
     boolean isValidJws = jwsObject.verify(jwsVerifier);
     logger.debug(SCRIPT_NAME + "Signature validation result: " + isValidJws)
 
-    return isValidJws;
+    return newResultPromise(isValidJws);
 }
 
 /**
@@ -383,7 +384,7 @@ def getCriticalHeaderParameters() {
 }
 
 /**
- * Builds the signature validation failur error response
+ * Builds the signature validation failure error response
  * @return error response
  */
 def getSignatureValidationErrorResponse() {
