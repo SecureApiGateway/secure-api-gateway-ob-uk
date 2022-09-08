@@ -85,7 +85,7 @@
         },
         {
           "comment": "Check grant type",
-          "name": "OAuth2ResourceServerFilter-OBIE",
+          "name": "OAuth2ResourceServerFilter-OBIE-granttype",
           "type": "OAuth2ResourceServerFilter",
           "config": {
             "scopes": [
@@ -97,7 +97,7 @@
             "accessTokenResolver": {
               "type": "ScriptableAccessTokenResolver",
               "config": {
-                "type": "ScriptableAccessTokenResolver",
+                "type": "application/x-groovy",
                 "file": "GrantTypeVerifier.groovy"
               }
             }
