@@ -97,6 +97,18 @@
           }
         },
         {
+          "comment": "Check grant type",
+          "name": "Grant Type Verifier",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "GrantTypeVerifier.groovy",
+            "args": {
+              "allowedGrantType": "client_credentials"
+            }
+          }
+        },
+        {
           "commment": "Prepare account consent for IDM - change request URL and add CREST action",
           "name": "ProcessAccountConsent",
           "type": "ScriptableFilter",

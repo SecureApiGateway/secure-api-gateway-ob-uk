@@ -84,7 +84,7 @@
           }
         },
         {
-          "comment": "",
+          "comment": "Check grant type",
           "name": "Grant Type Verifier",
           "type": "ScriptableFilter",
           "config": {
