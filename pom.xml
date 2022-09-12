@@ -16,7 +16,6 @@
     limitations under the License.
 
 -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -63,7 +62,7 @@
         <maven-help-plugin.version>3.3.0</maven-help-plugin.version>
         <legal.path.header>legal/LICENSE-HEADER.txt</legal.path.header>
     </properties>
-
+    <inceptionYear>2020</inceptionYear>
     <dependencyManagement>
         <dependencies>
             <!-- IG BOM -->
@@ -218,10 +217,29 @@
                                 <exclude>legal/**</exclude>
                                 <exclude>postman/**</exclude>
                                 <exclude>kustomize/**</exclude>
+                                <exclude>**/*.properties</exclude>
                             </excludes>
                         </licenseSet>
                     </licenseSets>
+                    <properties>
+                        <currentYear>${copyright-current-year}</currentYear>
+                        <owner>ForgeRock AS</owner>
+                        <email>obst@forgerock.com</email>
+                    </properties>
+                    <mapping>
+                        <java>SLASHSTAR_STYLE</java>
+                        <pom.xml>XML_STYLE</pom.xml>
+                    </mapping>
                 </configuration>
+                <executions>
+                    <execution>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>format</goal>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!-- display active profile in compile phase -->
             <plugin>
