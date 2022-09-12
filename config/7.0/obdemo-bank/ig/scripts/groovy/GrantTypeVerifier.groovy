@@ -3,7 +3,7 @@ import org.forgerock.http.protocol.*
 SCRIPT_NAME = "[GrantTypeVerifier] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-def tokenGrantType = contexts.oauth2.accessToken.info.grant_type
+def tokenGrantType = contexts.oauth2.accessToken.info.grant_types
 if (tokenGrantType == allowedGrantType){
     next.handle(context,request)
 }
