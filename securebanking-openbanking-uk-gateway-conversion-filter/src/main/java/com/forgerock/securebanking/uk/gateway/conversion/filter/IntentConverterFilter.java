@@ -104,26 +104,10 @@ public class IntentConverterFilter implements Filter {
      * @param entity
      * @param resultTo
      */
-    public IntentConverterFilter(MessageType messageType, final Expression<String> entity, final List<MessageType> resultTo) {
+    public IntentConverterFilter(final MessageType messageType, final Expression<String> entity, final List<MessageType> resultTo) {
         this.messageType = messageType;
         this.entity = entity;
         this.resultTo = resultTo;
-    }
-
-    // Constructors for test support
-    @VisibleForTesting
-    IntentConverterFilter(MessageType messageType) {
-        this(messageType, null, List.of(MessageType.REQUEST));
-    }
-
-    @VisibleForTesting
-    IntentConverterFilter(MessageType messageType, final Expression<String> entity) {
-        this(messageType, entity, List.of(MessageType.REQUEST));
-    }
-
-    @VisibleForTesting
-    IntentConverterFilter(MessageType messageType, final List<MessageType> resultTo) {
-        this(messageType, null, resultTo);
     }
 
     @Override

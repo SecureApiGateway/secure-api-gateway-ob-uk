@@ -44,6 +44,7 @@ import uk.org.openbanking.datamodel.common.OBExternalRequestStatus1Code;
 import java.net.URI;
 import java.util.List;
 
+import static com.forgerock.securebanking.uk.gateway.conversion.filter.IntentConverterFilterTestFactory.getFilterInstance;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -94,7 +95,7 @@ public class IntentConverterFilterTest {
         Expression<String> expression =
                 Expression.valueOf("#{request.entity.string}",
                         String.class);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, expression);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST, expression);
         Request request = new Request();
         request.setEntity(accountAccessIntent);
         request.setUri(_URI);
@@ -127,7 +128,7 @@ public class IntentConverterFilterTest {
         Expression<String> expression =
                 Expression.valueOf("#{response.entity.string}",
                         String.class);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.RESPONSE, expression);
+        IntentConverterFilter filter = getFilterInstance(MessageType.RESPONSE, expression);
 
         Expression<String> entity =
                 Expression.valueOf(accountAccessIntent,
@@ -160,7 +161,7 @@ public class IntentConverterFilterTest {
     @Test
     public void shouldConvertEntityFromRequestToOBObject() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         Request request = new Request();
         request.setEntity(accountAccessIntent);
         request.setUri(_URI);
@@ -189,7 +190,7 @@ public class IntentConverterFilterTest {
     @Test
     public void shouldConvertEntityFromResponseToOBObject() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.RESPONSE);
+        IntentConverterFilter filter = getFilterInstance(MessageType.RESPONSE);
         Expression<String> entity =
                 Expression.valueOf(accountAccessIntent,
                         String.class);
@@ -221,10 +222,7 @@ public class IntentConverterFilterTest {
     @Test
     public void shouldConvertEntityToOBObjectConvertedToResponse() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(
-                MessageType.REQUEST,
-                List.of(MessageType.RESPONSE)
-        );
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST, List.of(MessageType.RESPONSE));
         Request request = new Request();
         request.setEntity(accountAccessIntent);
         request.setUri(_URI);
@@ -254,10 +252,7 @@ public class IntentConverterFilterTest {
     @Test
     public void shouldConvertEntityToOBObjectToRequestAndResponse() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(
-                MessageType.REQUEST,
-                List.of(MessageType.REQUEST, MessageType.RESPONSE)
-        );
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST, List.of(MessageType.REQUEST, MessageType.RESPONSE));
         Request request = new Request();
         request.setEntity(accountAccessIntent);
         request.setUri(_URI);
@@ -291,7 +286,7 @@ public class IntentConverterFilterTest {
     @Test
     public void shouldResponseWithErrorWhenEmptyEntity() throws Exception {
         // Given
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -323,7 +318,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(entity);
         request.setUri(_URI);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -340,7 +335,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(accountAccessIntent);
         request.setUri(URI.create("/rs/open-banking/v3.1/aisp/account-access-consents"));
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -357,7 +352,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(accountRequest);
         request.setUri(_URI);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -374,7 +369,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(dataError);
         request.setUri(_URI);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -391,7 +386,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(consentIdError);
         request.setUri(_URI);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
@@ -408,7 +403,7 @@ public class IntentConverterFilterTest {
         Request request = new Request();
         request.setEntity(intentTypeError);
         request.setUri(_URI);
-        IntentConverterFilter filter = new IntentConverterFilter(MessageType.REQUEST, null, null);
+        IntentConverterFilter filter = getFilterInstance(MessageType.REQUEST);
         StaticResponseHandler handler = new StaticResponseHandler(Status.OK);
         // When
         Handler chain = Handlers.chainOf(handler, singletonList(filter));
