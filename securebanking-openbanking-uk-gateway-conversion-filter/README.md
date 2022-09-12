@@ -3,7 +3,7 @@
 This filter module implements the below components:
 
 - A filter to convert IDM intent object represented as json payload intent to OB data model consent response object.
-- A inner heaplet static class to initialize a `IntentConverterFilter` in a heap environment
+- A inner heaplet static class to initialize the `IntentConverterFilter` in a heap environment
 - A Class alias resolver to allow the use of short name `IntentConverterFilter` instead of fully qualified class name.
 
 ## Flow sequence

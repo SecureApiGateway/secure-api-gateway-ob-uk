@@ -1,9 +1,9 @@
-package com.forgerock.securebanking.uk.gateway.conversion.converters;
+package com.forgerock.securebanking.uk.gateway.conversion.jackson;
 
 import com.adelean.inject.resources.junit.jupiter.GivenTextResource;
 import com.adelean.inject.resources.junit.jupiter.TestWithResources;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
+import com.forgerock.securebanking.uk.gateway.conversion.converters.GenericIntentConverter;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.Test;
 import uk.org.openbanking.datamodel.account.OBExternalPermissions1Code;

@@ -18,11 +18,14 @@ package com.forgerock.securebanking.uk.gateway.conversion.factory;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.obie.OBVersion;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
 import com.forgerock.securebanking.uk.gateway.conversion.converters.GenericIntentConverter;
+import com.forgerock.securebanking.uk.gateway.conversion.factory.account.AccountAccessIntentConverterFactory;
+import com.forgerock.securebanking.uk.gateway.conversion.factory.funds.FundsConfirmationIntentConverterFactory;
+import com.forgerock.securebanking.uk.gateway.conversion.factory.payment.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Factory to instance the specific converter implementation
+ * Factory to instance the specific converter implementation by version {@link OBVersion}
  */
 public final class ConverterFactory {
 
@@ -34,28 +37,28 @@ public final class ConverterFactory {
                 return AccountAccessIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_DOMESTIC_CONSENT: {
-                return null;
+                return DomesticPaymentIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_DOMESTIC_SCHEDULED_CONSENT: {
-                return null;
+                return DomesticScheduledPaymentIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_DOMESTIC_STANDING_ORDERS_CONSENT: {
-                return null;
+                return DomesticStandingOrderIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_INTERNATIONAL_CONSENT: {
-                return null;
+                return InternationalPaymentIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_INTERNATIONAL_SCHEDULED_CONSENT: {
-                return null;
+                return InternationalScheduledPaymentIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_INTERNATIONAL_STANDING_ORDERS_CONSENT: {
-                return null;
+                return InternationalStandingOrderIntentConverterFactory.getConverter(obVersion);
             }
             case PAYMENT_FILE_CONSENT: {
-                return null;
+                return FilePaymentIntentConverterFactory.getConverter(obVersion);
             }
             case FUNDS_CONFIRMATION_CONSENT: {
-                return null;
+                return FundsConfirmationIntentConverterFactory.getConverter(obVersion);
             }
             default: {
                 String message = String.format("Couldn't identify the intent type %s", intentType);

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.securebanking.uk.gateway.conversion.converters;
+package com.forgerock.securebanking.uk.gateway.conversion.converters.account;
 
 import com.adelean.inject.resources.junit.jupiter.GivenTextResource;
 import com.adelean.inject.resources.junit.jupiter.TestWithResources;
@@ -52,7 +52,7 @@ public class AccountAccessIntentConverterTest {
     @Test
     public void shouldReturnNulls() {
         AccountAccessIntentConverter converter = new AccountAccessIntentConverter();
-        OBReadConsentResponse1 obReadConsentResponse1 = converter.convertFromJsonString("{\"accountAccessIntent\":\"some value\"}");
+        OBReadConsentResponse1 obReadConsentResponse1 = converter.convertFromJsonString("{\"someField\":\"some value\"}");
         assertThat(obReadConsentResponse1).isNotNull();
         assertThat(obReadConsentResponse1.getData()).isNull();
         assertThat(obReadConsentResponse1.getRisk()).isNull();

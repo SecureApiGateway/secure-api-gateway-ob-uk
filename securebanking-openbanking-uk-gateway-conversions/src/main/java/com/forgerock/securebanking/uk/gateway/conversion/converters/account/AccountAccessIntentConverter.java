@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.securebanking.uk.gateway.conversion.converters;
+package com.forgerock.securebanking.uk.gateway.conversion.converters.account;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.forgerock.securebanking.uk.gateway.conversion.converters.GenericIntentConverter;
 import com.forgerock.securebanking.uk.gateway.conversion.jackson.GenericConverterMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

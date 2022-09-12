@@ -1,0 +1,62 @@
+{
+  "_id": "PDSOC_a997a361-90a1-4d36-a4eb-b34c009379d2",
+  "_rev": "00000000891ac41e",
+  "Data": {
+    "ConsentId": "PDSOC_a997a361-90a1-4d36-a4eb-b34c009379d2",
+    "CreationDateTime": "2022-09-09T16:10:02.808Z",
+    "Status": "AwaitingAuthorisation",
+    "StatusUpdateDateTime": "2022-09-09T16:10:02.808Z",
+    "Permission": "Create",
+    "ReadRefundAccount": "Yes",
+    "CutOffDateTime": null,
+    "Charges": [
+      {
+        "ChargeBearer": "BorneByDebtor",
+        "Type": "UK.OBIE.CHAPSOut",
+        "Amount": {
+          "Amount": "1.5",
+          "Currency": "GBP"
+        }
+      }
+    ],
+    "Initiation": {
+      "Frequency": "QtrDay:ENGLISH",
+      "Reference": "Reference text",
+      "NumberOfPayments": null,
+      "FirstPaymentDateTime": "2022-06-21T06:06:06+00:00",
+      "RecurringPaymentDateTime": null,
+      "FinalPaymentDateTime": "2023-03-20T06:06:06+00:00",
+      "FirstPaymentAmount": {
+        "Amount": "165.88",
+        "Currency": "GBP"
+      },
+      "RecurringPaymentAmount": {
+        "Amount": "65",
+        "Currency": "GBP"
+      },
+      "FinalPaymentAmount": {
+        "Amount": "525.83",
+        "Currency": "GBP"
+      },
+      "DebtorAccount": null,
+      "CreditorAccount": {
+        "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+        "Identification": "08080021325698",
+        "Name": "ACME Inc",
+        "SecondaryIdentification": "0002"
+      },
+      "SupplementaryData": null
+    },
+    "Authorisation": null,
+    "SCASupportData": null,
+    "Debtor": null
+  },
+  "Risk": {
+    "PaymentContextCode": "PartyToParty",
+    "MerchantCategoryCode": null,
+    "MerchantCustomerIdentification": null,
+    "DeliveryAddress": null
+  },
+  "Links": null,
+  "Meta": null
+}

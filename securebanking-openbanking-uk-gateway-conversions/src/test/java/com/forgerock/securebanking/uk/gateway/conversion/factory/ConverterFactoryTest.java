@@ -1,8 +1,8 @@
-package com.forgerock.securebanking.uk.gateway.conversion.converters;
+package com.forgerock.securebanking.uk.gateway.conversion.factory;
 
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.obie.OBVersion;
 import com.forgerock.securebanking.openbanking.uk.common.api.meta.share.IntentType;
-import com.forgerock.securebanking.uk.gateway.conversion.factory.ConverterFactory;
+import com.forgerock.securebanking.uk.gateway.conversion.converters.account.AccountAccessIntentConverter;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
