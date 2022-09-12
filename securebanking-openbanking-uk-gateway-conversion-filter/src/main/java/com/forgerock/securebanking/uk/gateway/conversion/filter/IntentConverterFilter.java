@@ -212,17 +212,7 @@ public class IntentConverterFilter implements Filter {
     private String getEntity(final Message<?> message, final Bindings bindings) throws Exception {
         if (entity != null) {
             logger.debug("Payload from optional entity {}", entity);
-            AtomicReference<String> content = new AtomicReference<>();
-            entity.evalAsync(bindings)
-                    .then(result -> {
-                        if (result == null) {
-                            throw new Exception("Unexpected null result from this expression " + entity);
-                        }
-                        return result;
-                    }, neverThrown()).thenOnResult(result -> {
-                        content.set(result);
-                    });
-            return content.get();
+            return entity.eval(bindings);
         }
         String payload = message.getEntity().getString();
         logger.debug("Payload from {}.entity {}", messageType.toString().toLowerCase(), payload);
