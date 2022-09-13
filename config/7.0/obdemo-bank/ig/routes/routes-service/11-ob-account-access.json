@@ -112,7 +112,14 @@
               "tpp_cert_id" : [ "${attributes.tppId}" ],
               "intent_id": [ "${toJson(contexts.oauth2.accessToken.info.claims).id_token.openbanking_intent_id.value}" ]
             },
-            "amService" : "AmService-OBIE"
+            "amService" : "AmService-OBIE",
+            "failureHandler": {
+              "type": "ScriptableHandler",
+              "config": {
+                "type": "application/x-groovy",
+                "file": "ReturnPolicyValidationError.groovy"
+              }
+            }
           }
         },
         {

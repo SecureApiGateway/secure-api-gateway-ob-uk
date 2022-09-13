@@ -160,7 +160,14 @@
                 "${request.method}"
               ]
             },
-            "amService": "AmService-OBIE"
+            "amService": "AmService-OBIE",
+            "failureHandler": {
+              "type": "ScriptableHandler",
+              "config": {
+                "type": "application/x-groovy",
+                "file": "ReturnPolicyValidationError.groovy"
+              }
+            }
           }
         },
         {
