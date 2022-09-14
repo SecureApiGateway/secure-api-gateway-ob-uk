@@ -90,7 +90,6 @@
               "type": "ConfirmationKeyVerifierAccessTokenResolver",
               "config": {
                 "delegate": {
-                  "comment":"resolve access tokens and retrieve metadata about the token. The endpoint typically returns the time until the token expires, the OAuth 2.0 scopes associated with the token, and potentially other information",
                   "name": "token-resolver-1",
                   "type": "StatelessAccessTokenResolver",
                   "config": {
