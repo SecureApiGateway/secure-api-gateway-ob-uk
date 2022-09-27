@@ -190,7 +190,7 @@ switch(method.toUpperCase()) {
             for (JWK jwk : jwkSet.getJWKsAsList()) {
                 final List<String> x509Chain = jwk.getX509Chain();
                 final String jwkCert = x509Chain.get(0);
-                if ("tls".equals(jwk.getUse()) && Objects.equals(clientCertPem, jwkCert)) {
+                if ("tls".equals(jwk.getUse()) && clientCertPem.equals(jwkCert)) {
                     logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId())
                     found = true
                     break
