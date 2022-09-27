@@ -1,9 +1,12 @@
 import org.forgerock.http.protocol.*
 import org.forgerock.json.jose.*
+import org.forgerock.json.jose.jwk.*
 import org.forgerock.json.jose.common.JwtReconstruction
 import org.forgerock.json.jose.jws.SignedJwt
 import java.net.URI
-import groovy.json.JsonSlurper;
+import groovy.json.JsonSlurper
+import com.forgerock.securebanking.uk.gateway.jwks.*
+import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
  * Script to verify the registration request, and prepare AM OIDC dynamic client reg
@@ -167,25 +170,38 @@ switch(method.toUpperCase()) {
             return(errorResponse(Status.BAD_REQUEST,"Wrong number of dashes in OI " + organizationalIdentifier +" - expected 2"));
         }
 
-        // Issue: https://github.com/SecureBankingAccessToolkit/securebanking-openbanking-demo/issues/53
-        def dnId = oiComponents[2].toString().replace("Unknown","")
-
-        if (dnId != apiClientOrgCertId) {
-            return(errorResponse(Status.BAD_REQUEST,"apiClientOrg ID in cert " + dnId +" does not match id in SSA " + apiClientOrgCertId));
-
-        }
-
         // TODO: Subject DN for cert bound access tokens
 
-
         // Convert to JSON and pass it on
-
         def regJson = oidcRegistration.build();
-
         logger.debug(SCRIPT_NAME + "final json [" + regJson + "]")
         request.setEntity(regJson)
-        break
 
+        // Verify that the tls transport cert is registered for the TPP's software statement
+        return jwkSetService.getJwkSet(new URL(apiClientOrgJwksUri)).thenAsync(jwkSet -> {
+            // OB JWKS will store the cert in the x5c field as a pem without line breaks and begin/end lines
+            def clientCertPem = attributes.clientCertificate.pem
+            clientCertPem = clientCertPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
+            clientCertPem = clientCertPem.replaceAll("-----END CERTIFICATE-----", "")
+            clientCertPem = clientCertPem.replaceAll("\n", "")
+            logger.info(SCRIPT_NAME + "Cleaned up cert: " + clientCertPem)
+
+            def found = false
+            for (JWK jwk : jwkSet.getJWKsAsList()) {
+                final List<String> x509Chain = jwk.getX509Chain();
+                final String jwkCert = x509Chain.get(0);
+                if ("tls".equals(jwk.getUse()) && Objects.equals(clientCertPem, jwkCert)) {
+                    logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId())
+                    found = true
+                    break
+                }
+            }
+            if (found) {
+                return next.handle(context, request)
+            } else {
+                return newResultPromise(errorResponse(Status.BAD_REQUEST,"tls transport cert does not match any certs registered in software_jwks_endpoint"))
+            }
+        })
     case "DELETE":
        break
 
@@ -195,6 +211,7 @@ switch(method.toUpperCase()) {
 }
 
 next.handle(context, request)
+
 
 
 

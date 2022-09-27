@@ -218,9 +218,12 @@ class CertificateParserHelper {
     }
 }
 
-def certToObject(Certificate certificate) {
-
+def certToObject(String certPem) {
+    InputStream certStream = new ByteArrayInputStream(certPem.getBytes());
+    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+    Certificate certificate = cf.generateCertificate(certStream);
     def object = [
+      pem: certPem,
       expiryDate: certificate.getNotAfter().toString(),
       subjectDN: certificate.getSubjectDN(),
       subjectDNComponents:  CertificateParserHelper.parseDN(certificate.getSubjectDN().toString()),
@@ -239,8 +242,7 @@ def certToObject(Certificate certificate) {
       type: certificate.getType(),
       version: certificate.getVersion(),
       roles: CertificateParserHelper.getRoles(certificate,logger),
-      publicKey: certificate.getPublicKey()
-
+      publicKey: certificate.getPublicKey(),
     ]
 
     return object
@@ -263,27 +265,11 @@ String certPem = URLDecoder.decode(header.firstValue.toString())
 
 logger.debug(SCRIPT_NAME + "Client certificate PEM: \n" + certPem)
 
-InputStream certStream = new ByteArrayInputStream(certPem.getBytes());
-
-CertificateFactory cf = CertificateFactory.getInstance("X.509");
-Certificate cert = cf.generateCertificate(certStream);
-
-def certObject = certToObject(cert)
+def certObject = certToObject(certPem)
 
 logger.debug(SCRIPT_NAME + "Parsed certificate " + certObject.toString())
 
 // Store certificate details for other filters
-
 attributes.clientCertificate = certObject
 
 next.handle(context, request)
-
-
-
-
-
-
-
-
-
-
