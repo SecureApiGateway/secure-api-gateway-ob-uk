@@ -244,7 +244,7 @@ def certToObject(String certPem) {
       publicKey: certificate.getPublicKey(),
     ]
     logger.debug(SCRIPT_NAME + "Parsed certificate " + object.toString())
-    // Add the X%09Certificate object after the logging of the parsed data to prevent the logs being spammed
+    // Add the X509Certificate object after the logging of the parsed data to prevent the logs being spammed
     object.put("certificate", certificate)
 
     return object
