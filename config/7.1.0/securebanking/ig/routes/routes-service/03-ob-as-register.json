@@ -47,7 +47,8 @@
               "comment": "TODO: use env variable",
               "routeArgObJwksHosts": "[\"keystore.openbankingtest.org.uk\"]",
               "routeArgProxyBaseUrl": "https://&{ig.fqdn}/jwkms/jwksproxy",
-              "jwkSetService": "${heap['OBJwkSetService']}"
+              "jwkSetService": "${heap['OBJwkSetService']}",
+              "allowIgIssuedTestCerts": {"$bool": "&{allow.ig.issued.test.certs|false}"}
             }
           }
         },
