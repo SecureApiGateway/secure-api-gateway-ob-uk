@@ -223,7 +223,6 @@ def certToObject(String certPem) {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
     Certificate certificate = cf.generateCertificate(certStream);
     def object = [
-      pem: certPem,
       expiryDate: certificate.getNotAfter().toString(),
       subjectDN: certificate.getSubjectDN(),
       subjectDNComponents:  CertificateParserHelper.parseDN(certificate.getSubjectDN().toString()),
@@ -244,6 +243,9 @@ def certToObject(String certPem) {
       roles: CertificateParserHelper.getRoles(certificate,logger),
       publicKey: certificate.getPublicKey(),
     ]
+    logger.debug(SCRIPT_NAME + "Parsed certificate " + object.toString())
+    // Add the X%09Certificate object after the logging of the parsed data to prevent the logs being spammed
+    object.put("certificate", certificate)
 
     return object
 }
@@ -266,8 +268,6 @@ String certPem = URLDecoder.decode(header.firstValue.toString())
 logger.debug(SCRIPT_NAME + "Client certificate PEM: \n" + certPem)
 
 def certObject = certToObject(certPem)
-
-logger.debug(SCRIPT_NAME + "Parsed certificate " + certObject.toString())
 
 // Store certificate details for other filters
 attributes.clientCertificate = certObject

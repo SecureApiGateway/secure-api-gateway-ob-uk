@@ -6,6 +6,7 @@ import org.forgerock.json.jose.jws.SignedJwt
 import java.net.URI
 import groovy.json.JsonSlurper
 import com.forgerock.securebanking.uk.gateway.jwks.*
+import com.nimbusds.jose.jwk.RSAKey;
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
@@ -179,19 +180,16 @@ switch(method.toUpperCase()) {
 
         // Verify that the tls transport cert is registered for the TPP's software statement
         return jwkSetService.getJwkSet(new URL(apiClientOrgJwksUri)).thenAsync(jwkSet -> {
-            // OB JWKS will store the cert in the x5c field as a pem without line breaks and begin/end lines
-            def clientCertPem = attributes.clientCertificate.pem
-            clientCertPem = clientCertPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
-            clientCertPem = clientCertPem.replaceAll("-----END CERTIFICATE-----", "")
-            clientCertPem = clientCertPem.replaceAll("\n", "")
-            logger.info(SCRIPT_NAME + "Cleaned up cert: " + clientCertPem)
+            def tlsClientCert = attributes.clientCertificate.certificate
+            // RSAKey.parse produces a JWK, we can then extract the cert from the x5c field
+            def tlsClientCertX5c = RSAKey.parse(tlsClientCert).getX509CertChain().get(0).toString()
 
             def found = false
             for (JWK jwk : jwkSet.getJWKsAsList()) {
                 final List<String> x509Chain = jwk.getX509Chain();
-                final String jwkCert = x509Chain.get(0);
-                if ("tls".equals(jwk.getUse()) && clientCertPem.equals(jwkCert)) {
-                    logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId())
+                final String jwkX5c = x509Chain.get(0);
+                if ("tls".equals(jwk.getUse()) && tlsClientCertX5c.equals(jwkX5c)) {
+                    logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId() + " x5t#S256: " + jwk.getX509ThumbprintS256())
                     found = true
                     break
                 }
