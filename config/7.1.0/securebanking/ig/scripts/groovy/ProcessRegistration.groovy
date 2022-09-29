@@ -127,7 +127,7 @@ switch(method.toUpperCase()) {
                 logger.debug("configuration to allowIgIssuedTestCerts is disabled")
                 return(errorResponse(Status.BAD_REQUEST, "software_statement must contain software_jwks_endpoint"));
             }
-            logger.debug(SCRIPT_NAME + "Using jwks")
+            logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
             oidcRegistration.setClaim("jwks",  apiClientOrgJwks )
         }
         else {
