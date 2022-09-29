@@ -185,9 +185,8 @@ switch(method.toUpperCase()) {
         // Verify that the tls transport cert is registered for the TPP's software statement
         if (apiClientOrgJwksUri != null) {
             logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + apiClientOrgJwksUri)
-
             return jwkSetService.getJwkSet(new URL(apiClientOrgJwksUri)).thenAsync(jwkSet -> {
-                return tlsClientCertExistsInJwkSet(jwkSet)
+                return verifyTlsClientCertExistsInJwkSet(jwkSet)
             }).thenCatchAsync(e -> {
                 logger.debug(SCRIPT_NAME + "failed to get jwks due to exception", e)
                 return newResultPromise(errorResponse(Status.BAD_REQUEST, "unable to get jwks from url: " + apiClientOrgJwksUri))
@@ -200,7 +199,7 @@ switch(method.toUpperCase()) {
             }
             logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientOrgJwks)
             def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
-            return tlsClientCertExistsInJwkSet(jwkSet)
+            return verifyTlsClientCertExistsInJwkSet(jwkSet)
         }
     case "DELETE":
        break
@@ -211,7 +210,7 @@ switch(method.toUpperCase()) {
 }
 
 
-private Promise<Response, NeverThrowsException> tlsClientCertExistsInJwkSet(jwkSet) {
+private Promise<Response, NeverThrowsException> verifyTlsClientCertExistsInJwkSet(jwkSet) {
     def tlsClientCert = attributes.clientCertificate.certificate
     // RSAKey.parse produces a JWK, we can then extract the cert from the x5c field
     def tlsClientCertX5c = RSAKey.parse(tlsClientCert).getX509CertChain().get(0).toString()
