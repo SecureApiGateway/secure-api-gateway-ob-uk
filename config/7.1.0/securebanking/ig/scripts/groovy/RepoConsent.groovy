@@ -4,9 +4,6 @@ import java.text.SimpleDateFormat
 SCRIPT_NAME = "[RepoConsent] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-/**
- *  definitions
- */
 def buildPatchRequest(incomingRequest, intentType) {
     def body = [];
 
@@ -251,14 +248,7 @@ enum IntentType {
         return consentObject
     }
 }
-/**
- * End definitions
- */
 
-
-/**
- * start script
- */
 def splitUri = request.uri.path.split("/")
 
 // response object
