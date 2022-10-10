@@ -28,7 +28,7 @@ switch(method.toUpperCase()) {
         def idmIntent = [
                 _id: consentId,
                 OBVersion: version,
-                OBIntentObjectType: "OBReadConsentResponse1",
+                OBIntentObjectType: routeArgObIntentObjectType,
                 OBIntentObject: paymentIntentData,
                 apiClient: [ "_ref" : "managed/" + routeArgObjApiClient + "/" +  apiClientId ],
         ]

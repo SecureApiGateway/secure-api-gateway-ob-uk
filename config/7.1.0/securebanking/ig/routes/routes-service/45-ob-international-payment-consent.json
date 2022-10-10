@@ -151,6 +151,7 @@
             "file": "ProcessPaymentConsent.groovy",
             "args": {
               "routeArgObjDomesticPaymentConsent": "internationalPaymentIntent",
+              "routeArgObIntentObjectType": "OBWriteInternationalConsentResponse6",
               "routeArgObjApiClient": "apiClient",
               "routeArgConsentIdPrefix": "PIC_"
             }

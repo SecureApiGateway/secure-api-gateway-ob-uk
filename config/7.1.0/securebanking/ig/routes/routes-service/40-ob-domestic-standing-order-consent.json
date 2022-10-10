@@ -160,6 +160,7 @@
             "file": "ProcessPaymentConsent.groovy",
             "args": {
               "routeArgObjDomesticPaymentConsent": "domesticStandingOrdersIntent",
+              "routeArgObIntentObjectType": "OBWriteDomesticStandingOrderConsentResponse6",
               "routeArgObjApiClient": "apiClient",
               "routeArgConsentIdPrefix": "PDSOC_"
             }
