@@ -146,7 +146,7 @@
           }
         },
         {
-          "comment": "Check Frequency parameter in domestic standing order payload",
+          "comment": "Check Frequency parameter in standing order payload",
           "name": "CheckFrequencyValue",
           "type": "ScriptableFilter",
           "config": {
