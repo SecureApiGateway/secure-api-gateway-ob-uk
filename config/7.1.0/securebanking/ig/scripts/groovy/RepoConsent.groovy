@@ -109,7 +109,7 @@ def convertIDMResponse(intentResponseObject, intentType) {
                     "oauth2ClientName"     : intentResponseObject.apiClient.name
             ]
             break
-        else: // For all payments intents
+        default: // For all payments intents
             responseObj = [
                     "id"                   : intentResponseObject._id,
                     "OBIntentObject"       : intentResponseObject.OBIntentObject,
