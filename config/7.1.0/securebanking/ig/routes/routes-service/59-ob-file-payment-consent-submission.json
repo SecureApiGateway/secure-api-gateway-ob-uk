@@ -1,8 +1,8 @@
 {
-  "name": "58 - Open Banking RS File Payment Consent",
+  "name": "59 - Open Banking File Payment Consent file submission",
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/pisp/file-payment-consents((?!file).)*$')}",
+  "condition": "${matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/pisp/file-payment-consents/.*/file')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -128,27 +128,12 @@
           }
         },
         {
-          "comment": "Calculate response elements in RS",
-          "name": "CalculateResponseElementsInRS",
+          "comment": "Validate file against the consent previously submitted",
+          "name": "Validate File",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "CalculateResponseElementsInRS.groovy",
-            "args": {
-              "routeArgRsBaseURI": "https://&{rs.fqdn}",
-              "routeArgIntentIdQueryParameter": "intent",
-              "routeArgVersionQueryParameter": "version",
-              "routeArgIntentType": "PFC_"
-            }
-          }
-        },
-        {
-          "comment": "Prepare request for IDM",
-          "name": "ProcessPaymentConsent",
-          "type": "ScriptableFilter",
-          "config": {
-            "type": "application/x-groovy",
-            "file": "ProcessPaymentConsent.groovy",
+            "file": "ValidateFileConsent.groovy",
             "args": {
               "routeArgObjDomesticPaymentConsent": "filePaymentsIntent",
               "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
