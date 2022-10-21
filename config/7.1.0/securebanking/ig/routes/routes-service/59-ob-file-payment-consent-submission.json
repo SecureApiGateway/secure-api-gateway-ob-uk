@@ -1,8 +1,7 @@
 {
   "name": "59 - Open Banking File Payment Consent file submission",
   "auditService": "AuditService-OB-Route",
-  "baseURI": "https://&{identity.platform.fqdn}",
-  "condition": "${matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/pisp/file-payment-consents/.*/file')}",
+  "condition": "${request.method == 'POST' and matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/pisp/file-payment-consents/.*/file')}",
   "handler": {
     "type": "Chain",
     "config": {
@@ -135,6 +134,8 @@
             "type": "application/x-groovy",
             "file": "ValidateFileConsent.groovy",
             "args": {
+              "routeArgRsBaseURI": "https://&{rs.fqdn}",
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "routeArgObjDomesticPaymentConsent": "filePaymentsIntent",
               "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
               "routeArgObjApiClient": "apiClient",
@@ -143,43 +144,21 @@
           }
         },
         {
-          "comment": "Prepare audit trail for consent",
+          "comment": "Patch IDM with the payment file",
+          "name": "Patch File Consent",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "AuditConsent.groovy",
+            "file": "PatchFileConsent.groovy",
+            "clientHandler": "IDMClientHandler",
             "args": {
-              "auditService": "${heap['AuditService-OB-Consent']}",
-              "clock": "${heap['Clock']}",
-              "consentIdLocator": "response.entity.getJson().OBIntentObject.Data.ConsentId",
-              "role": "PISP",
-              "event": "CREATE"
+              "routeArgRsBaseURI": "https://&{rs.fqdn}",
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+              "routeArgObjDomesticPaymentConsent": "filePaymentsIntent",
+              "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
+              "routeArgObjApiClient": "apiClient",
+              "routeArgConsentIdPrefix": "PFC_"
             }
-          }
-        },
-        {
-          "comment": "Add host header for downstream services",
-          "name": "HeaderFilter-ChangeHostToIDM",
-          "type": "HeaderFilter",
-          "config": {
-            "messageType": "REQUEST",
-            "remove": [
-              "host"
-            ]
-          }
-        },
-        {
-          "comment": "Add access token to IDM request",
-          "type": "ClientCredentialsOAuth2ClientFilter",
-          "config": {
-            "clientId": "&{ig.client.id}",
-            "clientSecretId": "ig.client.secret",
-            "secretsProvider": "SystemAndEnvSecretStore-IAM",
-            "tokenEndpoint": "https://&{identity.platform.fqdn}/am/oauth2/realms/root/realms/&{am.realm}/access_token",
-            "scopes": [
-              "fr:idm:*"
-            ],
-            "handler": "TokenRequestHandler"
           }
         }
       ],
