@@ -184,6 +184,7 @@ switch(method.toUpperCase()) {
           return (errorResponse(Status.BAD_REQUEST, "Failed to delete registration"));
         })
       }
+      return response
     })
   default:
     logger.debug(SCRIPT_NAME + "Method not supported")
