@@ -135,5 +135,5 @@ switch(method.toUpperCase()) {
         return next.handle(context, request)
     default:
         logger.debug(SCRIPT_NAME + "Method not supported")
-        return(errorResponse(Status.METHOD_NOT_ALLOWED,"Method Not Allowed"))
+        return errorResponse(Status.METHOD_NOT_ALLOWED,"Method Not Allowed")
 }
