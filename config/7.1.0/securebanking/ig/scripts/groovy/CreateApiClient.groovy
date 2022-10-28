@@ -171,6 +171,7 @@ switch(method.toUpperCase()) {
     break
   case "DELETE":
     return next.handle(context, request).thenAsync(response -> {
+      // Delete IDM object only if AM delete was successful
       if (response.status.isSuccessful()) {
         // ProcessRegistration filter will have added the client_id param
         def apiClientId = request.getQueryParams().getFirst("client_id")
@@ -186,7 +187,8 @@ switch(method.toUpperCase()) {
           return newResultPromise(errorResponse(Status.BAD_REQUEST, "Failed to delete registration"))
         })
       }
-      return response
+      // AM returned an error, pass this on
+      return newResultPromise(response)
     })
   default:
     logger.debug(SCRIPT_NAME + "Method not supported")
