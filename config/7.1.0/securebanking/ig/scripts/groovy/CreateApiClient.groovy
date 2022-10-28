@@ -169,7 +169,7 @@ switch(method.toUpperCase()) {
     });
     break
   case "DELETE":
-    return next.handle(context, request).thenOnResult(response -> {
+    return next.handle(context, request).thenAsync(response -> {
       if (response.status.isSuccessful()) {
         // ProcessRegistration filter will have added the client_id param
         def apiClientId = request.getQueryParams().getFirst("client_id")
@@ -177,11 +177,12 @@ switch(method.toUpperCase()) {
         deleteApiClientReq.setMethod('DELETE')
         deleteApiClientReq.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "/" + apiClientId)
         logger.info("Deleting IDM object: " + routeArgObjApiClient + " for client_id: " + apiClientId)
-        return http.send(deleteApiClientReq).thenOnResult(idmResponse -> {
+        return http.send(deleteApiClientReq).thenAsync(idmResponse -> {
           if (idmResponse.status.isSuccessful()) {
-            return new Response(Status.NO_CONTENT)
+            logger.debug("IDM object successfully deleted for client_id: " + apiClientId)
+            return newResultPromise(new Response(Status.NO_CONTENT))
           }
-          return (errorResponse(Status.BAD_REQUEST, "Failed to delete registration"));
+          return newResultPromise(errorResponse(Status.BAD_REQUEST, "Failed to delete registration"))
         })
       }
       return response
