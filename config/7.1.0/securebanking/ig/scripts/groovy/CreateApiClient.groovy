@@ -37,15 +37,8 @@ switch(method.toUpperCase()) {
         return (errorResponse(Status.BAD_REQUEST, "No registration data in response"));
       }
 
-      // Pull the apiClientOrg managed object info from the OIDC client data
-
-      def ssa = clientData.software_statement
       def oauth2ClientId = clientData.client_id;
-
-      // Unpack the SSA within the client data
-
       def ssaJwt = attributes.registrationJWTs.ssaJwt;
-
       if (!ssaJwt) {
         return (errorResponse(Status.UNAUTHORIZED, "No SSA JWT"));
       }
@@ -57,27 +50,22 @@ switch(method.toUpperCase()) {
       def ssaSoftwareId = ssaClaims.getClaim("software_client_id")
       def ssaSoftwareName = ssaClaims.getClaim("software_client_name")
       def ssaSoftwareDescription = ssaClaims.getClaim("software_client_description")
-
-
       def clientJwksUri = attributes.registrationJWTs.registrationJwksUri;
       def clientJwks = attributes.registrationJWTs.registrationJwks;
       def ssaLogoUri = ssaClaims.getClaim("software_logo_uri", String.class)
-
-      // Create the apiClient object
-
-      logger.debug(SCRIPT_NAME + "Sending apiClient create request to IDM endpoint");
 
       // response object
       response = new Response(Status.OK)
       response.headers['Content-Type'] = "application/json"
       responseMessage = "OK"
 
+      // Create the apiClient object
       def apiClientConfig = [
               "_id"           : oauth2ClientId,
               "id"            : ssaSoftwareId,
               "name"          : ssaSoftwareName,
               "description"   : ssaSoftwareDescription,
-              "ssa"           : ssa,
+              "ssa"           : ssaJwt,
               "logoUri"       : ssaLogoUri,
               "oauth2ClientId": oauth2ClientId,
               "apiClientOrg"  : [ "_ref" : "managed/" + routeArgObjApiClientOrg + "/" +  organizationIdentifier ]
@@ -92,12 +80,12 @@ switch(method.toUpperCase()) {
       }
 
       Request apiClientRequest = new Request();
-
       apiClientRequest.setMethod('POST');
       apiClientRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "?_action=create")
       apiClientRequest.getHeaders().add("Content-Type", "application/json");
       apiClientRequest.setEntity(JsonOutput.toJson(apiClientConfig));
 
+      logger.debug(SCRIPT_NAME + "Sending apiClient create request to IDM endpoint");
       http.send(apiClientRequest).then(apiClientResponse -> {
         apiClientRequest.close()
         logger.debug(SCRIPT_NAME + "Back from IDM")
@@ -194,8 +182,3 @@ switch(method.toUpperCase()) {
     logger.debug(SCRIPT_NAME + "Method not supported")
     next.handle(context, request)
 }
-
-
-
-
-
