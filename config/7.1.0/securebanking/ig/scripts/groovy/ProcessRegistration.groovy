@@ -148,6 +148,7 @@ switch(method.toUpperCase()) {
         // Store SSA and registration JWT for signature check
 
         attributes.registrationJWTs = [
+                "ssaStr": ssa,
                 "ssaJwt" : ssaJwt,
                 "registrationJwt": regJwt,
                 "registrationJwksUri": apiClientOrgJwksUri,

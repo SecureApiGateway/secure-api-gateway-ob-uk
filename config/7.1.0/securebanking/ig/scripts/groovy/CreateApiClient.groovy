@@ -38,6 +38,7 @@ switch(method.toUpperCase()) {
       }
 
       def oauth2ClientId = clientData.client_id;
+
       def ssaJwt = attributes.registrationJWTs.ssaJwt;
       if (!ssaJwt) {
         return (errorResponse(Status.UNAUTHORIZED, "No SSA JWT"));
@@ -65,7 +66,7 @@ switch(method.toUpperCase()) {
               "id"            : ssaSoftwareId,
               "name"          : ssaSoftwareName,
               "description"   : ssaSoftwareDescription,
-              "ssa"           : ssaJwt,
+              "ssa"           : attributes.registrationJWTs.ssaStr,
               "logoUri"       : ssaLogoUri,
               "oauth2ClientId": oauth2ClientId,
               "apiClientOrg"  : [ "_ref" : "managed/" + routeArgObjApiClientOrg + "/" +  organizationIdentifier ]
