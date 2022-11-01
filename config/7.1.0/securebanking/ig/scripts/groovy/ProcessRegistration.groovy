@@ -269,7 +269,6 @@ private void rewriteUriToAccessExistingAmRegistration() {
 }
 
 private void addSoftwareStatementToResponse(response, ssa) {
-    logger.debug("Adding software_statement: " + ssa)
     var registrationResponse = response.getEntity().getJson()
     if (!registrationResponse["software_statement"]) {
         registrationResponse["software_statement"] = ssa
