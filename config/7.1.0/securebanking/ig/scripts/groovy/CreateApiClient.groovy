@@ -179,6 +179,27 @@ switch(method.toUpperCase()) {
       // AM returned an error, pass this on
       return newResultPromise(response)
     })
+  case "GET":
+    // Fetch the apiClient from IDM and add it as an attribute for use by other filters
+    return next.handle(context, request).thenAsync(amResponse -> {
+      if (amResponse.status.isSuccessful()) {
+        def apiClientId = request.getQueryParams().getFirst("client_id")
+        Request getApiClient = new Request()
+        getApiClient.setMethod('GET')
+        getApiClient.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "/" + apiClientId)
+        logger.info("Retrieving IDM object: " + routeArgObjApiClient + " for client_id: " + apiClientId)
+        return http.send(getApiClient).thenAsync(idmResponse -> {
+          if (idmResponse.status.isSuccessful()) {
+            var apiClient = idmResponse.getEntity().getJson()
+            attributes.apiClient = apiClient
+          }
+          // Pass the original AM response on, the IDM response is only used to enrich the AM response (on a best effort basis)
+          return newResultPromise(amResponse)
+        })
+      }
+      // AM returned an error, pass this on
+      return newResultPromise(amResponse)
+    })
   default:
     logger.debug(SCRIPT_NAME + "Method not supported")
     next.handle(context, request)
