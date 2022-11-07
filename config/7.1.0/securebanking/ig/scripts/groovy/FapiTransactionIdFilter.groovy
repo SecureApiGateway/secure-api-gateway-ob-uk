@@ -1,7 +1,7 @@
 import org.forgerock.services.context.TransactionIdContext
 import org.forgerock.services.TransactionId
 
-SCRIPT_NAME = "[TransactionIdFilter] - "
+SCRIPT_NAME = "[FapiTransactionIdFilter] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
 String interactionId = request.getHeaders().getFirst("x-fapi-interaction-id");
