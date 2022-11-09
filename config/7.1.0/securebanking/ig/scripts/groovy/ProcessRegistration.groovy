@@ -8,7 +8,6 @@ import java.net.URI
 import groovy.json.JsonSlurper
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.SignatureException
-import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
 import com.nimbusds.jose.jwk.RSAKey;
 import static org.forgerock.util.promise.Promises.newResultPromise
 
@@ -314,7 +313,7 @@ private boolean tlsClientCertExistsInJwkSet(jwkSet) {
 
 private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
     try {
-        new RsaJwtSignatureValidator().validateSignature(jwt, jwkSet)
+        jwtSignatureValidator.validateSignature(jwt, jwkSet)
         return true
     } catch (SignatureException se) {
         logger.error("jwt signature validation failed", se)

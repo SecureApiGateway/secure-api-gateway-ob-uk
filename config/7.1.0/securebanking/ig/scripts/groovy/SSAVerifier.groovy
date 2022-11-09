@@ -2,7 +2,6 @@ import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.http.protocol.Status;
 import java.net.URI;
 import java.security.SignatureException
-import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 SCRIPT_NAME = "[SSAVerifier] - "
@@ -12,7 +11,7 @@ logger.debug(SCRIPT_NAME + "Running...")
 def verifySignature(signedJwt, jwksJson) {
     def jwks = JWKSet.parse(jwksJson);
     try {
-        new RsaJwtSignatureValidator().validateSignature(signedJwt, jwks)
+        jwtSignatureValidator.validateSignature(signedJwt, jwks)
         return true
     } catch (SignatureException se) {
         logger.error("jwt signature validation failed", se)
