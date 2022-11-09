@@ -1,6 +1,7 @@
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.http.protocol.Status;
 import java.net.URI;
+import java.security.SignatureException
 import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
 import static org.forgerock.util.promise.Promises.newResultPromise
 
