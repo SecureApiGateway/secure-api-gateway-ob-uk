@@ -1,14 +1,14 @@
-import java.security.SignatureException
-import org.forgerock.json.jose.jws.SigningManager;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.http.protocol.Status;
-import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
 import java.net.URI;
+import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
+import static org.forgerock.util.promise.Promises.newResultPromise
 
 SCRIPT_NAME = "[SSAVerifier] - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-def verifySignature(signedJwt,jwksJson) {
+
+def verifySignature(signedJwt, jwksJson) {
     def jwks = JWKSet.parse(jwksJson);
     try {
         new RsaJwtSignatureValidator().validateSignature(signedJwt, jwks)
@@ -32,89 +32,77 @@ def method = request.method
 switch(method.toUpperCase()) {
 
     case "POST":
+    case "PUT":
 
-        if (!attributes.registrationJWTs) {
-            return(errorResponse(Status.UNAUTHORIZED,"No registration JWT"));
-        }
+    if (!attributes.registrationJWTs) {
+        return(errorResponse(Status.UNAUTHORIZED,"No registration JWT"));
+    }
 
-        def ssaJwt = attributes.registrationJWTs.ssaJwt;
+    def ssaJwt = attributes.registrationJWTs.ssaJwt;
 
-        if (!ssaJwt) {
-            return(errorResponse(Status.UNAUTHORIZED,"No SSA JWT"));
-        }
+    if (!ssaJwt) {
+        return(errorResponse(Status.UNAUTHORIZED,"No SSA JWT"));
+    }
 
-        if (!routeArgSSAIssuerJwksUrls) {
-            return(errorResponse(Status.INTERNAL_SERVER_ERROR,"No configured JWKS URIs"));
-        }
+    if (!routeArgSSAIssuerJwksUrls) {
+        return(errorResponse(Status.INTERNAL_SERVER_ERROR,"No configured JWKS URIs"));
+    }
 
-        def ssaClaims = ssaJwt.getClaimsSet();
+    def ssaClaims = ssaJwt.getClaimsSet();
 
-        def ssaIssuer = ssaClaims.getIssuer();
+    def ssaIssuer = ssaClaims.getIssuer();
 
-        if (!ssaIssuer) {
-            return(errorResponse(Status.UNAUTHORIZED,"SSA has no issuer"));
-        }
+    if (!ssaIssuer) {
+        return(errorResponse(Status.UNAUTHORIZED,"SSA has no issuer"));
+    }
 
-        def ssaJwksUrl = routeArgSSAIssuerJwksUrls[ssaIssuer];
+    def ssaJwksUrl = routeArgSSAIssuerJwksUrls[ssaIssuer];
 
-        if (!ssaJwksUrl) {
-            return(errorResponse(Status.UNAUTHORIZED,"Unknown SSA issuer: " + ssaIssuer));
-        }
+    if (!ssaJwksUrl) {
+        return(errorResponse(Status.UNAUTHORIZED,"Unknown SSA issuer: " + ssaIssuer));
+    }
 
-        def ssaJwksUri = null;
+    def ssaJwksUri = null;
 
-        try {
-            ssaJwksUri = new URI(ssaJwksUrl);
-        }
-        catch (e) {
-            return(errorResponse(Status.INTERNAL_SERVER_ERROR,"Error parsing JWKS URL " + ssaJwksUrl + "(" + e + ")"));
-        }
+    try {
+        ssaJwksUri = new URI(ssaJwksUrl);
+    }
+    catch (e) {
+        return(errorResponse(Status.INTERNAL_SERVER_ERROR,"Error parsing JWKS URL " + ssaJwksUrl + "(" + e + ")"));
+    }
 
-        logger.debug(SCRIPT_NAME + "Validating SSA JWT - Issuer {}, JWKS URI {}",ssaIssuer,ssaJwksUrl);
+    logger.debug(SCRIPT_NAME + "Validating SSA JWT - Issuer {}, JWKS URI {}",ssaIssuer,ssaJwksUrl);
 
-        Request jwksRequest = new Request();
-
-
-        jwksRequest.setMethod('GET');
-        jwksRequest.setUri(ssaJwksUrl);
-        // jwksRequest.getHeaders().add("Host",ssaJwksUri.getHost());
+    Request jwksRequest = new Request();
 
 
-        http.send(jwksRequest).then(jwksResponse -> {
+    jwksRequest.setMethod('GET');
+    jwksRequest.setUri(ssaJwksUrl);
+    // jwksRequest.getHeaders().add("Host",ssaJwksUri.getHost());
 
-            jwksRequest.close();
-            logger.debug(SCRIPT_NAME + "Back from JWKS URI");
-            def jwksResponseContent = jwksResponse.getEntity().getString();
-            def jwksResponseStatus = jwksResponse.getStatus();
 
-            logger.debug(SCRIPT_NAME + "status " + jwksResponseStatus);
-            logger.debug(SCRIPT_NAME + "entity " + jwksResponseContent);
+    return http.send(jwksRequest).thenAsync(jwksResponse -> {
+      jwksRequest.close();
+      logger.debug(SCRIPT_NAME + "Back from JWKS URI");
+      def jwksResponseContent = jwksResponse.getEntity().getString();
+      def jwksResponseStatus = jwksResponse.getStatus();
 
-            if (jwksResponseStatus != Status.OK) {
-                return(errorResponse(Status.UNAUTHORIZED,"Bad response from JWKS URI " + jwksResponseStatus));
-            }
-            else if (!verifySignature(ssaJwt,jwksResponseContent)) {
-                return(errorResponse(Status.UNAUTHORIZED,"Signature not verified"));
-            }
+      logger.debug(SCRIPT_NAME + "status " + jwksResponseStatus);
+      logger.debug(SCRIPT_NAME + "entity " + jwksResponseContent);
 
-            return null;
-        }).thenAsync (error -> {
-            if (error) {
-                // TODO: This doesn't work - get cast error from Response to Promise
-                logger.error(SCRIPT_NAME + "Sending back error response");
-                return error;
-            }
-            next.handle(context, request);
-        });
-        break
+      if (jwksResponseStatus != Status.OK) {
+          return newResultPromise(errorResponse(Status.UNAUTHORIZED,"Bad response from JWKS URI " + jwksResponseStatus))
+      }
+      else if (!verifySignature(ssaJwt,jwksResponseContent)) {
+          return newResultPromise(errorResponse(Status.UNAUTHORIZED,"Signature not verified"))
+      }
+      return next.handle(context, request)
+    })
 
     case "DELETE":
-        break
+    case "GET":
+        return next.handle(context, request)
     default:
         logger.debug(SCRIPT_NAME + "Method not supported")
-
+        return errorResponse(Status.METHOD_NOT_ALLOWED,"Method Not Allowed")
 }
-
-
-next.handle(context, request)
-
