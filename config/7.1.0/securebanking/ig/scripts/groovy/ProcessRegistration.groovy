@@ -2,11 +2,14 @@ import org.forgerock.util.promise.*
 import org.forgerock.http.protocol.*
 import org.forgerock.json.jose.*
 import org.forgerock.json.jose.jwk.*
+import org.forgerock.json.jose.jws.handlerss.*
 import org.forgerock.json.jose.common.JwtReconstruction
 import org.forgerock.json.jose.jws.SignedJwt
 import java.net.URI
 import groovy.json.JsonSlurper
 import com.forgerock.securebanking.uk.gateway.jwks.*
+import java.security.SignatureException
+import com.forgerock.securebanking.uk.gateway.jws.RsaJwtSignatureValidator
 import com.nimbusds.jose.jwk.RSAKey;
 import static org.forgerock.util.promise.Promises.newResultPromise
 
@@ -226,6 +229,9 @@ switch(method.toUpperCase()) {
                                     if (!tlsClientCertExistsInJwkSet(jwkSet)) {
                                         return newResultPromise(errorResponse(Status.BAD_REQUEST, "tls transport cert does not match any certs registered in jwks for software statement"))
                                     }
+                                    if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
+                                        return newResultPromise(errorResponse(Status.BAD_REQUEST, "registration JWT signature invalid"))
+                                    }
                                     return next.handle(context, request)
                                                .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
                                 })
@@ -240,6 +246,9 @@ switch(method.toUpperCase()) {
             def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
             if (!tlsClientCertExistsInJwkSet(jwkSet)) {
                 return newResultPromise(errorResponse(Status.BAD_REQUEST, "tls transport cert does not match any certs registered in jwks for software statement"))
+            }
+            if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
+                return newResultPromise(errorResponse(Status.BAD_REQUEST, "registration JWT signature invalid"))
             }
             return next.handle(context, request)
                        .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
@@ -302,4 +311,14 @@ private boolean tlsClientCertExistsInJwkSet(jwkSet) {
     }
     logger.debug(SCRIPT_NAME + "tls transport cert does not match any certs registered in jwks for software statement")
     return false
+}
+
+private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
+    try {
+        new RsaJwtSignatureValidator().validateSignature(jwt, jwkSet)
+        return true
+    } catch (SignatureException se) {
+        logger.error("jwt signature validation failed", se)
+        return false
+    }
 }
