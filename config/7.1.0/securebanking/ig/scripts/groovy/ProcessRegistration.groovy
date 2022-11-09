@@ -2,7 +2,6 @@ import org.forgerock.util.promise.*
 import org.forgerock.http.protocol.*
 import org.forgerock.json.jose.*
 import org.forgerock.json.jose.jwk.*
-import org.forgerock.json.jose.jws.handlerss.*
 import org.forgerock.json.jose.common.JwtReconstruction
 import org.forgerock.json.jose.jws.SignedJwt
 import java.net.URI
