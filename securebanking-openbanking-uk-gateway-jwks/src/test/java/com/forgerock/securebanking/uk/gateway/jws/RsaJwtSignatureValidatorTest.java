@@ -75,16 +75,16 @@ class RsaJwtSignatureValidatorTest {
                 .build();
     }
 
-    private SignedJwt generateSignedJwt(RSAKey key, JWTClaimsSet claimsSet) {
-        return generateSignedJwt(key, claimsSet, defaultHeaderBuilder(key));
-    }
-
     private static Builder defaultHeaderBuilder(RSAKey key) {
         return new Builder(JWSAlgorithm.PS256).keyID(key.getKeyID());
     }
 
     private static Builder headerBuilderUsingCustomKeyId(String keyId) {
         return new Builder(JWSAlgorithm.PS256).keyID(keyId);
+    }
+
+    private SignedJwt generateSignedJwt(RSAKey key, JWTClaimsSet claimsSet) {
+        return generateSignedJwt(key, claimsSet, defaultHeaderBuilder(key));
     }
 
     private SignedJwt generateSignedJwt(RSAKey key, JWTClaimsSet claimsSet, JWSHeader.Builder jwsHeaderBuilder) {
