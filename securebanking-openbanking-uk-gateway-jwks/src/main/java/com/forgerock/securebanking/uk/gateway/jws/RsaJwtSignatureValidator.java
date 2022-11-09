@@ -29,6 +29,8 @@ import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.json.jose.jws.SigningManager;
 import org.forgerock.json.jose.jws.handlers.SigningHandler;
 import org.forgerock.json.jose.jwt.Algorithm;
+import org.forgerock.openig.heap.GenericHeaplet;
+import org.forgerock.openig.heap.HeapException;
 import org.forgerock.secrets.SecretBuilder;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.VerificationKey;
@@ -86,6 +88,16 @@ public class RsaJwtSignatureValidator implements JwtSignatureValidator {
         }
         catch (Throwable t) {
             throw new SignatureException(t);
+        }
+    }
+
+    /**
+     * Basic heaplet to allow RsaJwtSignatureValidator to be created via IG config
+     */
+    public static class Heaplet extends GenericHeaplet {
+        @Override
+        public Object create() throws HeapException {
+            return new RsaJwtSignatureValidator();
         }
     }
 }
