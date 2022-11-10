@@ -70,6 +70,17 @@
       "type" : "Chain",
       "config" : {
         "filters" : [ 
+          "TransactionIdOutboundFilter"
+       ],
+        "handler" : "ClientHandler"
+      },
+      "capture" : [ "response", "request" ]
+    },
+    {
+      "name": "SBATFapiInteractionFilterChain",
+      "type": "ChainOfFilters",
+      "config" : {
+        "filters": [
           {
             "comment": "Add x-fapi-interaction-id header if one was not present in the request",
             "name": "FapiInteractionIdFilter",
@@ -83,12 +94,9 @@
               "type": "application/x-groovy",
               "file": "FapiTransactionIdFilter.groovy"
             }
-          },
-          "TransactionIdOutboundFilter"
-       ],
-        "handler" : "ClientHandler"
-      },
-      "capture" : [ "response", "request" ]
+          }
+        ]
+      }
     },
     {
       "name": "SBATReverseProxyHandler",
@@ -99,20 +107,6 @@
       ],
       "config": {
         "filters" : [ 
-          {
-            "comment": "Add x-fapi-interaction-id header if one was not present in the request",
-            "name": "FapiInteractionIdFilter",
-            "type": "FapiInteractionIdFilter"
-          },
-          {
-            "comment": "Copy the x-fapi-interaction-id header to TransactionIdContext",
-            "name": "FapiTransactionIdFilter-1",
-            "type": "ScriptableFilter",
-            "config": {
-              "type": "application/x-groovy",
-              "file": "FapiTransactionIdFilter.groovy"
-            }
-          },
           "TransactionIdOutboundFilter"
        ],
         "handler" : "ReverseProxyHandler"

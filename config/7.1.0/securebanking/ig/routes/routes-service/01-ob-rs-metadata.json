@@ -8,11 +8,7 @@
     "type": "Chain",
     "config": {
       "filters": [
-        {
-          "comment": "Add x-fapi-interaction-id header if one was not present in the request",
-          "name": "FapiInteractionIdFilter",
-          "type": "FapiInteractionIdFilter"
-        },
+        "SBATFapiInteractionFilterChain",
         {
           "comment": "Adjust inbound URL to resource server base URL",
           "name": "UriPathRewriteFilter-RS",
@@ -65,7 +61,7 @@
           }
         }
       ],
-      "handler": "SBATReverseProxyHandler"
+      "handler": "ForgeRockClientHandler"
     }
   }
 }

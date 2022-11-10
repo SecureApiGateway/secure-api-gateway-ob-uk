@@ -8,6 +8,7 @@
     "type": "Chain",
     "config": {
       "filters": [
+        "SBATFapiInteractionFilterChain",
         {
           "comment": "Set downstream Host header",
           "name" : "HeaderFilter-ChangeHostToIAM",

@@ -8,11 +8,7 @@
     "type": "Chain",
     "config": {
       "filters": [
-        {
-          "comment": "Add x-fapi-interaction-id header if one was not present in the request",
-          "name": "FapiInteractionIdFilter",
-          "type": "FapiInteractionIdFilter"
-        }
+        "SBATFapiInteractionFilterChain"
       ],
       "handler": {
         "comment": "Sign claims using signing key from incoming JWK set",
