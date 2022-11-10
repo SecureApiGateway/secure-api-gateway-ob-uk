@@ -14,15 +14,6 @@
           "type": "FapiInteractionIdFilter"
         },
         {
-          "comment": "Copy the x-fapi-interaction-id header to TransactionIdContext",
-          "name": "FapiTransactionIdFilter-1",
-          "type": "ScriptableFilter",
-          "config": {
-            "type": "application/x-groovy",
-            "file": "FapiTransactionIdFilter.groovy"
-          }
-        },        
-        {
           "comment": "Enforce response content type as application/json",
           "name": "HeaderFilter-AddResponseHeaders",
           "type": "HeaderFilter",

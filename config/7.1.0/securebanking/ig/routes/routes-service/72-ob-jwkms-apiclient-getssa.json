@@ -1,8 +1,8 @@
 {
   "comment": "Create SSA for test TPP clients to use in OIDC dynamic registration",
-  "name" : "72 - API client onboarding - generate test SSA",
+  "name": "72 - API client onboarding - generate test SSA",
   "auditService": "AuditService-OB-Route",
-  "condition" : "${matches(request.uri.path, '^/jwkms/apiclient/getssa')}",
+  "condition": "${matches(request.uri.path, '^/jwkms/apiclient/getssa')}",
   "heap": [
     {
       "name": "SecretKeyPropertyFormat-SSA",
@@ -16,10 +16,12 @@
       "name": "SystemAndEnvSecretStore-SSA",
       "type": "SystemAndEnvSecretStore",
       "config": {
-        "mappings": [{
-          "secretId": "ig.ssa.secret",
-          "format": "SecretKeyPropertyFormat-SSA"
-        }]
+        "mappings": [
+          {
+            "secretId": "ig.ssa.secret",
+            "format": "SecretKeyPropertyFormat-SSA"
+          }
+        ]
       }
     }
   ],
@@ -27,6 +29,11 @@
     "type": "Chain",
     "config": {
       "filters": [
+        {
+          "comment": "Add x-fapi-interaction-id header if one was not present in the request",
+          "name": "FapiInteractionIdFilter",
+          "type": "FapiInteractionIdFilter"
+        },
         {
           "comment": "Extract certificate details for organizational claims in SSA",
           "name": "ParseCertificate",
@@ -47,8 +54,8 @@
             "type": "application/x-groovy",
             "file": "JwkmsBuildSSA.groovy",
             "args": {
-                "routeArgJwtIssuer": "test-publisher",
-                "routeArgJwtValidity": 300
+              "routeArgJwtIssuer": "test-publisher",
+              "routeArgJwtValidity": 300
             }
           }
         },

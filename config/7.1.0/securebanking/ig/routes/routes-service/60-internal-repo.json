@@ -8,6 +8,11 @@
     "config": {
       "filters": [
         {
+          "comment": "Add x-fapi-interaction-id header if one was not present in the request",
+          "name": "FapiInteractionIdFilter",
+          "type": "FapiInteractionIdFilter"
+        },
+        {
           "name": "SwitchFilter-RequestRouter",
           "type": "SwitchFilter",
           "config": {
@@ -73,4 +78,4 @@
       }
     }
   }
-} 
+}
