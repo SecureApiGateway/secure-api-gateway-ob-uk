@@ -9,20 +9,6 @@
     "config": {
       "filters": [
         {
-          "comment": "Add x-fapi-interaction-id header if one was not present in the request",
-          "name": "FapiInteractionIdFilter",
-          "type": "FapiInteractionIdFilter"
-        },
-        {
-          "comment": "Copy the x-fapi-interaction-id header to TransactionIdContext",
-          "name": "FapiTransactionIdFilter-1",
-          "type": "ScriptableFilter",
-          "config": {
-            "type": "application/x-groovy",
-            "file": "FapiTransactionIdFilter.groovy"
-          }
-        },
-        {
           "comment": "Set downstream Host header",
           "name" : "HeaderFilter-ChangeHostToIAM",
           "type" : "HeaderFilter",
@@ -47,9 +33,8 @@
             }
           }
         }
-
       ],
-      "handler": "ReverseProxyHandler"
+      "handler": "SBATReverseProxyHandler"
     }
   }
 } 
