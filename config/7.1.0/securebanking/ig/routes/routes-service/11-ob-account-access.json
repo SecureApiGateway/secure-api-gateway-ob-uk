@@ -178,7 +178,8 @@
             "messageType" : "REQUEST",
             "remove" : [ "host", "X-Forwarded-Host" ],
             "add" : {
-              "X-Forwarded-Host" : [ "rs.dev.forgerock.financial" ]
+              "X-Forwarded-Host" : [ "rs.dev.forgerock.financial" ],
+              "x-ob-url": ["https://&{ig.fqdn}${contexts.router.remainingUri}"]
             }
           }
         }
