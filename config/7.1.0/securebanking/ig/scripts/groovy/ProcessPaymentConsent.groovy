@@ -6,7 +6,10 @@ import java.text.SimpleDateFormat
  * Output: IDM create object
  */
 
-SCRIPT_NAME = "[ProcessPaymentConsent] - "
+def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
+if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
+SCRIPT_NAME = "[ProcessPaymentConsent] (" + fapiInteractionId + ") - ";
+
 logger.debug(SCRIPT_NAME + "Running...")
 
 def apiClientId = contexts.oauth2.accessToken.info.client_id
@@ -17,20 +20,29 @@ if (apiClientId == null || apiClientId == "") {
 
 def method = request.method
 
-switch(method.toUpperCase()) {
+def status
+// Check if the argument is defined. Null check is not enough.
+// routeArgSetConsentStatus can be used for any response that needs a status override
+if (binding.hasVariable('routeArgSetConsentStatus')) {
+    status = routeArgSetConsentStatus
+} else {
+    status = null
+}
+
+switch (method.toUpperCase()) {
 
     case "POST":
         def consentId = routeArgConsentIdPrefix + UUID.randomUUID().toString()
         paymentIntentData = request.entity.getJson()
-        processProcessPaymentConsentRequestData(consentId, paymentIntentData)
+        processProcessPaymentConsentRequestData(consentId, paymentIntentData, status)
 
         def version = getObApiVersion(request)
         def idmIntent = [
-                _id: consentId,
-                OBVersion: version,
+                _id               : consentId,
+                OBVersion         : version,
                 OBIntentObjectType: routeArgObIntentObjectType,
-                OBIntentObject: paymentIntentData,
-                apiClient: [ "_ref" : "managed/" + routeArgObjApiClient + "/" +  apiClientId ],
+                OBIntentObject    : paymentIntentData,
+                apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
         ]
 
         logger.debug(SCRIPT_NAME + "IDM object json [" + idmIntent + "]")
@@ -62,7 +74,7 @@ private Response extractOBIntentObjectFromIdmResponse(response) {
     return response
 }
 
-private void processProcessPaymentConsentRequestData(consentId, paymentIntentData) {
+private void processProcessPaymentConsentRequestData(consentId, paymentIntentData, statusToSet) {
     def tz = TimeZone.getTimeZone("UTC");
     def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     df.setTimeZone(tz);
@@ -70,6 +82,9 @@ private void processProcessPaymentConsentRequestData(consentId, paymentIntentDat
     paymentIntentData.Data.ConsentId = consentId
     paymentIntentData.Data.CreationDateTime = nowAsISO
     paymentIntentData.Data.StatusUpdateDateTime = nowAsISO
+    if (statusToSet != null) {
+        paymentIntentData.Data.Status = statusToSet
+    }
 }
 
 /**
