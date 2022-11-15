@@ -95,6 +95,19 @@
               "type": "application/x-groovy",
               "file": "FapiTransactionIdFilter.groovy"
             }
+          },
+          {
+            "comment": "Add x-ob-url header",
+            "name": "HeaderFilter-Add-x-ob-url",
+            "type": "HeaderFilter",
+            "config": {
+              "messageType": "REQUEST",
+              "add": {
+                "x-ob-url": [
+                  "https://&{ig.fqdn}${contexts.router.remainingUri}"
+                ]
+              }
+            }
           }
         ]
       }
