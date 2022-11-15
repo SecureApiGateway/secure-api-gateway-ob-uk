@@ -251,7 +251,7 @@
           }
         }
       ],
-      "handler": "SBATReverseProxyHandler"
+      "handler": "SBATReverseProxyHandlerRs"
     }
   }
 }
