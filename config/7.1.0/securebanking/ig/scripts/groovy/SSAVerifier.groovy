@@ -17,7 +17,7 @@ def verifySignature(signedJwt, jwksJson) {
         jwtSignatureValidator.validateSignature(signedJwt, jwks)
         return true
     } catch (SignatureException se) {
-        logger.error("jwt signature validation failed", se)
+        logger.error(SCRIPT_NAME + "jwt signature validation failed", se)
         return false
     }
 }

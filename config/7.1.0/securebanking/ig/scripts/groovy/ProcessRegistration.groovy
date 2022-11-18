@@ -146,7 +146,7 @@ switch(method.toUpperCase()) {
         }
         else if (apiClientOrgJwks) {
             if (!allowIgIssuedTestCerts) {
-                logger.debug("configuration to allowIgIssuedTestCerts is disabled")
+                logger.debug(SCRIPT_NAME + "configuration to allowIgIssuedTestCerts is disabled")
                 return(errorResponse(Status.BAD_REQUEST, "software_statement must contain software_jwks_endpoint"));
             }
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
@@ -316,7 +316,7 @@ private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
         jwtSignatureValidator.validateSignature(jwt, jwkSet)
         return true
     } catch (SignatureException se) {
-        logger.error("jwt signature validation failed", se)
+        logger.error(SCRIPT_NAME + "jwt signature validation failed", se)
         return false
     }
 }
