@@ -22,15 +22,12 @@ if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[ProcessRegistration] (" + fapiInteractionId + ") - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-def errorCodeInvalidClientMetadata = "invalid_client_metadata"
-def errorCodeInvalidSoftwareStatement = "invalid_software_statement"
-
 def invalidClientMetadataErrorResponse(errorMessage) {
-    return errorResponse(Status.BAD_REQUEST, errorCodeInvalidClientMetadata, errorMessage)
+    return errorResponse(Status.BAD_REQUEST, "invalid_client_metadata", errorMessage)
 }
 
 def invalidSoftwareStatementErrorResponse(errorMessage) {
-    return errorResponse(Status.BAD_REQUEST, errorCodeInvalidSoftwareStatement, errorMessage)
+    return errorResponse(Status.BAD_REQUEST, "invalid_software_statement", errorMessage)
 }
 
 def errorResponse(httpCode, errorCode, errorMessage) {
@@ -84,10 +81,10 @@ switch(method.toUpperCase()) {
 
         def ssa = oidcRegistration.getClaim("software_statement", String.class);
         if (!ssa) {
-            return invalidSoftwareStatementErrorResponse("SSA claim is missing")
+            return invalidSoftwareStatementErrorResponse("software_statement claim is missing")
         }
         logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
-        oidcRegistration.setClaim("software_statement",null);
+        oidcRegistration.setClaim("software_statement", null);
 
         def ssaJwt = new JwtReconstruction().reconstructJwt(ssa,SignedJwt.class)
         def ssaClaims = ssaJwt.getClaimsSet();
@@ -127,7 +124,7 @@ switch(method.toUpperCase()) {
                 // TODO review if this can be caught in IG conf
                 def jwksUri = null;
                 try {
-                    jwksUri = new URI(apiClientOrgJwksUri);
+                    jwksUri = new URI(apiClientOrgJwksUri)
                 }
                 catch (e) {
                     return errorResponse(Status.INTERNAL_SERVER_ERROR,"", "Invalid JWKS URI: " + apiClientOrgJwksUri)
@@ -136,7 +133,7 @@ switch(method.toUpperCase()) {
                 if (proxiedHosts.asList().contains(jwksUri.getHost())) {
                     def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
                     logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}",apiClientOrgJwksUri,newUri);
-                    apiClientOrgJwksUri = newUri;
+                    apiClientOrgJwksUri = newUri
 
                 }
             }
@@ -151,7 +148,7 @@ switch(method.toUpperCase()) {
             oidcRegistration.setClaim("jwks",  apiClientOrgJwks )
         }
         else {
-            return invalidSoftwareStatementErrorResponse("No JWKS or JWKS URI in SSA")
+            return invalidSoftwareStatementErrorResponse("No JWKS or JWKS URI in software_statement")
         }
 
         // Store SSA and registration JWT for signature check
