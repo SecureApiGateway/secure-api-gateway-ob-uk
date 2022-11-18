@@ -22,12 +22,21 @@ if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[ProcessRegistration] (" + fapiInteractionId + ") - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-def errorResponse(httpCode, message) {
-    logger.error(SCRIPT_NAME + "Returning error " + httpCode + ": " + message);
-    def response = new Response(httpCode);
-    response.headers['Content-Type'] = "application/json";
-    response.entity = "{ \"error\":\"" + message + "\"}";
-    return response;
+def errorCodeInvalidClientMetadata = "invalid_client_metadata"
+def errorCodeInvalidSoftwareStatement = "invalid_software_statement"
+
+def invalidClientMetadataErrorResponse(errorMessage) {
+    return errorResponse(Status.BAD_REQUEST, errorCodeInvalidClientMetadata, errorMessage)
+}
+
+def invalidSoftwareStatementErrorResponse(errorMessage) {
+    return errorResponse(Status.BAD_REQUEST, errorCodeInvalidSoftwareStatement, errorMessage)
+}
+
+def errorResponse(httpCode, errorCode, errorMessage) {
+    def response = new Response(httpCode)
+    response.entity.setJson([error: errorCode, error_description: errorMessage])
+    return response
 }
 
 def defaultResponseTypes =  ["code id_token"]
@@ -38,30 +47,22 @@ def method = request.method
 switch(method.toUpperCase()) {
     case "POST":
     case "PUT":
-        def error = false
-
         def SCOPE_ACCOUNTS = "accounts"
         def SCOPE_PAYMENTS = "payments"
-
-
         def ROLE_PAYMENT_INITIATION             = "0.4.0.19495.1.2"
         def ROLE_ACCOUNT_INFORMATION            = "0.4.0.19495.1.3"
         def ROLE_CARD_BASED_PAYMENT_INSTRUMENTS = "0.4.0.19495.1.4"
 
         // Check we have everything we need from the client certificate
-
         if (!attributes.clientCertificate) {
-            return(errorResponse(Status.BAD_REQUEST,"No client certificate for registration"));
+            return invalidClientMetadataErrorResponse("No client certificate for registration")
         }
-
         if (!attributes.clientCertificate.roles) {
-            return(errorResponse(Status.BAD_REQUEST,"No roles in client certificate for registration"));
+            return invalidClientMetadataErrorResponse("No roles in client certificate for registration")
         }
 
         // Parse incoming registration JWT
-
         logger.debug(SCRIPT_NAME + "Parsing registration request");
-
         def regJwt = new JwtReconstruction().reconstructJwt(request.entity.getString(),SignedJwt.class)
 
         // Pull the SSA from the reg data
@@ -71,26 +72,24 @@ switch(method.toUpperCase()) {
         // Valid exp claim
         Date expirationTime = oidcRegistration.getExpirationTime()
         if (expirationTime.before(new Date())) {
-            return errorResponse(Status.BAD_REQUEST,"registration has expired")
+            return invalidClientMetadataErrorResponse("registration has expired")
         }
 
         def responseTypes = oidcRegistration.getClaim("response_types")
         if (!responseTypes) {
             oidcRegistration.setClaim("response_types", defaultResponseTypes)
         } else if (!supportedResponseTypes.contains(responseTypes)) {
-            return errorResponse(Status.BAD_REQUEST, "response_types: " + responseTypes + " not supported")
+            return invalidClientMetadataErrorResponse("response_types: " + responseTypes + " not supported")
         }
 
         def ssa = oidcRegistration.getClaim("software_statement", String.class);
         if (!ssa) {
-            return(errorResponse(Status.BAD_REQUEST,"No SSA"));
+            return invalidSoftwareStatementErrorResponse("SSA claim is missing")
         }
+        logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
         oidcRegistration.setClaim("software_statement",null);
 
-        logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
-
         def ssaJwt = new JwtReconstruction().reconstructJwt(ssa,SignedJwt.class)
-
         def ssaClaims = ssaJwt.getClaimsSet();
 
         // Validate the issuer claim for the registration matches the SSA software_id
@@ -99,7 +98,7 @@ switch(method.toUpperCase()) {
         def registrationIssuer = oidcRegistration.getIssuer()
         def ssaSoftwareId = ssaClaims.getClaim("software_id")
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
-            return errorResponse(Status.BAD_REQUEST,"invalid issuer claim")
+            return invalidClientMetadataErrorResponse("invalid issuer claim")
         }
 
         def apiClientOrgName = ssaClaims.getClaim("software_client_name", String.class);
@@ -118,21 +117,20 @@ switch(method.toUpperCase()) {
         if (apiClientOrgJwksUri) {
             logger.debug(SCRIPT_NAME + "Using jwks uri")
             if (routeArgObJwksHosts) {
-
                 // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-
                 def slurper = new JsonSlurper()
                 def proxiedHosts = slurper.parseText(routeArgObJwksHosts);
-
+                // TODO Review this error, can we catch it at IG start up by doing the parse in the config?
                 if (!proxiedHosts) {
-                    return(errorResponse(Status.INTERNAL_SERVER_ERROR,"Could not parse proxied jwks hosts"));
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR, "", "Could not parse proxied jwks hosts")
                 }
+                // TODO review if this can be caught in IG conf
                 def jwksUri = null;
                 try {
                     jwksUri = new URI(apiClientOrgJwksUri);
                 }
                 catch (e) {
-                    return(errorResponse(Status.BAD_REQUEST,"Invalid JWKS URI: " + apiClientOrgJwksUri));
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR,"", "Invalid JWKS URI: " + apiClientOrgJwksUri)
                 }
 
                 if (proxiedHosts.asList().contains(jwksUri.getHost())) {
@@ -147,17 +145,16 @@ switch(method.toUpperCase()) {
         else if (apiClientOrgJwks) {
             if (!allowIgIssuedTestCerts) {
                 logger.debug(SCRIPT_NAME + "configuration to allowIgIssuedTestCerts is disabled")
-                return(errorResponse(Status.BAD_REQUEST, "software_statement must contain software_jwks_endpoint"));
+                return invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
             }
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
             oidcRegistration.setClaim("jwks",  apiClientOrgJwks )
         }
         else {
-            return(errorResponse(Status.BAD_REQUEST,"No JWKS or JWKS URI in SSA"));
+            return invalidSoftwareStatementErrorResponse("No JWKS or JWKS URI in SSA")
         }
 
         // Store SSA and registration JWT for signature check
-
         attributes.registrationJWTs = [
                 "ssaStr": ssa,
                 "ssaJwt" : ssaJwt,
@@ -175,32 +172,26 @@ switch(method.toUpperCase()) {
         }
 
         // Sanity check on scopes
-
         def scopes = oidcRegistration.getClaim("scope")
         def roles = attributes.clientCertificate.roles
-
         if (scopes.contains(SCOPE_ACCOUNTS) && !(roles.contains(ROLE_ACCOUNT_INFORMATION))) {
-            return(errorResponse(Status.BAD_REQUEST,"Requested scope " + SCOPE_ACCOUNTS + " requires certificate role " + ROLE_ACCOUNT_INFORMATION));
+            return invalidClientMetadataErrorResponse("Requested scope " + SCOPE_ACCOUNTS + " requires certificate role " + ROLE_ACCOUNT_INFORMATION)
         }
-
         if (scopes.contains(SCOPE_PAYMENTS) && !(roles.contains(ROLE_PAYMENT_INITIATION))) {
-            return(errorResponse(Status.BAD_REQUEST,"Requested scope " + SCOPE_PAYMENTS + " requires certificate role " + ROLE_PAYMENT_INITIATION));
+            return invalidClientMetadataErrorResponse("Requested scope " + SCOPE_PAYMENTS + " requires certificate role " + ROLE_PAYMENT_INITIATION)
         }
 
         // Cross check ID with cert
         //
         // e.g. PSDGB-FFA-5f563e89742b2800145c7da1 or PSDGB-OB-Unknown0015800001041REAAY (issue by OB)
-
         def  organizationalIdentifier = attributes.clientCertificate.subjectDNComponents.OI
-
         if (!organizationalIdentifier) {
-            return(errorResponse(Status.BAD_REQUEST,"No organizational identifier in cert"));
+            return invalidClientMetadataErrorResponse("No organizational identifier in cert")
         }
 
         def oiComponents = organizationalIdentifier.split("-")
-
         if (oiComponents.length > 3) {
-            return(errorResponse(Status.BAD_REQUEST,"Wrong number of dashes in OI " + organizationalIdentifier +" - expected 2"));
+            return invalidClientMetadataErrorResponse("Wrong number of dashes in OI " + organizationalIdentifier +" - expected 2")
         }
 
         // TODO: Subject DN for cert bound access tokens
@@ -220,15 +211,15 @@ switch(method.toUpperCase()) {
             logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + apiClientOrgJwksUri)
             return jwkSetService.getJwkSet(new URL(apiClientOrgJwksUri))
                                 .thenCatchAsync(e -> {
-                                    logger.debug(SCRIPT_NAME + "failed to get jwks due to exception", e)
-                                    return newResultPromise(errorResponse(Status.BAD_REQUEST, "unable to get jwks from url: " + apiClientOrgJwksUri))
+                                    logger.warn(SCRIPT_NAME + "failed to get jwks due to exception", e)
+                                    return newResultPromise(invalidClientMetadataErrorResponse("unable to get jwks from url: " + apiClientOrgJwksUri))
                                 })
                                 .thenAsync(jwkSet -> {
                                     if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                                        return newResultPromise(errorResponse(Status.BAD_REQUEST, "tls transport cert does not match any certs registered in jwks for software statement"))
+                                        return newResultPromise(invalidSoftwareStatementErrorResponse("tls transport cert does not match any certs registered in jwks for software statement"))
                                     }
                                     if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
-                                        return newResultPromise(errorResponse(Status.BAD_REQUEST, "registration JWT signature invalid"))
+                                        return newResultPromise(invalidClientMetadataErrorResponse("registration JWT signature invalid"))
                                     }
                                     return next.handle(context, request)
                                                .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
@@ -238,15 +229,15 @@ switch(method.toUpperCase()) {
             // Verify against the software_jwks which is a JWKSet embedded within the software_statement
             // NOTE: this is only suitable for developer testing purposes
             if (!allowIgIssuedTestCerts) {
-                return(errorResponse(Status.BAD_REQUEST, "software_statement must contain software_jwks_endpoint"));
+                return invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
             }
             logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientOrgJwks)
             def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
             if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                return newResultPromise(errorResponse(Status.BAD_REQUEST, "tls transport cert does not match any certs registered in jwks for software statement"))
+                return newResultPromise(invalidSoftwareStatementErrorResponse( "tls transport cert does not match any certs registered in jwks for software statement"))
             }
             if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
-                return newResultPromise(errorResponse(Status.BAD_REQUEST, "registration JWT signature invalid"))
+                return newResultPromise(invalidClientMetadataErrorResponse("registration JWT signature invalid"))
             }
             return next.handle(context, request)
                        .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
@@ -316,7 +307,7 @@ private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
         jwtSignatureValidator.validateSignature(jwt, jwkSet)
         return true
     } catch (SignatureException se) {
-        logger.error(SCRIPT_NAME + "jwt signature validation failed", se)
+        logger.warn(SCRIPT_NAME + "jwt signature validation failed", se)
         return false
     }
 }
