@@ -31,8 +31,10 @@ def invalidSoftwareStatementErrorResponse(errorMessage) {
 }
 
 def errorResponse(httpCode, errorCode, errorMessage) {
+    def errorMsgJson = [error: errorCode, error_description: errorMessage]
+    logger.warn(SCRIPT_NAME + "DCR failed, http status: {}, error: {}", httpCode, errorMsgJson)
     def response = new Response(httpCode)
-    response.entity.setJson([error: errorCode, error_description: errorMessage])
+    response.entity.setJson(errorMsgJson)
     return response
 }
 
