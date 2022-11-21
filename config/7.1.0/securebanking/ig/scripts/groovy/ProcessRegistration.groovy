@@ -122,7 +122,7 @@ switch(method.toUpperCase()) {
                     jwksUri = new URI(apiClientOrgJwksUri)
                 }
                 catch (e) {
-                    return invalidSoftwareStatementErrorResponse("apiClientOrgJwksUri does not contain a valid URI")
+                    return invalidSoftwareStatementErrorResponse("software_jwks_endpoint does not contain a valid URI")
                 }
                 // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
                 if (routeArgObJwksHosts && routeArgObJwksHosts.contains(jwksUri.getHost())) {
