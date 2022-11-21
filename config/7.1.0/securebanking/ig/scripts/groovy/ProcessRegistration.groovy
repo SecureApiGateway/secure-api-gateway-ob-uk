@@ -123,6 +123,15 @@ switch(method.toUpperCase()) {
                 if (!proxiedHosts) {
                     return errorResponse(Status.INTERNAL_SERVER_ERROR, "", "Could not parse proxied jwks hosts")
                 }
+                // TODO review if this can be caught in IG conf
+                def jwksUri = null;
+                try {
+                    jwksUri = new URI(apiClientOrgJwksUri)
+                }
+                catch (e) {
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR,"", "Invalid JWKS URI: " + apiClientOrgJwksUri)
+                }
+
                 if (proxiedHosts.asList().contains(jwksUri.getHost())) {
                     def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
                     logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}",apiClientOrgJwksUri,newUri);
