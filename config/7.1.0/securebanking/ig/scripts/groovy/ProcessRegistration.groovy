@@ -114,27 +114,20 @@ switch(method.toUpperCase()) {
 
         // Update OIDC registration request
         if (apiClientOrgJwksUri) {
-            logger.debug(SCRIPT_NAME + "Using jwks uri")
+            logger.debug(SCRIPT_NAME + "Using jwks uri: {}", apiClientOrgJwksUri)
             if (routeArgObJwksHosts) {
                 // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                def slurper = new JsonSlurper()
-                def proxiedHosts = slurper.parseText(routeArgObJwksHosts);
-                // TODO Review this error, can we catch it at IG start up by doing the parse in the config?
-                if (!proxiedHosts) {
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR, "", "Could not parse proxied jwks hosts")
-                }
-                // TODO review if this can be caught in IG conf
                 def jwksUri = null;
                 try {
                     jwksUri = new URI(apiClientOrgJwksUri)
                 }
                 catch (e) {
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR,"", "Invalid JWKS URI: " + apiClientOrgJwksUri)
+                    return invalidSoftwareStatementErrorResponse("apiClientOrgJwksUri does not contain a valid URI")
                 }
-
-                if (proxiedHosts.asList().contains(jwksUri.getHost())) {
+                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
+                if (routeArgObJwksHosts && routeArgObJwksHosts.contains(jwksUri.getHost())) {
                     def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
-                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}",apiClientOrgJwksUri,newUri);
+                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}", apiClientOrgJwksUri, newUri);
                     apiClientOrgJwksUri = newUri
 
                 }
