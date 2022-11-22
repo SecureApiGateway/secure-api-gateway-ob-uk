@@ -9,7 +9,7 @@ import groovy.json.JsonSlurper
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.SignatureException
 import com.nimbusds.jose.jwk.RSAKey;
-import com.securebanking.gateway.DcrErrorResponseFactory
+import com.securebanking.gateway.dcr.ErrorResponseFactory
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
@@ -23,7 +23,7 @@ if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[ProcessRegistration] (" + fapiInteractionId + ") - "
 logger.debug(SCRIPT_NAME + "Running...")
 
-def errorResponseFactory = new DcrErrorResponseFactory(SCRIPT_NAME)
+def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 
 def defaultResponseTypes =  ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]

@@ -2,7 +2,7 @@ import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.http.protocol.Status;
 import java.net.URI;
 import java.security.SignatureException
-import com.securebanking.gateway.DcrErrorResponseFactory
+import com.securebanking.gateway.dcr.ErrorResponseFactory
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
@@ -22,7 +22,7 @@ def verifySignature(signedJwt, jwksJson) {
     }
 }
 
-def errorResponseFactory = new DcrErrorResponseFactory(SCRIPT_NAME)
+def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 
 def method = request.method
 switch(method.toUpperCase()) {

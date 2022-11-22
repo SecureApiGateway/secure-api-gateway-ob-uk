@@ -1,15 +1,15 @@
-package com.securebanking.gateway
+package com.securebanking.gateway.dcr
 
 import org.forgerock.util.promise.*
 import org.forgerock.http.protocol.*
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Factory which creates Response objects for error states when validating a DCR (Dynamic Client Registration) request
  */
-class DcrErrorResponseFactory {
+class ErrorResponseFactory {
 
     private final Logger logger = LoggerFactory.getLogger(getClass())
     /**
@@ -18,7 +18,7 @@ class DcrErrorResponseFactory {
      */
     private final String logPrefix
 
-    public DcrErrorResponseFactory(String logPrefix) {
+    public ErrorResponseFactory(String logPrefix) {
         this.logPrefix = logPrefix
     }
 
