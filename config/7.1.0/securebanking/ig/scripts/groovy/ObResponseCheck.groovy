@@ -112,7 +112,7 @@ next.handle(context, request).thenOnResult({response ->
 
   // Check for FAPI interaction ID
 
-  bounceBackHeader(request,response,HEADER_INTERACTION_ID,true)
+  // bounceBackHeader(request,response,HEADER_INTERACTION_ID,true)
 
   // Check for OB compliant error response
 
