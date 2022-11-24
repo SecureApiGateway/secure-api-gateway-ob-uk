@@ -19,7 +19,7 @@ import static org.forgerock.util.promise.Promises.newResultPromise
  * Returned by IDM when this filter attempts to create an apiClientOrg that already exists
  * https://backstage.forgerock.com/docs/idm/7.2/crest/crest-status-codes.html
  */
-HTTP_PRECONDITION_FAILED = 412
+HTTP_STATUS_PRECONDITION_FAILED = 412
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
@@ -137,7 +137,7 @@ switch(method.toUpperCase()) {
 def buildApiClientIdmObject(oauth2ClientId, ssaClaims) {
   def clientJwksUri = attributes.registrationJWTs.registrationJwksUri
   def clientJwks = attributes.registrationJWTs.registrationJwks
-  def apiClientConfig = [
+  def apiClientIdmObj = [
           "_id"           : oauth2ClientId,
           "id"            : ssaClaims.getClaim("software_client_id"),
           "name"          : ssaClaims.getClaim("software_client_name"),
@@ -149,12 +149,12 @@ def buildApiClientIdmObject(oauth2ClientId, ssaClaims) {
   ]
 
   if (clientJwksUri) {
-    apiClientConfig.jwksUri = clientJwksUri
+    apiClientIdmObj.jwksUri = clientJwksUri
   }
   if (clientJwks) {
-    apiClientConfig.jwks = JsonOutput.toJson(clientJwks)
+    apiClientIdmObj.jwks = JsonOutput.toJson(clientJwks)
   }
-  return apiClientConfig
+  return apiClientIdmObj
 }
 
 def buildApiClientOrganisationIdmObject(organisationIdentifier, organisationName) {
@@ -172,7 +172,7 @@ def createApiClientOrganisation(apiClientOrgIdmObject) {
   apiClientOrgRequest.addHeaders(new GenericHeader("If-None-Match", "*")) // Prevent updating an existing apiClientOrg
   apiClientOrgRequest.setEntity(apiClientOrgIdmObject)
   return http.send(apiClientOrgRequest).then(apiClientOrgResponse -> {
-    if (!apiClientOrgResponse.status.isSuccessful() && apiClientOrgResponse.status.code != HTTP_PRECONDITION_FAILED) {
+    if (!apiClientOrgResponse.status.isSuccessful() && apiClientOrgResponse.status.code != HTTP_STATUS_PRECONDITION_FAILED) {
       logger.error(SCRIPT_NAME + "unexpected IDM response when attempting to create {}, status: {}, entity: {}", routeArgObjApiClientOrgapiClientOrgResponse, apiClientOrgResponse.status, apiClientOrgResponse.entity)
       return new Response(Status.INTERNAL_SERVER_ERROR)
     } else {
@@ -195,7 +195,7 @@ def createApiClient(apiClientIdmObject) {
       return new Response(Status.INTERNAL_SERVER_ERROR)
     } else {
       logger.debug(SCRIPT_NAME + "successfully created apiClient")
-      return new Response(Status.OK)
+      return apiClientResponse
     }
   })
 }
