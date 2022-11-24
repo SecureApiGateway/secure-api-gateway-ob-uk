@@ -4,7 +4,7 @@ import org.forgerock.json.jose.*
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
- * Filter to manage AM apiClient and apiClientOrg objects in IDM.
+ * Filter to manage apiClient and apiClientOrg objects in IDM.
  *
  * All functionality is triggered upon a successful response from AM. Callers are attempting to do DCR or manage an
  * existing registration, they are unaware of IDM specifics. Therefore, responses from this filter should be AM response
