@@ -15,7 +15,7 @@ import static org.forgerock.util.promise.Promises.newResultPromise
  */
 
 /**
- * 412 Precondition Failed: The resource’s current version does not match the version provided.
+ * HTTP 412 - Precondition Failed: The resource’s current version does not match the version provided.
  * Returned by IDM when this filter attempts to create an apiClientOrg that already exists
  * https://backstage.forgerock.com/docs/idm/7.2/crest/crest-status-codes.html
  */
