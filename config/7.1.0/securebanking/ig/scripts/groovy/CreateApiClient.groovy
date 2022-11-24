@@ -173,6 +173,7 @@ def createApiClientOrganisation(apiClientOrgIdmObject) {
   apiClientOrgRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClientOrg + "/" + apiClientOrgIdmObject["_id"])
   apiClientOrgRequest.addHeaders(new GenericHeader("If-None-Match", "*")) // Prevent updating an existing apiClientOrg
   apiClientOrgRequest.setEntity(apiClientOrgIdmObject)
+  logger.debug(SCRIPT_NAME + "Attempting to create {} in IDM", routeArgObjApiClientOrg)
   return http.send(apiClientOrgRequest).then(apiClientOrgResponse -> {
     if (!apiClientOrgResponse.status.isSuccessful() && apiClientOrgResponse.status.code != HTTP_STATUS_PRECONDITION_FAILED) {
       logger.error(SCRIPT_NAME + "unexpected IDM response when attempting to create {}, status: {}, entity: {}", routeArgObjApiClientOrg, apiClientOrgResponse.status, apiClientOrgResponse.entity)
@@ -190,8 +191,7 @@ def createApiClient(apiClientIdmObject) {
   apiClientRequest.setMethod('POST')
   apiClientRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "?_action=create")
   apiClientRequest.setEntity(apiClientIdmObject)
-
-  logger.debug(SCRIPT_NAME + "Sending apiClient create request to IDM endpoint")
+  logger.debug(SCRIPT_NAME + "Attempting to create {} in IDM", routeArgObjApiClient)
   return http.send(apiClientRequest).then(apiClientResponse -> {
     if (apiClientResponse.status != Status.CREATED) {
       logger.error(SCRIPT_NAME + "unexpected IDM response when attempting to create {}, status: {}, entity: {}", routeArgObjApiClient, apiClientResponse.status, apiClientResponse.entity)
