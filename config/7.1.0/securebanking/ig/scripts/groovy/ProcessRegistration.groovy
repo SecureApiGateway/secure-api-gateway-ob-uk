@@ -312,27 +312,28 @@ private void validateRegistrationRedirectUris(oidcRegistration, ssaClaims) {
     def regRedirectUris = oidcRegistration.getClaim("redirect_uris")
     def ssaRedirectUris = ssaClaims.getClaim("software_redirect_uris")
     if (!ssaRedirectUris || ssaRedirectUris.size() == 0) {
-        throw new IllegalStateException("software_statement must contain redirect_uris)")
+        throw new IllegalStateException("software_statement must contain redirect_uris")
     }
-    // If no redirect_uris supplied in reg request, then use the value from the SSA
+    // If no redirect_uris supplied in registration request, use all of the uris defined in software_redirect_uris
     if (!regRedirectUris || regRedirectUris.size() == 0) {
         oidcRegistration.setClaim("redirect_uris", ssaRedirectUris)
     } else {
-        // validate registration redirects are the same as, or a subset of, the ssa redirects
+        // validate registration redirects are the same as, or a subset of, software_redirect_uris
         if (regRedirectUris.size() > ssaRedirectUris.size()) {
             throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_statement.redirect_uris")
         } else {
             for (regRedirect in regRedirectUris) {
+                def redirectUrl
                 try {
-                    def redirectUrl = new URL(regRedirect)
-                    if (!"https".equals(redirectUrl.getProtocol())) {
-                        throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must use https")
-                    }
-                    if ("localhost".equals(redirectUrl.getHost())) {
-                        throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must not point to localhost")
-                    }
+                    redirectUrl = new URL(regRedirect)
                 } catch (e) {
                     throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " is not a valid URI")
+                }
+                if (!"https".equals(redirectUrl.getProtocol())) {
+                    throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must use https")
+                }
+                if ("localhost".equals(redirectUrl.getHost())) {
+                    throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must not point to localhost")
                 }
                 if (!ssaRedirectUris.contains(regRedirect)) {
                     throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_statement.redirect_uris")
