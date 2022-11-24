@@ -173,11 +173,12 @@ def createApiClientOrganisation(apiClientOrgIdmObject) {
   apiClientOrgRequest.setEntity(apiClientOrgIdmObject)
   return http.send(apiClientOrgRequest).then(apiClientOrgResponse -> {
     if (!apiClientOrgResponse.status.isSuccessful() && apiClientOrgResponse.status.code != HTTP_STATUS_PRECONDITION_FAILED) {
-      logger.error(SCRIPT_NAME + "unexpected IDM response when attempting to create {}, status: {}, entity: {}", routeArgObjApiClientOrgapiClientOrgResponse, apiClientOrgResponse.status, apiClientOrgResponse.entity)
+      logger.error(SCRIPT_NAME + "unexpected IDM response when attempting to create {}, status: {}, entity: {}", routeArgObjApiClientOrg, apiClientOrgResponse.status, apiClientOrgResponse.entity)
       return new Response(Status.INTERNAL_SERVER_ERROR)
     } else {
       logger.debug(SCRIPT_NAME + "organisation created OR already exists")
-      return new Response(Status.OK)
+      apiClientOrgResponse.status = Status.CREATED
+      return apiClientOrgResponse
     }
   })
 }
