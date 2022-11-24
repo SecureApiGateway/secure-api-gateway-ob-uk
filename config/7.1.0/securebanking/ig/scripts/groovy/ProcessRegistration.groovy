@@ -308,6 +308,10 @@ private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
     }
 }
 
+/**
+ * Validate the redirect_uris claim in the registration request is valid as per the OB DCR spec:
+ * https://openbankinguk.github.io/dcr-docs-pub/v3.2/dynamic-client-registration.html
+ */
 private void validateRegistrationRedirectUris(oidcRegistration, ssaClaims) {
     def regRedirectUris = oidcRegistration.getClaim("redirect_uris")
     def ssaRedirectUris = ssaClaims.getClaim("software_redirect_uris")
