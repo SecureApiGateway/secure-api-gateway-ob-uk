@@ -320,7 +320,7 @@ private void validateRegistrationRedirectUris(oidcRegistration, ssaClaims) {
     } else {
         // validate registration redirects are the same as, or a subset of, software_redirect_uris
         if (regRedirectUris.size() > ssaRedirectUris.size()) {
-            throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_statement.redirect_uris")
+            throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_redirect_uris")
         } else {
             for (regRedirect in regRedirectUris) {
                 def redirectUrl
@@ -336,7 +336,7 @@ private void validateRegistrationRedirectUris(oidcRegistration, ssaClaims) {
                     throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must not point to localhost")
                 }
                 if (!ssaRedirectUris.contains(regRedirect)) {
-                    throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_statement.redirect_uris")
+                    throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_redirect_uris")
                 }
             }
         }
