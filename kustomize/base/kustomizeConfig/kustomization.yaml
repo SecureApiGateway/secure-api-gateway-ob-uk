@@ -2,14 +2,21 @@
 kind: Kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 
-resources:
- - github.com/SecureBankingAccessToolkit/securebanking-openbanking-uk-config/kustomize/overlay/7.1.0/securebanking/dev?ref=302-remove-kustomize-from-gateway-repo
 configurations:
 - kustomizeConfig.yaml
 
+
 configMapGenerator:
-  - name: securebanking-platform-config
-    behavior: merge
+- name: securebanking-platform-config
+  # The env vars below can be passed into a pod using the envFrom pod spec.
+  # These global variables can be used to parameterize your deployments.
+  # The FQDN and URLs here should match your ingress or istio gateway definitions
+  literals:
+  - IG_FQDN=default.bank.example.com # IG secure banking platform domain
+  - IDENTITY_PLATFORM_FQDN=default.iplatform.example.com # forgerock identity platform domain
+  - CERT_ISSUER="default-issuer" # cert manager issuer. Patch with letsencrypt-prod for LE SSL certs.
+  - INGRESS_IP=127.0.0.1 # For local (minikube) use only
+
 generatorOptions:
   disableNameSuffixHash: true
 
