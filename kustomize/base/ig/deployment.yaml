@@ -35,7 +35,7 @@ spec:
         - configMapRef:
             name: securebanking-platform-config
         #image: gcr.io/forgerock-io/ig/docker-build:7.0.0-af5592b
-        image: ig
+        image: eu.gcr.io/sbat-gcr-develop/securebanking/gate/ig
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
