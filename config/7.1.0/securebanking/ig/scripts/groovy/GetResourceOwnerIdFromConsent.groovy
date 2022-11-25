@@ -180,7 +180,7 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
                     return newResultPromise(getErrorResponse())
                 }
 
-                if (intentType == (IntentType.DOMESTIC_VRP_PAYMENT_CONSENT)) {
+                if (intentType == IntentType.DOMESTIC_VRP_PAYMENT_CONSENT) {
                     // For VRP, checking the max individual amount to confirm that the debtor accounts has funds for the payment
                     attributes.put("amount", intentResponseObject.OBIntentObject.Data.ControlParameters.MaximumIndividualAmount.Amount)
                 } else {
