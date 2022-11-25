@@ -90,8 +90,8 @@ switch(method.toUpperCase()) {
         } else {
           // Updating a DCR, update apiClient data in IDM
           return updateApiClient(apiClientIdmObject).then(updateApiClientResponse -> {
-            if (!createApiClientResponse.status.isSuccessful()) {
-              return createApiClientResponse
+            if (!updateApiClientResponse.status.isSuccessful()) {
+              return updateApiClientResponse
             } else {
               // Return the original AM success response if we updated the IDM objects
               return amResponse
