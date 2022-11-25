@@ -64,12 +64,12 @@ switch(method.toUpperCase()) {
         return newResultPromise(errorResponse(Status.INTERNAL_SERVER_ERROR, "Missing request data"))
       }
 
-      def ssaClaims = attributes.registrationJWTs.ssaJwt.getClaimsSet()
       def oauth2ClientId = amResponse.entity.getJson().client_id
       if (!oauth2ClientId) {
         logger.error(SCRIPT_NAME + "Required client_id field not found in AM registration response")
         return newResultPromise(errorResponse(Status.INTERNAL_SERVER_ERROR, "Failed to get client_id"))
       }
+      def ssaClaims = attributes.registrationJWTs.ssaJwt.getClaimsSet()
       def apiClientIdmObject = buildApiClientIdmObject(oauth2ClientId, ssaClaims)
       def apiClientOrgIdmObject = buildApiClientOrganisationIdmObject(ssaClaims)
 
