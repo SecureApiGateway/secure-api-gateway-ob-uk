@@ -1,14 +1,10 @@
 import groovy.json.JsonSlurper
-import com.forgerock.securebanking.uk.gateway.jwks.*
-import java.security.SignatureException
-import com.nimbusds.jose.jwk.RSAKey;
 import com.securebanking.gateway.dcr.ErrorResponseFactory
-import static org.forgerock.util.promise.Promises.newResultPromise
 
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
-SCRIPT_NAME = "[ProcessRegistration] (" + fapiInteractionId + ") - "
+SCRIPT_NAME = "[FapiCompliantAuthorizeRequestFilter] (" + fapiInteractionId + ") - "
 logger.debug(SCRIPT_NAME + "Running...")
 
 def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
@@ -18,10 +14,15 @@ def httpMethod = request.method
 switch(method.toUpperCase()){
     case "GET":
         // Parse incoming registration JWT
-        logger.debug(SCRIPT_NAME + "Parsing authorize request");
+        logger.debug(SCRIPT_NAME + "Parsing authorize request")
         def authRequestJwt
         try {
-            authRequestJwt = new JwtReconstruction().reconstructJwt(request.getQueryParams().get("request"), SignedJwt.class)
+            def requestQueryParam = request.getQueryParams().get("request")
+            if(!requestQueryParam) {
+                return errorResponseFactory.invalidClientMetadataErrorResponse("/authorize endpoint request must include request query parameter")
+            }
+
+            authRequestJwt = new JwtReconstruction().reconstructJwt(requestQueryParam, SignedJwt.class)
         } catch (e) {
             logger.warn(SCRIPT_NAME + "failed to decode registration request JWT", e)
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
@@ -32,5 +33,7 @@ switch(method.toUpperCase()){
         if (!scopes){
             return errorResponseFactory.invalidClientMetadataErrorResponse("Badly formed request jwt: must contain valid scope")
         }
-
+    default:
+        logger.debug(SCRIPT_NAME + "Method not supported")
+        return next.handle(context, request)
 }
