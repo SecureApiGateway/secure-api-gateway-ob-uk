@@ -74,7 +74,7 @@ switch(method.toUpperCase()) {
 
         def tokenEndpointAuthMethod = oidcRegistration.getClaim("token_endpoint_auth_method")
         if (!tokenEndpointAuthMethod || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + supportedTokenEndpointAuthMethods)
+            return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
         }
 
         def ssa = oidcRegistration.getClaim("software_statement", String.class);
