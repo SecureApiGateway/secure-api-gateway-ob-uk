@@ -10,4 +10,4 @@ USER root
 
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
 
-RUN apt-get update && apt-get install nano
+RUN apt-get update && apt-get install nano vim
