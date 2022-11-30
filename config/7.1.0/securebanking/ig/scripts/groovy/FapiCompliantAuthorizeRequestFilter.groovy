@@ -53,7 +53,18 @@ switch (httpMethod.toUpperCase()) {
             return createBadRequestResponse(errorMessage)
         }
 
-        String requiredClaims = ["scope", "state"]
+        // ToDo - any failures of these tests should really result in errors being sent to the redirect URI, but we 
+        // haven't yet validated the requestJwt so we can't truly trust it. We leave AM to do the JWT validation. 
+        // The OAuth spec says this about errors:
+        //   If the resource owner denies the access request or if the request
+        //   fails for reasons other than a missing or invalid redirection URI,
+        //   the authorization server informs the client by adding the following
+        //   parameters to the query component of the redirection URI using the
+        //   "application/x-www-form-urlencoded" format, per Appendix B:
+        // However, the FAPI Advanced Part 1 compliance suite indicates that it is OK to simply show an error in 
+        // response to the request - which is what we will do for now. These tests really need to be rolled into 
+        // ForgeRock AM as a FAPI compliant option.
+        String requiredClaims = [ "scope", "state", "nonce" ]
         for (requiredClaim in requiredClaims) {
             if ( !requestJwtHasClaim(requiredClaim, requestJwtClaimSet) ) {
                 return logMissingClaimAndGetBadRequestResponse(requiredClaim)
@@ -90,11 +101,11 @@ logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
 
-private Boolean requestJwtHasScopeClaim(claimName, requestJwtClaims) {
+private Boolean requestJwtHasClaim(String claimName, JwtClaimSet requestJwtClaims) {
     return requestJwtClaims.getClaim(claimName)?true:false
 }
 
-private Response logMissingClaimAndGetBadRequestResponse(claimName, requestJwtClaims) {
+private Response logMissingClaimAndGetBadRequestResponse(String claimName) {
     String errorString = "Invalid Request JWT: must have '" + claimName + "' claim"
     logger.info(SCRIPT_NAME + errorString)
     return createBadRequestResponse(errorString)
@@ -128,7 +139,7 @@ private JwtClaimsSet getRequestJtwClaimSet() {
     }
     try {
         SignedJwt jwt = new JwtReconstruction().reconstructJwt(requestJwtString, SignedJwt.class)
-        return jwt.claimSet
+        return jwt.getClaimsSet()
     }
     catch (e) {
         logger.info(SCRIPT_NAME + 'BAD_REQUEST: Could not parse request JWT string', e)
