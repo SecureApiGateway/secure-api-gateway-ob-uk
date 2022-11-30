@@ -67,11 +67,12 @@ switch (httpMethod.toUpperCase()) {
         // }
         // def authRequestClaims = authRequestJwt.getClaimsSet()
 
-    // def scopes = authRequestClaims.getClaim("scope")
-    // if (!scopes){
-    //     logger.warn(SCRIPT_NAME + "Badly formed request jwt: Request object has not script claim")
-    //     return redirectWithError("Badly formed request jwt: must contain scope claim")
-    // }
+        // def scopes = authRequestClaims.getClaim("scope")
+        // if (!scopes){
+        //     logger.warn(SCRIPT_NAME + "Badly formed request jwt: Request object has not script claim")
+        //     return redirectWithError("Badly formed request jwt: must contain scope claim")
+        // }
+        break
     default:
         logger.debug(SCRIPT_NAME + 'Method not supported')
         return new Response(Status.NOT_FOUND)
@@ -90,17 +91,17 @@ private String isRequestValidForRedirection(requestJwt) {
     def redirectUri = requestJwtClaims.getClaim('redirect_uri')
 
     if (!redirectUri) {
-        return 'The request JWT has no or redirect_uri claim'
+        return 'Invalid Request JWT: must have a redirect_uri claim'
     }
 
     if (!requestJwtClaims.getClaim('client_id')) {
-        return 'The request JWT has no or client_id claim'
+        return 'Invalid Request JWT: must have a client_id claim'
     }
 
     return null
 }
 
-private JwtReconstruction getRequestJtw() {
+private SignedJwt getRequestJtw() {
     String requestJwtString  = getQueryParamFromRequest('request')
     if (!requestJwtString) {
         logger.info(SCRIPT_NAME + 'BAD_REQUEST: /authorize request must have a request query parameter')
@@ -131,20 +132,21 @@ private JwtReconstruction getRequestJtw() {
 // }
 
 /**
- *  Returns null if the parameter does not exist. Throws IllegalStateException if more than one query parameter with this name exists
+ *  Returns null if the parameter does not exist. Throws IllegalStateException if more than one query parameter with
+ *  this name exists
  */
 private String getQueryParamFromRequest(paramName) {
     def value = request.getQueryParams().get(paramName)
 
     if ( !value ) {
-        logger.info(SCRIPT_NAME + "No query parameter of name " + paramName + " exists in the request")
+        logger.info(SCRIPT_NAME + 'No query parameter of name ' + paramName + ' exists in the request')
         return null
     }
 
     if ( value.size != 1 ) {
-        logger.info(SCRIPT_NAME + "There are " + value.size + " values for request parameter " + paramName)
+        logger.info(SCRIPT_NAME + 'There are ' + value.size + ' values for request parameter ' + paramName)
         return null
     }
 
-    return value
+    return value[0]
 }
