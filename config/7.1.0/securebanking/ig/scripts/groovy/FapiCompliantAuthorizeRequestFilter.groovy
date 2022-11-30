@@ -108,6 +108,7 @@ private JwtReconstruction getRequestJtw() {
     }
     try{
         return new JwtReconstruction().reconstructJwt(requestJwtString, SignedJwt.class)
+    }
     catch (e){
         logger.info(SCRIPT_NAME + "BAD_REQUEST: Could not parse request JWT string", e)
         return null
