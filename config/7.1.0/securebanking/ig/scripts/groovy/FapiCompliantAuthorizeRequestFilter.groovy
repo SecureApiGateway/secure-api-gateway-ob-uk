@@ -47,10 +47,9 @@ switch (httpMethod.toUpperCase()) {
             + 'a signed jwt')
         }
 
-        String errorMessage = isRequestValidForRedirection(requestJwtClaimSet)
-        if (errorMessage != null) {
-            logger.info(SCRIPT_NAME + errorMessage)
-            return createBadRequestResponse(errorMessage)
+        Response errorResponse = isRequestValidForRedirection(requestJwtClaimSet)
+        if (errorResponse) {
+            return errorResponse
         }
 
         // ToDo - any failures of these tests should really result in errors being sent to the redirect URI, but we 
@@ -64,7 +63,7 @@ switch (httpMethod.toUpperCase()) {
         // However, the FAPI Advanced Part 1 compliance suite indicates that it is OK to simply show an error in 
         // response to the request - which is what we will do for now. These tests really need to be rolled into 
         // ForgeRock AM as a FAPI compliant option.
-        String requiredClaims = [ "scope", "state", "nonce" ]
+        String[] requiredClaims = [ "scope", "state", "nonce" ]
         for (requiredClaim in requiredClaims) {
             if ( !requestJwtHasClaim(requiredClaim, requestJwtClaimSet) ) {
                 return logMissingClaimAndGetBadRequestResponse(requiredClaim)
@@ -80,6 +79,16 @@ switch (httpMethod.toUpperCase()) {
 logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
+private Response isRequestValidForRedirection(requestJwtClaims) {
+    def redirectUri = requestJwtClaims.getClaim('redirect_uri')
+    String[] requiredClaims = ['redirect_uri', 'client_id']
+    for ( requiredClaim in requiredClaims ) {
+        if (!requestJwtHasClaim(reqiredClaim, requestJwtClaims) ) {
+            return logMissingClaimAndGetBadRequestResponse(requiredClaim)
+        }
+    }
+    return null
+}
 
 private Boolean requestJwtHasClaim(String claimName, JwtClaimsSet requestJwtClaims) {
     return requestJwtClaims.getClaim(claimName)?true:false
@@ -97,19 +106,6 @@ private Response createBadRequestResponse(errorMessage) {
     return badRequestResponse
 }
 
-private String isRequestValidForRedirection(requestJwtClaims) {
-    def redirectUri = requestJwtClaims.getClaim('redirect_uri')
-
-    if (!redirectUri) {
-        return 'Invalid Request JWT: must have a redirect_uri claim'
-    }
-
-    if (!requestJwtClaims.getClaim('client_id')) {
-        return 'Invalid Request JWT: must have a client_id claim'
-    }
-
-    return null
-}
 
 private JwtClaimsSet getRequestJtwClaimSet() {
     String requestJwtString  = getQueryParamFromRequest('request')
