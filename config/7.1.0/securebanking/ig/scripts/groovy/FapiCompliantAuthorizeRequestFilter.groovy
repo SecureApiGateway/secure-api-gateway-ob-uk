@@ -66,7 +66,7 @@ switch (httpMethod.toUpperCase()) {
         String[] requiredClaims = [ "scope", "state", "nonce" ]
         for (requiredClaim in requiredClaims) {
             if ( !requestJwtHasClaim(requiredClaim, requestJwtClaimSet) ) {
-                return logMissingClaimAndGetBadRequestResponse(requiredClaim)
+                return logMissingClaimAndGetBadRequestResponse("invalid_request", requiredClaim)
             }    
         }
 
@@ -84,7 +84,7 @@ private Response isRequestValidForRedirection(requestJwtClaims) {
     String[] requiredClaims = ['redirect_uri', 'client_id']
     for ( requiredClaim in requiredClaims ) {
         if (!requestJwtHasClaim(reqiredClaim, requestJwtClaims) ) {
-            return logMissingClaimAndGetBadRequestResponse(requiredClaim)
+            return logMissingClaimAndGetBadRequestResponse("invalid_request", requiredClaim)
         }
     }
     return null
@@ -94,8 +94,8 @@ private Boolean requestJwtHasClaim(String claimName, JwtClaimsSet requestJwtClai
     return requestJwtClaims.getClaim(claimName)?true:false
 }
 
-private Response logMissingClaimAndGetBadRequestResponse(String claimName) {
-    String errorString = "Invalid Request JWT: must have '" + claimName + "' claim"
+private Response logMissingClaimAndGetBadRequestResponse(String errorType, String claimName) {
+    String errorString = "error: " + errorType + "\nerrorDescription: Invalid Request JWT: must have '" + claimName + "' claim"
     logger.info(SCRIPT_NAME + errorString)
     return createBadRequestResponse(errorString)
 }
