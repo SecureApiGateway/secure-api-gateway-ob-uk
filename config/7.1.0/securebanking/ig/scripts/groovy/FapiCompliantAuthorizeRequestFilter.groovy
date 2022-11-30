@@ -41,18 +41,23 @@ switch (httpMethod.toUpperCase()) {
         // From the FAPI Part 1 Spec:
         //   Shall only use the parameters included in the signed request object passed via the request or request_uri
         //   parameter
-        def requestJwt = getRequestJtw()
-        if (!requestJwt) {
+        JwtClaimsSet requestJwtClaimSet = getRequestJtwClaimSet()
+        if (!requestJwtClaimSet) {
             return createBadRequestResponse("Request must have a 'request' query parameter the value of which must be "
             + 'a signed jwt')
         }
 
-        def errorMessage = isRequestValidForRedirection(requestJwt)
+        String errorMessage = isRequestValidForRedirection(requestJwtClaimSet)
         if (errorMessage != null) {
             logger.info(SCRIPT_NAME + errorMessage)
             return createBadRequestResponse(errorMessage)
         }
 
+        if ( !requestJwtHasScopeClaim(requestJwtClaimSet) ) {
+            String errorString = "Invalid Request JWT: must have scope claim"
+            logger.info(SCRIPT_NAME + errorString)
+            return createBadRequestResponse(errorString)
+        }
 
         // def requestQueryParam = getQueryParamFromRequest("request")
         // if(!requestQueryParam){
@@ -83,14 +88,18 @@ switch (httpMethod.toUpperCase()) {
 logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
+
+private Boolean requestJwtHasScopeClaim(requestJwtClaims) {
+    return requestJwtClaims.getClaim("scope")?true:false
+}
+
 private Response createBadRequestResponse(errorMessage) {
     def badRequestResponse = new Response(Status.BAD_REQUEST)
     badRequestResponse.setEntity(errorMessage)
     return badRequestResponse
 }
 
-private String isRequestValidForRedirection(requestJwt) {
-    def requestJwtClaims = requestJwt.getClaimsSet()
+private String isRequestValidForRedirection(requestJwtClaims) {
     def redirectUri = requestJwtClaims.getClaim('redirect_uri')
 
     if (!redirectUri) {
@@ -104,14 +113,15 @@ private String isRequestValidForRedirection(requestJwt) {
     return null
 }
 
-private SignedJwt getRequestJtw() {
+private JwtClaimsSet getRequestJtwClaimSet() {
     String requestJwtString  = getQueryParamFromRequest('request')
     if (!requestJwtString) {
         logger.info(SCRIPT_NAME + 'BAD_REQUEST: /authorize request must have a request query parameter')
         return null
     }
     try {
-        return new JwtReconstruction().reconstructJwt(requestJwtString, SignedJwt.class)
+        SignedJwt jwt = new JwtReconstruction().reconstructJwt(requestJwtString, SignedJwt.class)
+        return jwt.claimSet
     }
     catch (e) {
         logger.info(SCRIPT_NAME + 'BAD_REQUEST: Could not parse request JWT string', e)
