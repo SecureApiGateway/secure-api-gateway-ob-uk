@@ -71,26 +71,6 @@ switch (httpMethod.toUpperCase()) {
             }    
         }
 
-        // def requestQueryParam = getQueryParamFromRequest("request")
-        // if(!requestQueryParam){
-        //     return errorResponseFactory.invalidRedirectUriErrorResponse(SCRIPT_NAME)
-        // } else {
-        //     logger.debug(SCRIPT_NAME + " requestQueryParam is " + requestQueryParam[0])
-        // }
-
-        // try {
-        //     authRequestJwt = new JwtReconstruction().reconstructJwt(requestQueryParam, SignedJwt.class)
-        // } catch (e) {
-        //     logger.warn(SCRIPT_NAME + "Badly formed request jwt: failed to decode registration request JWT", e)
-        //     return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
-        // }
-        // def authRequestClaims = authRequestJwt.getClaimsSet()
-
-        // def scopes = authRequestClaims.getClaim("scope")
-        // if (!scopes){
-        //     logger.warn(SCRIPT_NAME + "Badly formed request jwt: Request object has not script claim")
-        //     return redirectWithError("Badly formed request jwt: must contain scope claim")
-        // }
         break
     default:
         logger.debug(SCRIPT_NAME + 'Method not supported')
@@ -101,7 +81,7 @@ logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
 
-private Boolean requestJwtHasClaim(String claimName, JwtClaimSet requestJwtClaims) {
+private Boolean requestJwtHasClaim(String claimName, JwtClaimsSet requestJwtClaims) {
     return requestJwtClaims.getClaim(claimName)?true:false
 }
 
