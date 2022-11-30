@@ -101,7 +101,7 @@ private String isRequestValidForRedirection(requestJwt) {
 }
 
 private JwtReconstruction getRequestJtw() {
-    String requestJwtString  = getQueryParamFromrequest('request')
+    String requestJwtString  = getQueryParamFromRequest('request')
     if (!requestJwtString) {
         logger.info(SCRIPT_NAME + 'BAD_REQUEST: /authorize request must have a request query parameter')
         return null
@@ -133,18 +133,18 @@ private JwtReconstruction getRequestJtw() {
 /**
  *  Returns null if the parameter does not exist. Throws IllegalStateException if more than one query parameter with this name exists
  */
-// private String getQueryParamFromRequest(paramName) {
-//     def value = request.getQueryParams().get(paramName)
+private String getQueryParamFromRequest(paramName) {
+    def value = request.getQueryParams().get(paramName)
 
-//     if ( !value ) {
-//         logger.info(SCRIPT_NAME + "No query parameter of name " + paramName + " exists in the request")
-//         return null
-//     }
+    if ( !value ) {
+        logger.info(SCRIPT_NAME + "No query parameter of name " + paramName + " exists in the request")
+        return null
+    }
 
-//     if ( value.size != 1 ) {
-//         logger.info(SCRIPT_NAME + "There are " + value.size + " values for request parameter " + paramName)
-//         return null
-//     }
+    if ( value.size != 1 ) {
+        logger.info(SCRIPT_NAME + "There are " + value.size + " values for request parameter " + paramName)
+        return null
+    }
 
-//     return value
-// }
+    return value
+}
