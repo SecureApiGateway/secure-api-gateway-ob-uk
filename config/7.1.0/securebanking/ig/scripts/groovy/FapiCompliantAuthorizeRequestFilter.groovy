@@ -27,18 +27,20 @@ def httpMethod = request.method
 
 switch (httpMethod.toUpperCase()) {
     case 'GET':
+    case 'POST':
         // Parse incoming registration JWT
         logger.debug(SCRIPT_NAME + 'Parsing authorize request')
 
         // From the OAuth 2.0 Spec:
-        // If the request fails due to a missing, invalid, or mismatching
-        // redirection URI, or if the client identifier is missing or invalid,
-        // the authorization server SHOULD inform the resource owner of the
-        // error and MUST NOT automatically redirect the user-agent to the
-        // invalid redirection URI.
+        //   If the request fails due to a missing, invalid, or mismatching
+        //   redirection URI, or if the client identifier is missing or invalid,
+        //   the authorization server SHOULD inform the resource owner of the
+        //   error and MUST NOT automatically redirect the user-agent to the
+        //   invalid redirection URI.
+        //
         // From the FAPI Part 1 Spec:
-        // Shall only use the parameters included in the signed request object passed via the request or request_uri
-        // parameter
+        //   Shall only use the parameters included in the signed request object passed via the request or request_uri
+        //   parameter
         def requestJwt = getRequestJtw()
         if (!requestJwt) {
             return createBadRequestResponse("Request must have a 'request' query parameter the value of which must be "
@@ -47,10 +49,10 @@ switch (httpMethod.toUpperCase()) {
 
         def errorMessage = isRequestValidForRedirection(requestJwt)
         if (errorMessage != null) {
+            logger.info(SCRIPT_NAME + errorMessage)
             return createBadRequestResponse(errorMessage)
         }
 
-        // // If we can validate the redirect_uris then any
 
         // def requestQueryParam = getQueryParamFromRequest("request")
         // if(!requestQueryParam){
@@ -78,6 +80,7 @@ switch (httpMethod.toUpperCase()) {
         return new Response(Status.NOT_FOUND)
 }
 
+logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
 private Response createBadRequestResponse(errorMessage) {
