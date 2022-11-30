@@ -1,7 +1,7 @@
 import groovy.json.JsonSlurper
 import org.forgerock.json.jose.jws.SignedJwt
 import org.forgerock.json.jose.common.JwtReconstruction
-//import com.securebanking.gateway.dcr.ErrorResponseFactory
+import org.forgerock.json.jose.jwt.JwtClaimsSet
 import org.forgerock.http.protocol.Status
 
 /**
@@ -53,10 +53,11 @@ switch (httpMethod.toUpperCase()) {
             return createBadRequestResponse(errorMessage)
         }
 
-        if ( !requestJwtHasScopeClaim(requestJwtClaimSet) ) {
-            String errorString = "Invalid Request JWT: must have scope claim"
-            logger.info(SCRIPT_NAME + errorString)
-            return createBadRequestResponse(errorString)
+        String requiredClaims = ["scope", "state"]
+        for (requiredClaim in requiredClaims) {
+            if ( !requestJwtHasClaim(requiredClaim, requestJwtClaimSet) ) {
+                return logMissingClaimAndGetBadRequestResponse(requiredClaim)
+            }    
         }
 
         // def requestQueryParam = getQueryParamFromRequest("request")
@@ -89,8 +90,14 @@ logger.info("Request is FAPI compliant - calling next.handle")
 return next.handle(context, request)
 
 
-private Boolean requestJwtHasScopeClaim(requestJwtClaims) {
-    return requestJwtClaims.getClaim("scope")?true:false
+private Boolean requestJwtHasScopeClaim(claimName, requestJwtClaims) {
+    return requestJwtClaims.getClaim(claimName)?true:false
+}
+
+private Response logMissingClaimAndGetBadRequestResponse(claimName, requestJwtClaims) {
+    String errorString = "Invalid Request JWT: must have '" + claimName + "' claim"
+    logger.info(SCRIPT_NAME + errorString)
+    return createBadRequestResponse(errorString)
 }
 
 private Response createBadRequestResponse(errorMessage) {
