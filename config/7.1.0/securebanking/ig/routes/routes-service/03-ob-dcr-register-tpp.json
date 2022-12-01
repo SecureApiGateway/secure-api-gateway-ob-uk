@@ -39,6 +39,14 @@
           }
         },
         {
+          "comment": "Validate that the request is FAPI compliant",
+          "name": "FAPIAdvancedDCRValidationFilter",
+          "type": "FAPIAdvancedDCRValidationFilter",
+          "config": {
+            "certificateHeader": "ssl-client-cert"
+          }
+        },
+        {
           "comment": "Pre process registration request",
           "name": "ProcessRegistration",
           "type": "ScriptableFilter",
