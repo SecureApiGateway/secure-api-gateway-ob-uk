@@ -17,7 +17,7 @@ The [CachingJwkSetService](src/main/java/com/forgerock/sapi/gateway/jwks/cache/C
 ## IG heap configuration
 Caching behaviour can be controlled via IG config.
 
-A heap object with name: `OBJwkSetService` of type `jwks.com.forgerock.sapi.gateway.JwkSetService` is a dependency of routes which need to fetch JWKS data.
+A heap object with name: `OBJwkSetService` of type `com.forgerock.sapi.gateway.jwks.JwkSetService` is a dependency of routes which need to fetch JWKS data.
 
 The following snippets can be placed into the heap section of [config.json](../config/7.1.0/securebanking/ig/config/prod/config/config.json) to control which JwkSetService implementation is used.
 
@@ -25,7 +25,7 @@ The following snippets can be placed into the heap section of [config.json](../c
 ```
 {
       "name": "OBJwkSetService",
-      "type": "caffeine.cache.jwks.com.forgerock.sapi.gateway.CaffeineCachingJwkSetService",
+      "type": "CaffeineCachingJwkSetService",
       "config": {
         "maxCacheEntries": 500,
         "expireAfterWriteDuration": "12 hours"
@@ -43,7 +43,7 @@ The following snippets can be placed into the heap section of [config.json](../c
 ```
 {
       "name": "OBJwkSetService",
-      "type": "jwks.com.forgerock.sapi.gateway.RestJwkSetService"
+      "type": "RestJwkSetService"
 }
 ```
 
@@ -57,9 +57,9 @@ The [ProcessDetachedSig](../config/7.1.0/securebanking/ig/scripts/groovy/Process
 Routes which use the ProcessDetachedSig filter must ensure that they configure the filter arg: `"jwkSetService": "${heap['OBJwkSetService']}"`
 
 ## Extensions
-Clients can use an alternative caching library by writing an adaptor class which implements the [cache.jwks.com.forgerock.sapi.gateway.Cache](src/main/java/com/forgerock/sapi/gateway/jwks/cache/Cache.java) interface. 
+Clients can use an alternative caching library by writing an adaptor class which implements the [com.forgerock.sapi.gateway.jwks.cache.Cache](src/main/java/com/forgerock/sapi/gateway/jwks/cache/Cache.java) interface. 
 
-The contents of package [com.forgerock.securebanking.uk.gateway.jwks.cache.caffeine](src/main/java/com/forgerock/sapi/gateway/jwks/cache/caffeine/) demonstrate how this can be done. In this package there is: a CaffeineCache adaptor class, CaffeineCachingJwkSetService (which extends CachingJwkSetService) and a heaplet object which is used to construct and configure the caffeine caching. 
+The contents of package [com.forgerock.sapi.gateway.jwks.cache.caffeine](src/main/java/com/forgerock/sapi/gateway/jwks/cache/caffeine/) demonstrate how this can be done. In this package there is: a CaffeineCache adaptor class, CaffeineCachingJwkSetService (which extends CachingJwkSetService) and a heaplet object which is used to construct and configure the caffeine caching. 
 
 # DCR Validation Support
 TBC
