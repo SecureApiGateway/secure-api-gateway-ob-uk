@@ -168,175 +168,6 @@ class FAPIAdvancedDCRValidationFilterTest {
         }
     }
 
-    private <T> void runValidationAndVerifyExceptionThrown(Validator<T> validator, T requestObject,
-                                                           ErrorCode expectedErrorCode, String expectedErrorMessage) {
-        final ValidationException validationException = Assertions.assertThrows(ValidationException.class,
-                                                                                () -> validator.validate(requestObject));
-        assertEquals(expectedErrorCode, validationException.getErrorCode(), "errorCode field");
-        assertEquals(expectedErrorMessage, validationException.getErrorDescription(), "errorMessage field");
-    }
-
-    @Test
-    void redirectUrisFieldMissing() {
-        final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, missingField,
-                ErrorCode.INVALID_REDIRECT_URI, "request object must contain redirect_uris field");
-    }
-
-    @Test
-    void redirectUrisArrayEmpty() {
-        final JsonValue emptyArray = json(object(field("a", "b"), field("c", "d"),
-                field("redirect_uris", array())));
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, emptyArray,
-                ErrorCode.INVALID_REDIRECT_URI, "redirect_uris array must not be empty");
-    }
-
-    @Test
-    void redirectUrisNonHttpsUri() {
-        final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
-                field("redirect_uris", array("https://www.google.com", "http://www.google.co.uk"))));
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
-                ErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
-    }
-
-    @Test
-    void redirectUrisMalformedUri() {
-        final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
-                field("redirect_uris", array("https://www.google.com", "123:@///324dfs+w34r"))));
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
-                ErrorCode.INVALID_REDIRECT_URI, "redirect_uri: 123:@///324dfs+w34r is not a valid URI");
-    }
-
-    @Test
-    void validRedirectUris() {
-        final JsonValue validRedirect = json(object(field("a", "b"), field("c", "d"),
-                field("redirect_uris", array("https://www.google.com", "https://www.google.co.uk"))));
-        fapiValidationFilter.validateRedirectUris(validRedirect);
-    }
-
-    @Test
-    void tokenEndpointAuthMethodFieldMissing() {
-        final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, missingField,
-                ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: token_endpoint_auth_method");
-    }
-
-    @Test
-    void tokenEndpointAuthMethodValueNotSupported() {
-        final String[] invalidAuthMethods = new String[]{"", "none", "client_secret"};
-        for (String invalidAuthMethod : invalidAuthMethods) {
-            final JsonValue invalidAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", invalidAuthMethod)));
-            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, invalidAuthMethodJson,
-                    ErrorCode.INVALID_CLIENT_METADATA, "token_endpoint_auth_method not supported, must be one of: [private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
-        }
-    }
-
-    @Test
-    void tokenEndpointAuthMethodValid() {
-        final String[] validMethods = new String[]{"private_key_jwt", "self_signed_tls_client_auth", "tls_client_auth"};
-        for (String validAuthMethod : validMethods) {
-            final JsonValue validAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", validAuthMethod)));
-            fapiValidationFilter.validateTokenEndpointAuthMethods(validAuthMethodJson);
-        }
-    }
-
-    @Test
-    void signingAlgorithmFieldsMissing() {
-        // All of these fields must be supplied
-        final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
-                                                       "request_object_signing_alg");
-
-        // Test submitting requests which each omit one of the fields in turn
-        for (String fieldToOmit : signingAlgoFields) {
-            final JsonValue registrationRequest = json(object());
-            signingAlgoFields.stream().filter(field -> !field.equals(fieldToOmit)).forEach(field -> registrationRequest.add(field, "PS256"));
-            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
-                    ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: " + fieldToOmit);
-        }
-    }
-
-    @Test
-    void signingAlgorithmFieldsUnsupportedAlgo() {
-        final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
-                                                       "request_object_signing_alg");
-
-        // Test submitting requests which each set one of the fields to an invalid algorithm in turn
-        for (String invalidAlgoField : signingAlgoFields) {
-            final JsonValue registrationRequest = json(object());
-            signingAlgoFields.stream().filter(field -> !field.equals(invalidAlgoField)).forEach(field -> registrationRequest.add(field, "PS256"));
-            registrationRequest.add(invalidAlgoField, "RS256");
-            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
-                    ErrorCode.INVALID_CLIENT_METADATA, "request object field: " + invalidAlgoField + ", must be one of: [ES256, PS256]");
-        }
-    }
-
-    @Test
-    void signingAlgorithmFieldsValid() {
-        fapiValidationFilter.validateSigningAlgorithmUsed(json(object(field("token_endpoint_auth_signing_alg", "PS256"),
-                                                                      field("id_token_signed_response_alg", "PS256"),
-                                                                      field("request_object_signing_alg", "PS256"))));
-    }
-
-    @Test
-    void responseTypeFieldMissing() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("blah", "blah"))),
-                ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_types");
-    }
-
-    @Test
-    void responseTypesInvalid() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("blah")))),
-                ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: [[code], [code id_token]]");
-    }
-
-    @Test
-    void responseTypesCodeValid() {
-        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code")), field("response_mode", "jwt"))));
-    }
-
-    @Test
-    void responseTypesCodeMissingResponseMode() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")))),
-                ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_mode when response_types is: [code]");
-    }
-
-    @Test
-    void responseTypesCodeInvalidResponseMode() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")),
-                                                                                                       field("response_mode", "blah"))),
-                ErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: [jwt]");
-    }
-
-    @Test
-    void responseTypesCodeIdTokenValid() {
-        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code id_token")),
-                                                               field("scope", "blah openid something"))));
-    }
-
-    @Test
-    void responseTypesCodeIdTokenMissingScopeField() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
-                json(object(field("response_types", array("code id_token")))),
-                ErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
-    }
-
-    @Test
-    void responseTypesCodeIdTokenNotRequestingOpenIdScope() {
-        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
-                json(object(field("response_types", array("code id_token")), field("scope", "accounts payments"))),
-                ErrorCode.INVALID_CLIENT_METADATA,
-                "request object must include openid as one of the requested scopes when response_types is: [code id_token]");
-    }
-
-    @Test
-    void validRequest() throws InterruptedException, ExecutionException, TimeoutException, IOException {
-        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
-        final String testCertPem = TEST_CERT_PEM;
-        final FAPIAdvancedDCRValidationFilter filter = fapiValidationFilter;
-
-        submitRequestAndValidateSuccessful(validRegRequestObj, testCertPem, filter);
-    }
-
     private void submitRequestAndValidateSuccessful(Map<String, Object> validRegRequestObj, String testCertPem, FAPIAdvancedDCRValidationFilter filter) throws ExecutionException, TimeoutException, InterruptedException, IOException {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
@@ -355,92 +186,280 @@ class FAPIAdvancedDCRValidationFilterTest {
         }
     }
 
-    @Test
-    void invalidRequestFailsFieldLevelValidation() throws InterruptedException, ExecutionException, TimeoutException, IOException {
-        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
+    /**
+     * Tests for the individual validators which validate particular fields within the Registration Request JWT.
+     */
+    @Nested
+    class RegistrationRequestObjectFieldValidatorTests {
 
-        final Map<String, Object> invalidRegistrationRequest = new HashMap<>(VALID_REG_REQUEST_OBJ);
-        invalidRegistrationRequest.put("token_endpoint_auth_method", "blah"); // invalidate one of the fields
-        final String signedJwt = createSignedJwt(invalidRegistrationRequest);
-        request.getEntity().setString(signedJwt);
+        private <T> void runValidationAndVerifyExceptionThrown(Validator<T> validator, T requestObject,
+                ErrorCode expectedErrorCode, String expectedErrorMessage) {
+            final ValidationException validationException = Assertions.assertThrows(ValidationException.class,
+                    () -> validator.validate(requestObject));
+            assertEquals(expectedErrorCode, validationException.getErrorCode(), "errorCode field");
+            assertEquals(expectedErrorMessage, validationException.getErrorDescription(), "errorMessage field");
+        }
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA,
-                "token_endpoint_auth_method not supported, must be one of: " +
-                        "[private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
+        @Test
+        void redirectUrisFieldMissing() {
+            final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, missingField,
+                    ErrorCode.INVALID_REDIRECT_URI, "request object must contain redirect_uris field");
+        }
+
+        @Test
+        void redirectUrisArrayEmpty() {
+            final JsonValue emptyArray = json(object(field("a", "b"), field("c", "d"),
+                    field("redirect_uris", array())));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, emptyArray,
+                    ErrorCode.INVALID_REDIRECT_URI, "redirect_uris array must not be empty");
+        }
+
+        @Test
+        void redirectUrisNonHttpsUri() {
+            final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
+                    field("redirect_uris", array("https://www.google.com", "http://www.google.co.uk"))));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
+                    ErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
+        }
+
+        @Test
+        void redirectUrisMalformedUri() {
+            final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
+                    field("redirect_uris", array("https://www.google.com", "123:@///324dfs+w34r"))));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
+                    ErrorCode.INVALID_REDIRECT_URI, "redirect_uri: 123:@///324dfs+w34r is not a valid URI");
+        }
+
+        @Test
+        void validRedirectUris() {
+            final JsonValue validRedirect = json(object(field("a", "b"), field("c", "d"),
+                    field("redirect_uris", array("https://www.google.com", "https://www.google.co.uk"))));
+            fapiValidationFilter.validateRedirectUris(validRedirect);
+        }
+
+        @Test
+        void tokenEndpointAuthMethodFieldMissing() {
+            final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, missingField,
+                    ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: token_endpoint_auth_method");
+        }
+
+        @Test
+        void tokenEndpointAuthMethodValueNotSupported() {
+            final String[] invalidAuthMethods = new String[]{"", "none", "client_secret"};
+            for (String invalidAuthMethod : invalidAuthMethods) {
+                final JsonValue invalidAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", invalidAuthMethod)));
+                runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, invalidAuthMethodJson,
+                        ErrorCode.INVALID_CLIENT_METADATA, "token_endpoint_auth_method not supported, must be one of: [private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
+            }
+        }
+
+        @Test
+        void tokenEndpointAuthMethodValid() {
+            final String[] validMethods = new String[]{"private_key_jwt", "self_signed_tls_client_auth", "tls_client_auth"};
+            for (String validAuthMethod : validMethods) {
+                final JsonValue validAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", validAuthMethod)));
+                fapiValidationFilter.validateTokenEndpointAuthMethods(validAuthMethodJson);
+            }
+        }
+
+        @Test
+        void signingAlgorithmFieldsMissing() {
+            // All of these fields must be supplied
+            final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
+                    "request_object_signing_alg");
+
+            // Test submitting requests which each omit one of the fields in turn
+            for (String fieldToOmit : signingAlgoFields) {
+                final JsonValue registrationRequest = json(object());
+                signingAlgoFields.stream().filter(field -> !field.equals(fieldToOmit)).forEach(field -> registrationRequest.add(field, "PS256"));
+                runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
+                        ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: " + fieldToOmit);
+            }
+        }
+
+        @Test
+        void signingAlgorithmFieldsUnsupportedAlgo() {
+            final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
+                    "request_object_signing_alg");
+
+            // Test submitting requests which each set one of the fields to an invalid algorithm in turn
+            for (String invalidAlgoField : signingAlgoFields) {
+                final JsonValue registrationRequest = json(object());
+                signingAlgoFields.stream().filter(field -> !field.equals(invalidAlgoField)).forEach(field -> registrationRequest.add(field, "PS256"));
+                registrationRequest.add(invalidAlgoField, "RS256");
+                runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
+                        ErrorCode.INVALID_CLIENT_METADATA, "request object field: " + invalidAlgoField + ", must be one of: [ES256, PS256]");
+            }
+        }
+
+        @Test
+        void signingAlgorithmFieldsValid() {
+            fapiValidationFilter.validateSigningAlgorithmUsed(json(object(field("token_endpoint_auth_signing_alg", "PS256"),
+                    field("id_token_signed_response_alg", "PS256"),
+                    field("request_object_signing_alg", "PS256"))));
+        }
+
+        @Test
+        void responseTypeFieldMissing() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("blah", "blah"))),
+                    ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_types");
+        }
+
+        @Test
+        void responseTypesInvalid() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("blah")))),
+                    ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: [[code], [code id_token]]");
+        }
+
+        @Test
+        void responseTypesCodeValid() {
+            fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code")), field("response_mode", "jwt"))));
+        }
+
+        @Test
+        void responseTypesCodeMissingResponseMode() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")))),
+                    ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_mode when response_types is: [code]");
+        }
+
+        @Test
+        void responseTypesCodeInvalidResponseMode() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")),
+                            field("response_mode", "blah"))),
+                    ErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: [jwt]");
+        }
+
+        @Test
+        void responseTypesCodeIdTokenValid() {
+            fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code id_token")),
+                    field("scope", "blah openid something"))));
+        }
+
+        @Test
+        void responseTypesCodeIdTokenMissingScopeField() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
+                    json(object(field("response_types", array("code id_token")))),
+                    ErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
+        }
+
+        @Test
+        void responseTypesCodeIdTokenNotRequestingOpenIdScope() {
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
+                    json(object(field("response_types", array("code id_token")), field("scope", "accounts payments"))),
+                    ErrorCode.INVALID_CLIENT_METADATA,
+                    "request object must include openid as one of the requested scopes when response_types is: [code id_token]");
+        }
     }
 
+    /**
+     * Tests which invoke the Filter's filter method, passing HTTP Request and Context objects and validate the
+     * HTTP Response is valid.
+     */
+    @Nested
+    class FilterHttpRequestTests {
 
-    @Test
-    void invalidRequestMissingCert() throws Exception {
-        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
+        @Test
+        void validRequest() throws InterruptedException, ExecutionException, TimeoutException, IOException {
+            final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+            final String testCertPem = TEST_CERT_PEM;
+            final FAPIAdvancedDCRValidationFilter filter = fapiValidationFilter;
 
-        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
-        final String signedJwt = createSignedJwt(validRegRequestObj);
-        request.getEntity().setString(signedJwt);
+            submitRequestAndValidateSuccessful(validRegRequestObj, testCertPem, filter);
+        }
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+        @Test
+        void invalidRequestFailsFieldLevelValidation() throws InterruptedException, ExecutionException, TimeoutException, IOException {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request();
+            request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate must be supplied");
+            final Map<String, Object> invalidRegistrationRequest = new HashMap<>(VALID_REG_REQUEST_OBJ);
+            invalidRegistrationRequest.put("token_endpoint_auth_method", "blah"); // invalidate one of the fields
+            final String signedJwt = createSignedJwt(invalidRegistrationRequest);
+            request.getEntity().setString(signedJwt);
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA,
+                    "token_endpoint_auth_method not supported, must be one of: " +
+                            "[private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
+        }
+
+
+        @Test
+        void invalidRequestMissingCert() throws Exception {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request();
+
+            final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+            final String signedJwt = createSignedJwt(validRegRequestObj);
+            request.getEntity().setString(signedJwt);
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate must be supplied");
+        }
+
+        @Test
+        void invalidRequestInvalidCert() throws Exception {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request();
+            request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode("this is an invalid cert......", StandardCharsets.UTF_8)));
+
+            final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+            final String signedJwt = createSignedJwt(validRegRequestObj);
+            request.getEntity().setString(signedJwt);
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
+        }
+
+        @Test
+        void invalidRequestInvalidJwt() throws Exception {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request();
+            request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
+
+            request.getEntity().setString("plain text instead of a JWT");
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "registration request entity is missing or malformed");
+        }
+
+        @Test
+        void invalidRequestJwtSignedWithUnsupportedAlgo() throws Exception {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request();
+            request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
+
+            // RS256 JWT signing algorithm not supported
+            final String signedJwt = createSignedJwt(VALID_REG_REQUEST_OBJ, JWSAlgorithm.RS256);
+            request.getEntity().setString(signedJwt);
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "DCR request JWT signed must be signed with one of: [ES256, PS256]");
+        }
     }
 
-    @Test
-    void invalidRequestInvalidCert() throws Exception {
-        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode("this is an invalid cert......", StandardCharsets.UTF_8)));
-
-        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
-        final String signedJwt = createSignedJwt(validRegRequestObj);
-        request.getEntity().setString(signedJwt);
-
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
-
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
-    }
-
-    @Test
-    void invalidRequestInvalidJwt() throws Exception {
-        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
-
-        request.getEntity().setString("plain text instead of a JWT");
-
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
-
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "registration request entity is missing or malformed");
-    }
-
-    @Test
-    void invalidRequestJwtSignedWithUnsupportedAlgo() throws Exception {
-        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
-
-        // RS256 JWT signing algorithm not supported
-        final String signedJwt = createSignedJwt(VALID_REG_REQUEST_OBJ, JWSAlgorithm.RS256);
-        request.getEntity().setString(signedJwt);
-
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
-
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "DCR request JWT signed must be signed with one of: [ES256, PS256]");
-    }
-
+    /**
+     * Tests for the Heaplet configuration
+     */
     @Nested
     class HeapletConfigurationTests {
         @Test
