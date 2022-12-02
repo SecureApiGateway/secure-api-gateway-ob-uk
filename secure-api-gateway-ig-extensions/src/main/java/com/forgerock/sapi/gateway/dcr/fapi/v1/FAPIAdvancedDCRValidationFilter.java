@@ -251,6 +251,17 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     }
 
     /**
+     * When configuring the requestObjectValidators (via the setter), callers can extend the validation rules applied by
+     * first calling this method and then appending additional validators to the collection.
+     *
+     * @return list of validators that apply the default validation rules to the request object as per the spec.
+     */
+    public List<Validator<JsonValue>> getDefaultRequestObjectValidators() {
+        return List.of(this::validateRedirectUris, this::validateResponseTypes, this::validateSigningAlgorithmUsed,
+                       this::validateTokenEndpointAuthMethods);
+    }
+
+    /**
      * Supplier which returns a certificate String as sourced from a Request Header.
      */
     public static class CertificateFromHeaderSupplier implements BiFunction<Context, Request, String> {
@@ -362,8 +373,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             final BiFunction<Context, Request, String> certificateSupplier = new CertificateFromHeaderSupplier(clientCertHeaderName);
             filter.setCertificateSupplier(certificateSupplier);
 
-            final List<Validator<JsonValue>> requestObjectValidators = List.of(filter::validateRedirectUris,
-                    filter::validateResponseTypes, filter::validateSigningAlgorithmUsed, filter::validateTokenEndpointAuthMethods);
+            final List<Validator<JsonValue>> requestObjectValidators = filter.getDefaultRequestObjectValidators();
             filter.setRequestObjectValidators(requestObjectValidators);
 
             final BiFunction<Context, Request, JsonValue> registrationObjectSupplier = new RegistrationObjectFromEntityJWTSupplier(supportedSigningAlgorithms);
