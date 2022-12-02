@@ -20,10 +20,11 @@ import org.forgerock.util.Reject;
 /**
  * Exception for modelling DCR Validation Errors.
  *
- * This exception contains errorCode and errorMessage fields which can be used to produce an error response which adheres
+ * This exception contains errorCode and errorDescription fields which can be used to produce an error response which adheres
  * to OAuth 2.0 Dynamic Client Registration Protocol spec: https://www.rfc-editor.org/rfc/rfc7591#section-3.2.2
  */
 public class ValidationException extends RuntimeException {
+
     public enum ErrorCode {
         INVALID_REDIRECT_URI("invalid_redirect_uri"),
         INVALID_CLIENT_METADATA("invalid_client_metadata"),

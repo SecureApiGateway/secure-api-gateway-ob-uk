@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.fapi;
+package com.forgerock.sapi.gateway.dcr.fapi.v1;
 
 import static org.forgerock.json.JsonValue.array;
 import static org.forgerock.json.JsonValue.field;
@@ -59,6 +59,7 @@ import org.junit.jupiter.api.Test;
 import com.forgerock.sapi.gateway.dcr.ValidationException;
 import com.forgerock.sapi.gateway.dcr.ValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.Validator;
+import com.forgerock.sapi.gateway.dcr.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -194,6 +195,14 @@ class FAPIAdvancedDCRValidationFilterTest {
                 field("redirect_uris", array("https://www.google.com", "http://www.google.co.uk"))));
         runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
                 ErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
+    }
+
+    @Test
+    void redirectUrisMalformedUri() {
+        final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
+                field("redirect_uris", array("https://www.google.com", "123:@///324dfs+w34r"))));
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
+                ErrorCode.INVALID_REDIRECT_URI, "redirect_uri: 123:@///324dfs+w34r is not a valid URI");
     }
 
     @Test

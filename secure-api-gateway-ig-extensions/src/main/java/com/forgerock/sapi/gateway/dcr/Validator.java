@@ -17,7 +17,8 @@ package com.forgerock.sapi.gateway.dcr;
 
 /**
  * Validator to be used to valid objects as part of Dynamic Client Registration
- * @param <T>
+ *
+ * @param <T> the type of the object which can be validated
  */
 @FunctionalInterface
 public interface Validator<T> {

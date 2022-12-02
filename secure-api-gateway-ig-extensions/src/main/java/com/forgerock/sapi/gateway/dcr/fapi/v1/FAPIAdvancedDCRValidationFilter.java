@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.fapi;
+package com.forgerock.sapi.gateway.dcr.fapi.v1;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
@@ -69,16 +70,17 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  *
  * The {@link Heaplet} is used to construct this filter, see its documentation for the configuration options.
  */
-// TODO Review name and package - this is fapi v1, we know that fapi v2 will become available eventually.
 public class FAPIAdvancedDCRValidationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FAPIAdvancedDCRValidationFilter.class);
 
     private static final List<String> RESPONSE_TYPE_CODE = List.of("code");
     private static final List<String> RESPONSE_TYPE_CODE_ID_TOKEN = List.of("code id_token");
+
     private static final List<String> DEFAULT_SUPPORTED_JWS_ALGORITHMS = Stream.of(JwsAlgorithm.PS256, JwsAlgorithm.ES256)
                                                                                .map(JwsAlgorithm::getJwaAlgorithmName)
                                                                                .collect(Collectors.toList());
+
     private static final List<String> DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS = List.of("tls_client_auth",
                                                                                               "self_signed_tls_client_auth",
                                                                                               "private_key_jwt");
@@ -157,7 +159,12 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             throw new ValidationException(ErrorCode.INVALID_REDIRECT_URI, "redirect_uris array must not be empty");
         }
         for (String uriString : redirectUris) {
-            final URI redirectUri = URI.create(uriString);
+            final URI redirectUri;
+            try {
+                redirectUri = new URI(uriString);
+            } catch (URISyntaxException ex) {
+                throw new ValidationException(ErrorCode.INVALID_REDIRECT_URI, "redirect_uri: " + uriString + " is not a valid URI");
+            }
             if (!"https".equals(redirectUri.getScheme())) {
                 throw new ValidationException(ErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
             }
@@ -172,7 +179,8 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         if (responseTypes.equals(RESPONSE_TYPE_CODE)) {
             validateResponseTypeCode(registrationObject);
         } else if (!responseTypes.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
-            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: " + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
+            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: "
+                    + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
         }
     }
 
@@ -267,9 +275,6 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      * Default implementation of the ClientCertificateValidator.
      * This function takes a pem encoded certificate String and validates it.
      */
-    // TODO Review - we are duplicating the logic of ParseCertificate. I believe there are plans to get rid or tidy up ParseCertificate
-    // It may still be useful to have a filter which grabs the cert pem from the header, parses it as a java.security.cert.Certificate and makes it available to filters down the chain
-    // The FAPI filter and the DCR filter would both want to have access to the cert, so it would be better to avoid parsing it multiple types.
     public static class DefaultClientCertificateValidator implements Validator<String> {
         @Override
         public void validate(String certPem) {
@@ -281,7 +286,6 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             try {
                 final CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
                 final Certificate certificate = certificateFactory.generateCertificate(certStream);
-                // TODO is there any validation we can do to the certificate object?
             } catch (CertificateException e) {
                 LOGGER.warn("FAPI DCR failed due to invalid cert", e);
                 throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
@@ -307,7 +311,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         public JsonValue apply(Context context, Request request) {
             try {
                 final SignedJwt signedJwt = new JwtReconstruction().reconstructJwt(request.getEntity().getString(),
-                        SignedJwt.class);
+                                                                                   SignedJwt.class);
                 final JwsAlgorithm signingAlgo = signedJwt.getHeader().getAlgorithm();
                 // This validation is being done here as outside the supplier we are not aware that a JWT existed
                 if (signingAlgo == null || !supportedSigningAlgorithms.contains(signingAlgo.getJwaAlgorithmName())) {
