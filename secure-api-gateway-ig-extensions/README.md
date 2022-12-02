@@ -61,8 +61,35 @@ Clients can use an alternative caching library by writing an adaptor class which
 
 The contents of package [com.forgerock.sapi.gateway.jwks.cache.caffeine](src/main/java/com/forgerock/sapi/gateway/jwks/cache/caffeine/) demonstrate how this can be done. In this package there is: a CaffeineCache adaptor class, CaffeineCachingJwkSetService (which extends CachingJwkSetService) and a heaplet object which is used to construct and configure the caffeine caching. 
 
-# DCR Validation Support
-TBC
-
 # FAPI Support
-TBC
+This module contains classes and Filters which can help with achieving [FAPI](https://openid.net/specs/openid-financial-api-part-2-1_0.html) conformance.
+
+## FAPIAdvancedDCRValidationFilter
+This Filter can be used as part of an OAuth2 filter chain to validate that the OAuth2 DCR request will produce a FAPI compliant OAuth2 client.
+
+The Filter should be configured in the chain before the filters which actually implement DCR. This means that typically the filter should go near the start of the chain.
+
+The Filter only does validation and is agnostic of the particular API for which DCR is being done, such as Open Banking UK.
+Therefore, it is the task of the filters later in the chain to implement DCR and API specific validations.
+
+### Config
+Minimum configuration to use the Filter:
+```
+{
+          "comment": "Validate that the request is FAPI compliant",
+          "name": "FAPIAdvancedDCRValidationFilter",
+          "type": "FAPIAdvancedDCRValidationFilter",
+          "config": {
+            "clientTlsCertHeader": "ssl-client-cert"
+          }
+}
+```
+
+| config option                       | type     | description                                                                                                           | default                                                                                           |
+|-------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| clientTlsCertHeader                 | string   | The name of the header that the client's TLS certificate can be found.<br/>The cert should be a PEM encoded x509 cert | None, this must be configured                                                                     |
+| supportedSigningAlgorithms          | string[] | The JWS algorithms supported for messaging signing                                                                    | ["PS256", "ES256"]                                                                                |
+| supportedTokenEndpointAuthMethods   | string[] | The DCR token_endpoint_auth_methods supported                                                                         | ["tls_client_auth", "self_signed_tls_client_auth", "private_key_jwt"]                             |
+| registrationObjectSigningFieldNames | string[] | The fields within the registration request object to validate against the supportedSigningAlgorithms                  | ["token_endpoint_auth_signing_alg", "id_token_signed_response_alg", "request_object_signing_alg"] |
+
+
