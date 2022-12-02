@@ -43,7 +43,7 @@
           "name": "FAPIAdvancedDCRValidationFilter",
           "type": "FAPIAdvancedDCRValidationFilter",
           "config": {
-            "certificateHeader": "ssl-client-cert"
+            "clientTlsCertHeader": "ssl-client-cert"
           }
         },
         {

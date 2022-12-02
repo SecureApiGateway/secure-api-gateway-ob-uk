@@ -95,9 +95,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     private Collection<String> registrationObjectSigningFieldNames;
 
     /**
-     * Function which returns a PEM encoded x509 certificate as a String.
+     * Function which returns the client's PEM encoded x509 certificate which is used for MTLS as a String.
      */
-    private BiFunction<Context, Request, String> certificateSupplier;
+    private BiFunction<Context, Request, String> clientTlsCertificateSupplier;
 
     /**
      * Function which validates a PEM encoded x509 certificate String
@@ -111,12 +111,12 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      * be extracted from the JWT and returned. This function provides flexibility, allowing the registration request
      * to be sourced directly or unwrapped from within a JWT.
      */
-    private BiFunction<Context, Request, JsonValue> registrationObjectSupplier;
+    private BiFunction<Context, Request, JsonValue> registrationRequestObjectSupplier;
 
     /**
      * List of Validators which will validate the DCR Registration json object
      */
-    private List<Validator<JsonValue>> requestObjectValidators;
+    private List<Validator<JsonValue>> registrationRequestObjectValidators;
 
     private final ErrorResponseFactory errorResponseFactory;
 
@@ -131,13 +131,13 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     @Override
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
         try {
-            certificateValidator.validate(certificateSupplier.apply(context, request));
+            certificateValidator.validate(clientTlsCertificateSupplier.apply(context, request));
 
-            final JsonValue registrationObject = registrationObjectSupplier.apply(context, request);
-            if (registrationObject == null) {
+            final JsonValue registrationRequestObject = registrationRequestObjectSupplier.apply(context, request);
+            if (registrationRequestObject == null) {
                 throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "registration request entity is missing or malformed");
             }
-            validateRegistrationRequestObject(registrationObject);
+            validateRegistrationRequestObject(registrationRequestObject);
         } catch (ValidationException ve) {
             return Promises.newResultPromise(errorResponseFactory.errorResponse(context, ve));
         }
@@ -145,7 +145,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     }
 
     void validateRegistrationRequestObject(JsonValue registrationObject) {
-        for (Validator<JsonValue> validator : requestObjectValidators) {
+        for (Validator<JsonValue> validator : registrationRequestObjectValidators) {
             validator.validate(registrationObject);
         }
     }
@@ -234,20 +234,20 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         this.registrationObjectSigningFieldNames = registrationObjectSigningFieldNames;
     }
 
-    void setCertificateSupplier(BiFunction<Context, Request, String> certificateSupplier) {
-        this.certificateSupplier = certificateSupplier;
+    void setClientTlsCertificateSupplier(BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
+        this.clientTlsCertificateSupplier = clientTlsCertificateSupplier;
     }
 
     void setCertificateValidator(Validator<String> certificateValidator) {
         this.certificateValidator = certificateValidator;
     }
 
-    void setRegistrationObjectSupplier(BiFunction<Context, Request, JsonValue> registrationObjectSupplier) {
-        this.registrationObjectSupplier = registrationObjectSupplier;
+    void setRegistrationRequestObjectSupplier(BiFunction<Context, Request, JsonValue> registrationRequestObjectSupplier) {
+        this.registrationRequestObjectSupplier = registrationRequestObjectSupplier;
     }
 
-    void setRequestObjectValidators(List<Validator<JsonValue>>  requestObjectValidators) {
-        this.requestObjectValidators = requestObjectValidators;
+    void setRegistrationRequestObjectValidators(List<Validator<JsonValue>> registrationRequestObjectValidators) {
+        this.registrationRequestObjectValidators = registrationRequestObjectValidators;
     }
 
     /**
@@ -310,11 +310,11 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      * The JWT signing algo in the header is validated against the supported set of signing algorithms for FAPI.
      * No other validation is done at this point, it is assumed that Filters later in the chain will validate the sig etc
      */
-    public static class RegistrationObjectFromEntityJWTSupplier implements BiFunction<Context, Request, JsonValue> {
+    public static class RegistrationRequestObjectFromJwtSupplier implements BiFunction<Context, Request, JsonValue> {
 
         private final Set<String> supportedSigningAlgorithms;
 
-        public RegistrationObjectFromEntityJWTSupplier(Collection<String> supportedSigningAlgorithms) {
+        public RegistrationRequestObjectFromJwtSupplier(Collection<String> supportedSigningAlgorithms) {
             this.supportedSigningAlgorithms = new HashSet<>(supportedSigningAlgorithms);
         }
 
@@ -369,15 +369,15 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             final Validator<String> certificateValidator = new DefaultClientCertificateValidator();
             filter.setCertificateValidator(certificateValidator);
 
-            final String clientCertHeaderName = config.get("certificateHeader").required().asString();
+            final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             final BiFunction<Context, Request, String> certificateSupplier = new CertificateFromHeaderSupplier(clientCertHeaderName);
-            filter.setCertificateSupplier(certificateSupplier);
+            filter.setClientTlsCertificateSupplier(certificateSupplier);
 
             final List<Validator<JsonValue>> requestObjectValidators = filter.getDefaultRequestObjectValidators();
-            filter.setRequestObjectValidators(requestObjectValidators);
+            filter.setRegistrationRequestObjectValidators(requestObjectValidators);
 
-            final BiFunction<Context, Request, JsonValue> registrationObjectSupplier = new RegistrationObjectFromEntityJWTSupplier(supportedSigningAlgorithms);
-            filter.setRegistrationObjectSupplier(registrationObjectSupplier);
+            final BiFunction<Context, Request, JsonValue> registrationObjectSupplier = new RegistrationRequestObjectFromJwtSupplier(supportedSigningAlgorithms);
+            filter.setRegistrationRequestObjectSupplier(registrationObjectSupplier);
 
             return filter;
         }

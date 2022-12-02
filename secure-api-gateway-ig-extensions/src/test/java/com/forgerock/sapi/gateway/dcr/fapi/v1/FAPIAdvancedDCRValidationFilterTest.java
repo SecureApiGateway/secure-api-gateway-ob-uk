@@ -59,7 +59,6 @@ import org.junit.jupiter.api.Test;
 import com.forgerock.sapi.gateway.dcr.ValidationException;
 import com.forgerock.sapi.gateway.dcr.ValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.Validator;
-import com.forgerock.sapi.gateway.dcr.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -136,7 +135,7 @@ class FAPIAdvancedDCRValidationFilterTest {
      */
     private static FAPIAdvancedDCRValidationFilter createDefaultFapiFilter() throws HeapException {
         final HeapImpl emptyHeap = new HeapImpl(Name.of("testHeap"));
-        final JsonValue filterConfig = json(object(field("certificateHeader", CERT_HEADER_NAME)));
+        final JsonValue filterConfig = json(object(field("clientTlsCertHeader", CERT_HEADER_NAME)));
         return (FAPIAdvancedDCRValidationFilter) new FAPIAdvancedDCRValidationFilter.Heaplet().create(Name.of("fapiTest"), filterConfig, emptyHeap);
     }
 
