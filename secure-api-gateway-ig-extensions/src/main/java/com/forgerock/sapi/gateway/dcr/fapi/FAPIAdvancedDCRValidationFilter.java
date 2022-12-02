@@ -73,6 +73,9 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 public class FAPIAdvancedDCRValidationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FAPIAdvancedDCRValidationFilter.class);
+
+    private static final List<String> RESPONSE_TYPE_CODE = List.of("code");
+    private static final List<String> RESPONSE_TYPE_CODE_ID_TOKEN = List.of("code id_token");
     private static final List<String> DEFAULT_SUPPORTED_JWS_ALGORITHMS = Stream.of(JwsAlgorithm.PS256, JwsAlgorithm.ES256)
                                                                                .map(JwsAlgorithm::getJwaAlgorithmName)
                                                                                .collect(Collectors.toList());
@@ -83,7 +86,6 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     private static final List<String> DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES = List.of("token_endpoint_auth_signing_alg",
                                                                                     "id_token_signed_response_alg",
                                                                                     "request_object_signing_alg");
-
     private Set<String> supportedSigningAlgorithms;
 
     private Set<String> supportedTokenEndpointAuthMethods;
@@ -167,10 +169,10 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         if (responseTypes == null || responseTypes.isEmpty()) {
             throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_types");
         }
-        if (responseTypes.equals(List.of("code"))) {
+        if (responseTypes.equals(RESPONSE_TYPE_CODE)) {
             validateResponseTypeCode(registrationObject);
-        } else if (!responseTypes.equals(List.of("code id_token"))) {
-            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported");
+        } else if (!responseTypes.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
+            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: " + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
         }
     }
 
@@ -178,7 +180,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         final String responseMode = registrationObject.get("response_mode").asString();
         if (responseMode == null) {
             throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA,
-                    "request object must contain field: response_mode when response_types is \"code\"");
+                    "request object must contain field: response_mode when response_types is: " + RESPONSE_TYPE_CODE);
         }
         final List<String> validResponseModesForResponseTypeCode = List.of("jwt");
         if (!validResponseModesForResponseTypeCode.contains(responseMode)) {
@@ -282,7 +284,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
                 // TODO is there any validation we can do to the certificate object?
             } catch (CertificateException e) {
                 LOGGER.warn("FAPI DCR failed due to invalid cert", e);
-                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate pem supplied is invalid");
+                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
             }
         }
     }

@@ -19,6 +19,8 @@ import static org.forgerock.json.JsonValue.array;
 import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -35,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.forgerock.http.Handler;
+import org.forgerock.http.header.ContentTypeHeader;
 import org.forgerock.http.header.GenericHeader;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
@@ -66,8 +69,8 @@ import com.nimbusds.jwt.SignedJWT;
 class FAPIAdvancedDCRValidationFilterTest {
 
     private static final String CERT_HEADER_NAME = "x-cert";
-    private FAPIAdvancedDCRValidationFilter fapiValidationFilter;
 
+    // Self signed test cert generated using openssl
     private static final String testCertPem = "-----BEGIN CERTIFICATE-----\n" +
             "MIIDrTCCApWgAwIBAgIUJDeIu5DTsX49pI41PBFIXNeSOh8wDQYJKoZIhvcNAQEL\n" +
             "BQAwZjELMAkGA1UEBhMCVUsxEDAOBgNVBAgMB0JyaXN0b2wxEDAOBgNVBAcMB0Jy\n" +
@@ -92,14 +95,29 @@ class FAPIAdvancedDCRValidationFilterTest {
             "-----END CERTIFICATE-----\n";
 
     private static RSASSASigner rsaSigner;
+
     private static Handler successHandler;
+    private static Map<String, Object>  validRegistrationRequestClaims;
+
+    private FAPIAdvancedDCRValidationFilter fapiValidationFilter;
 
     @BeforeAll
     public static void beforeAll() throws NoSuchAlgorithmException {
         rsaSigner = createRSASSASigner();
         successHandler = (ctx, req) -> Promises.newResultPromise(new Response(Status.OK));
+
+        validRegistrationRequestClaims = new HashMap<>();
+        validRegistrationRequestClaims.put("token_endpoint_auth_method", "private_key_jwt");
+        validRegistrationRequestClaims.put("redirect_uris", List.of("https://google.co.uk"));
+        validRegistrationRequestClaims.put("response_types", List.of("code id_token"));
+        validRegistrationRequestClaims.put("token_endpoint_auth_signing_alg", "PS256");
+        validRegistrationRequestClaims.put("id_token_signed_response_alg", "PS256");
+        validRegistrationRequestClaims.put("request_object_signing_alg", "PS256");
     }
 
+    /**
+     * JWT signer which uses generated test RSA private key
+     */
     private static RSASSASigner createRSASSASigner() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
@@ -121,12 +139,38 @@ class FAPIAdvancedDCRValidationFilterTest {
         return (FAPIAdvancedDCRValidationFilter) new FAPIAdvancedDCRValidationFilter.Heaplet().create(Name.of("fapiTest"), filterConfig, emptyHeap);
     }
 
+    private String createSignedJwt(Map<String, Object> claims) {
+        return createSignedJwt(claims, JWSAlgorithm.PS256);
+    }
+
+    private String createSignedJwt(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
+        try {
+            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
+            signedJWT.sign(rsaSigner);
+            return signedJWT.serialize();
+        } catch (ParseException | JOSEException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void validateErrorResponse(Response response, ErrorCode expectedErrorCode, String expectedErrorDescription) {
+        assertEquals(Status.BAD_REQUEST, response.getStatus());
+        assertEquals("application/json; charset=UTF-8", response.getHeaders().getFirst(ContentTypeHeader.class));
+        try {
+            final JsonValue errorResponseBody = (JsonValue) response.getEntity().getJson();
+            assertEquals(expectedErrorCode.getCode(), errorResponseBody.get("error").asString());
+            assertEquals(expectedErrorDescription, errorResponseBody.get("error_description").asString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private <T> void runValidationAndVerifyExceptionThrown(Validator<T> validator, T requestObject,
                                                            ErrorCode expectedErrorCode, String expectedErrorMessage) {
         final ValidationException validationException = Assertions.assertThrows(ValidationException.class,
                                                                                 () -> validator.validate(requestObject));
-        Assertions.assertEquals(expectedErrorCode, validationException.getErrorCode(), "errorCode field");
-        Assertions.assertEquals(expectedErrorMessage, validationException.getErrorDescription(), "errorMessage field");
+        assertEquals(expectedErrorCode, validationException.getErrorCode(), "errorCode field");
+        assertEquals(expectedErrorMessage, validationException.getErrorDescription(), "errorMessage field");
     }
 
     @Test
@@ -186,37 +230,175 @@ class FAPIAdvancedDCRValidationFilterTest {
     }
 
     @Test
+    void signingAlgorithmFieldsMissing() {
+        // All of these fields must be supplied
+        final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
+                                                       "request_object_signing_alg");
+
+        // Test submitting requests which each omit one of the fields in turn
+        for (String fieldToOmit : signingAlgoFields) {
+            final JsonValue registrationRequest = json(object());
+            signingAlgoFields.stream().filter(field -> !field.equals(fieldToOmit)).forEach(field -> registrationRequest.add(field, "PS256"));
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
+                    ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: " + fieldToOmit);
+        }
+    }
+
+    @Test
+    void signingAlgorithmFieldsUnsupportedAlgo() {
+        final List<String> signingAlgoFields = List.of("token_endpoint_auth_signing_alg", "id_token_signed_response_alg",
+                                                       "request_object_signing_alg");
+
+        // Test submitting requests which each set one of the fields to an invalid algorithm in turn
+        for (String invalidAlgoField : signingAlgoFields) {
+            final JsonValue registrationRequest = json(object());
+            signingAlgoFields.stream().filter(field -> !field.equals(invalidAlgoField)).forEach(field -> registrationRequest.add(field, "PS256"));
+            registrationRequest.add(invalidAlgoField, "RS256");
+            runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateSigningAlgorithmUsed, registrationRequest,
+                    ErrorCode.INVALID_CLIENT_METADATA, "request object field: " + invalidAlgoField + ", must be one of: [ES256, PS256]");
+        }
+    }
+
+    @Test
+    void signingAlgorithmFieldsValid() {
+        fapiValidationFilter.validateSigningAlgorithmUsed(json(object(field("token_endpoint_auth_signing_alg", "PS256"),
+                                                                      field("id_token_signed_response_alg", "PS256"),
+                                                                      field("request_object_signing_alg", "PS256"))));
+    }
+
+    @Test
+    void responseTypeFieldMissing() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("blah", "blah"))),
+                ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_types");
+    }
+
+    @Test
+    void responseTypesInvalid() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("blah")))),
+                ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: [[code], [code id_token]]");
+    }
+
+    @Test
+    void responseTypesCodeValid() {
+        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code")), field("response_mode", "jwt"))));
+    }
+
+    @Test
+    void responseTypesCodeMissingResponseMode() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")))),
+                ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_mode when response_types is: [code]");
+    }
+
+    @Test
+    void responseTypesCodeInvalidResponseMode() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes, json(object(field("response_types", array("code")),
+                                                                                                       field("response_mode", "blah"))),
+                ErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: [jwt]");
+    }
+
+    @Test
+    void responseTypesCodeIdTokenValid() {
+        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code id_token")))));
+    }
+
+    @Test
     void validRequest() throws InterruptedException, ExecutionException, TimeoutException, IOException {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
         request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
 
-        Map<String, Object> registrationRequest = new HashMap<>();
-        registrationRequest.put("token_endpoint_auth_method", "private_key_jwt");
-        registrationRequest.put("redirect_uris", List.of("https://google.co.uk"));
-        registrationRequest.put("response_types", List.of("code id_token"));
-        registrationRequest.put("token_endpoint_auth_signing_alg", "PS256");
-        registrationRequest.put("id_token_signed_response_alg", "PS256");
-        registrationRequest.put("request_object_signing_alg", "PS256");
-
-        final String signedJwt = createSignedJwt(registrationRequest);
+        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
         request.getEntity().setString(signedJwt);
 
         final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         if (!response.getStatus().isSuccessful()) {
-            Assertions.fail("Expected a successful response instead got: " + response.getStatus() + ", entity: " + response.getEntity().getJson());
+            fail("Expected a successful response instead got: " + response.getStatus() + ", entity: " + response.getEntity().getJson());
         }
     }
 
-    private String createSignedJwt(Map<String, Object> claims) {
-        try {
-            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.PS256), JWTClaimsSet.parse(claims));
-            signedJWT.sign(rsaSigner);
-            return signedJWT.serialize();
-        } catch (ParseException | JOSEException e) {
-            throw new RuntimeException(e);
-        }
+    @Test
+    void invalidRequestFailsFieldLevelValidation() throws InterruptedException, ExecutionException, TimeoutException, IOException {
+        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+        final Request request = new Request();
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+
+        final Map<String, Object> invalidRegistrationRequest = new HashMap<>(validRegistrationRequestClaims);
+        invalidRegistrationRequest.put("token_endpoint_auth_method", "blah"); // invalidate one of the fields
+        final String signedJwt = createSignedJwt(invalidRegistrationRequest);
+        request.getEntity().setString(signedJwt);
+
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA,
+                "token_endpoint_auth_method not supported, must be one of: " +
+                        "[private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
+    }
+
+
+    @Test
+    void invalidRequestMissingCert() throws Exception {
+        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+        final Request request = new Request();
+
+        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
+        request.getEntity().setString(signedJwt);
+
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate must be supplied");
+    }
+
+    @Test
+    void invalidRequestInvalidCert() throws Exception {
+        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+        final Request request = new Request();
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode("this is an invalid cert......", StandardCharsets.UTF_8)));
+
+        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
+        request.getEntity().setString(signedJwt);
+
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
+    }
+
+    @Test
+    void invalidRequestInvalidJwt() throws Exception {
+        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+        final Request request = new Request();
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+
+        request.getEntity().setString("plain text instead of a JWT");
+
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "registration request entity is missing or malformed");
+    }
+
+    @Test
+    void invalidRequestJwtSignedWithUnsupportedAlgo() throws Exception {
+        final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+        final Request request = new Request();
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+
+        // RS256 JWT signing algorithm not supported
+        final String signedJwt = createSignedJwt(validRegistrationRequestClaims, JWSAlgorithm.RS256);
+        request.getEntity().setString(signedJwt);
+
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+        validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "DCR request JWT signed must be signed with one of: [ES256, PS256]");
     }
 }

@@ -24,7 +24,6 @@ import org.forgerock.services.context.TransactionIdContext;
 import org.junit.jupiter.api.Test;
 
 class FAPIUtilsTest {
-
     @Test
     void getFapiInteractionIdForDisplay() {
         // Verify we get a human-readable display when no x-fapi-interaction-id can be found
