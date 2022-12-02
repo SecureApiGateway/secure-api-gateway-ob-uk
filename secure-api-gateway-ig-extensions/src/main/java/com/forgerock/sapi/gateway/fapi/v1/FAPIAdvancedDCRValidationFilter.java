@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -178,7 +179,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         }
         if (responseTypes.equals(RESPONSE_TYPE_CODE)) {
             validateResponseTypeCode(registrationObject);
-        } else if (!responseTypes.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
+        } else if (responseTypes.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
+            validateResponseTypeCodeIdToken(registrationObject);
+        } else {
             throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: "
                     + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
         }
@@ -194,6 +197,18 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         if (!validResponseModesForResponseTypeCode.contains(responseMode)) {
             throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: "
                     + validResponseModesForResponseTypeCode);
+        }
+    }
+
+    private void validateResponseTypeCodeIdToken(JsonValue registrationObject) {
+        final String scopeClaim = registrationObject.get("scope").asString();
+        if (scopeClaim == null) {
+            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
+        }
+        final List<String> scopes = Arrays.asList(scopeClaim.split(" "));
+        if (!scopes.contains("openid")) {
+            throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA,
+                    "request object must include openid as one of the requested scopes when response_types is: " + RESPONSE_TYPE_CODE_ID_TOKEN);
         }
     }
 

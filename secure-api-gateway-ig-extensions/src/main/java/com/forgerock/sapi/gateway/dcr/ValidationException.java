@@ -49,7 +49,7 @@ public class ValidationException extends RuntimeException {
     }
 
     public ValidationException(ErrorCode errorCode, String errorMessage, Throwable cause) {
-        super(errorCode != null ? errorCode.code : "" + "-" + errorMessage, cause);
+        super((errorCode != null ? errorCode.code : "") + " " + errorMessage, cause);
         this.errorCode = Reject.checkNotNull(errorCode, "errorCode must be supplied");
         this.errorDescription = Reject.checkNotBlank(errorMessage, "errorMessage must be supplied");
     }

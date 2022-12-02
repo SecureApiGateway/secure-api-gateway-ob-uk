@@ -110,6 +110,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         RSA_SIGNER = createRSASSASigner();
         SUCCESS_HANDLER = (ctx, req) -> Promises.newResultPromise(new Response(Status.OK));
         VALID_REG_REQUEST_OBJ = Map.of("token_endpoint_auth_method", "private_key_jwt",
+                                       "scope", "openid accounts payments",
                                        "redirect_uris", List.of("https://google.co.uk"),
                                        "response_types", List.of("code id_token"),
                                        "token_endpoint_auth_signing_alg", "PS256",
@@ -308,7 +309,23 @@ class FAPIAdvancedDCRValidationFilterTest {
 
     @Test
     void responseTypesCodeIdTokenValid() {
-        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code id_token")))));
+        fapiValidationFilter.validateResponseTypes(json(object(field("response_types", array("code id_token")),
+                                                               field("scope", "blah openid something"))));
+    }
+
+    @Test
+    void responseTypesCodeIdTokenMissingScopeField() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
+                json(object(field("response_types", array("code id_token")))),
+                ErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
+    }
+
+    @Test
+    void responseTypesCodeIdTokenNotRequestingOpenIdScope() {
+        runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateResponseTypes,
+                json(object(field("response_types", array("code id_token")), field("scope", "accounts payments"))),
+                ErrorCode.INVALID_CLIENT_METADATA,
+                "request object must include openid as one of the requested scopes when response_types is: [code id_token]");
     }
 
     @Test
