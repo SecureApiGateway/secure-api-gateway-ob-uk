@@ -20,6 +20,7 @@ import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
@@ -43,6 +44,7 @@ import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.JsonValue;
+import org.forgerock.json.JsonValueException;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
@@ -54,11 +56,13 @@ import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.dcr.ValidationException;
 import com.forgerock.sapi.gateway.dcr.ValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.Validator;
+import com.forgerock.sapi.gateway.dcr.fapi.v1.FAPIAdvancedDCRValidationFilter.Heaplet;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -71,7 +75,7 @@ class FAPIAdvancedDCRValidationFilterTest {
     private static final String CERT_HEADER_NAME = "x-cert";
 
     // Self signed test cert generated using openssl
-    private static final String testCertPem = "-----BEGIN CERTIFICATE-----\n" +
+    private static final String TEST_CERT_PEM = "-----BEGIN CERTIFICATE-----\n" +
             "MIIDrTCCApWgAwIBAgIUJDeIu5DTsX49pI41PBFIXNeSOh8wDQYJKoZIhvcNAQEL\n" +
             "BQAwZjELMAkGA1UEBhMCVUsxEDAOBgNVBAgMB0JyaXN0b2wxEDAOBgNVBAcMB0Jy\n" +
             "aXN0b2wxEDAOBgNVBAoMB0ZSIFRlc3QxDTALBgNVBAsMBFRlc3QxEjAQBgNVBAMM\n" +
@@ -94,25 +98,23 @@ class FAPIAdvancedDCRValidationFilterTest {
             "ut3B6FJ1svFmln3Tq53bbd3iPXMwDZzqVubBkJnsmfib\n" +
             "-----END CERTIFICATE-----\n";
 
-    private static RSASSASigner rsaSigner;
-
-    private static Handler successHandler;
-    private static Map<String, Object>  validRegistrationRequestClaims;
+    private static RSASSASigner RSA_SIGNER;
+    private static Handler SUCCESS_HANDLER;
+    private static Map<String, Object> VALID_REG_REQUEST_OBJ;
+    static final HeapImpl EMPTY_HEAP = new HeapImpl(Name.of("testHeap"));
 
     private FAPIAdvancedDCRValidationFilter fapiValidationFilter;
 
     @BeforeAll
     public static void beforeAll() throws NoSuchAlgorithmException {
-        rsaSigner = createRSASSASigner();
-        successHandler = (ctx, req) -> Promises.newResultPromise(new Response(Status.OK));
-
-        validRegistrationRequestClaims = new HashMap<>();
-        validRegistrationRequestClaims.put("token_endpoint_auth_method", "private_key_jwt");
-        validRegistrationRequestClaims.put("redirect_uris", List.of("https://google.co.uk"));
-        validRegistrationRequestClaims.put("response_types", List.of("code id_token"));
-        validRegistrationRequestClaims.put("token_endpoint_auth_signing_alg", "PS256");
-        validRegistrationRequestClaims.put("id_token_signed_response_alg", "PS256");
-        validRegistrationRequestClaims.put("request_object_signing_alg", "PS256");
+        RSA_SIGNER = createRSASSASigner();
+        SUCCESS_HANDLER = (ctx, req) -> Promises.newResultPromise(new Response(Status.OK));
+        VALID_REG_REQUEST_OBJ = Map.of("token_endpoint_auth_method", "private_key_jwt",
+                                       "redirect_uris", List.of("https://google.co.uk"),
+                                       "response_types", List.of("code id_token"),
+                                       "token_endpoint_auth_signing_alg", "PS256",
+                                       "id_token_signed_response_alg", "PS256",
+                                       "request_object_signing_alg", "PS256");
     }
 
     /**
@@ -134,9 +136,9 @@ class FAPIAdvancedDCRValidationFilterTest {
      * Uses the Heaplet to create a FAPIAdvancedDCRValidationFilter with the default configuration.
      */
     private static FAPIAdvancedDCRValidationFilter createDefaultFapiFilter() throws HeapException {
-        final HeapImpl emptyHeap = new HeapImpl(Name.of("testHeap"));
+
         final JsonValue filterConfig = json(object(field("clientTlsCertHeader", CERT_HEADER_NAME)));
-        return (FAPIAdvancedDCRValidationFilter) new FAPIAdvancedDCRValidationFilter.Heaplet().create(Name.of("fapiTest"), filterConfig, emptyHeap);
+        return (FAPIAdvancedDCRValidationFilter) new FAPIAdvancedDCRValidationFilter.Heaplet().create(Name.of("fapiTest"), filterConfig, EMPTY_HEAP);
     }
 
     private String createSignedJwt(Map<String, Object> claims) {
@@ -146,7 +148,7 @@ class FAPIAdvancedDCRValidationFilterTest {
     private String createSignedJwt(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
         try {
             final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
-            signedJWT.sign(rsaSigner);
+            signedJWT.sign(RSA_SIGNER);
             return signedJWT.serialize();
         } catch (ParseException | JOSEException e) {
             throw new RuntimeException(e);
@@ -311,14 +313,24 @@ class FAPIAdvancedDCRValidationFilterTest {
 
     @Test
     void validRequest() throws InterruptedException, ExecutionException, TimeoutException, IOException {
+        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+        final String testCertPem = TEST_CERT_PEM;
+        final FAPIAdvancedDCRValidationFilter filter = fapiValidationFilter;
+
+        submitRequestAndValidateSuccessful(validRegRequestObj, testCertPem, filter);
+    }
+
+    private void submitRequestAndValidateSuccessful(Map<String, Object> validRegRequestObj, String testCertPem, FAPIAdvancedDCRValidationFilter filter) throws ExecutionException, TimeoutException, InterruptedException, IOException {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
+
         request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
 
-        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
+        final String signedJwt = createSignedJwt(validRegRequestObj);
         request.getEntity().setString(signedJwt);
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         if (!response.getStatus().isSuccessful()) {
@@ -330,14 +342,14 @@ class FAPIAdvancedDCRValidationFilterTest {
     void invalidRequestFailsFieldLevelValidation() throws InterruptedException, ExecutionException, TimeoutException, IOException {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
-        final Map<String, Object> invalidRegistrationRequest = new HashMap<>(validRegistrationRequestClaims);
+        final Map<String, Object> invalidRegistrationRequest = new HashMap<>(VALID_REG_REQUEST_OBJ);
         invalidRegistrationRequest.put("token_endpoint_auth_method", "blah"); // invalidate one of the fields
         final String signedJwt = createSignedJwt(invalidRegistrationRequest);
         request.getEntity().setString(signedJwt);
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
@@ -352,10 +364,11 @@ class FAPIAdvancedDCRValidationFilterTest {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
 
-        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
+        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+        final String signedJwt = createSignedJwt(validRegRequestObj);
         request.getEntity().setString(signedJwt);
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
@@ -368,10 +381,11 @@ class FAPIAdvancedDCRValidationFilterTest {
         final Request request = new Request();
         request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode("this is an invalid cert......", StandardCharsets.UTF_8)));
 
-        final String signedJwt = createSignedJwt(validRegistrationRequestClaims);
+        final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+        final String signedJwt = createSignedJwt(validRegRequestObj);
         request.getEntity().setString(signedJwt);
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
@@ -382,11 +396,11 @@ class FAPIAdvancedDCRValidationFilterTest {
     void invalidRequestInvalidJwt() throws Exception {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
         request.getEntity().setString("plain text instead of a JWT");
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
@@ -397,16 +411,64 @@ class FAPIAdvancedDCRValidationFilterTest {
     void invalidRequestJwtSignedWithUnsupportedAlgo() throws Exception {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
         final Request request = new Request();
-        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
+        request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
         // RS256 JWT signing algorithm not supported
-        final String signedJwt = createSignedJwt(validRegistrationRequestClaims, JWSAlgorithm.RS256);
+        final String signedJwt = createSignedJwt(VALID_REG_REQUEST_OBJ, JWSAlgorithm.RS256);
         request.getEntity().setString(signedJwt);
 
-        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, successHandler);
+        final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
         validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "DCR request JWT signed must be signed with one of: [ES256, PS256]");
+    }
+
+    @Nested
+    class HeapletConfigurationTests {
+        @Test
+        void missingClientTlsCertHeaderMandatoryConfig() {
+            final JsonValue filterConfig = json(object());
+            final JsonValueException exception = assertThrows(JsonValueException.class,
+                    () -> new Heaplet().create(Name.of("fapiTest"), filterConfig, EMPTY_HEAP));
+            assertEquals("/clientTlsCertHeader: Expecting a value", exception.getMessage());
+        }
+
+        @Test
+        void supportedSigningAlgorithmsConfigNotSupportedByFapiSpec() {
+            final JsonValue filterConfig = json(object(field("supportedSigningAlgorithms", array("PS256", "RS256"))));
+            final HeapException exception = assertThrows(HeapException.class,
+                    () -> new Heaplet().create(Name.of("fapiTest"), filterConfig, EMPTY_HEAP));
+            assertEquals("supportedSigningAlgorithms config must be the same as (or a subset of): [PS256, ES256]",
+                    exception.getMessage());
+        }
+
+        @Test
+        void supportedSupportedTokenEndpointAuthMethodsConfigNotSupportedByFapiSpec() {
+            final JsonValue filterConfig = json(object(field("supportedTokenEndpointAuthMethods", array("private_key_jwt", "client_secret_basic"))));
+            final HeapException exception = assertThrows(HeapException.class,
+                    () -> new Heaplet().create(Name.of("fapiTest"), filterConfig, EMPTY_HEAP));
+            assertEquals("supportedTokenEndpointAuthMethods config must be the same as (or a subset of): [tls_client_auth, self_signed_tls_client_auth, private_key_jwt]",
+                    exception.getMessage());
+        }
+
+        @Test
+        void createFilterWithAllConfigOptionsSpecified() throws Exception {
+            // Config which sets all the options, restricting the signing and auth methods to a single one each and extending the signing field names
+            final JsonValue filterConfig = json(object(field("supportedTokenEndpointAuthMethods", array("private_key_jwt")),
+                                                       field("supportedSigningAlgorithms", array("PS256")),
+                                                       field("clientTlsCertHeader", CERT_HEADER_NAME),
+                                                       field("registrationObjectSigningFieldNames",
+                                                               array("token_endpoint_auth_signing_alg",
+                                                                     "id_token_signed_response_alg",
+                                                                     "request_object_signing_alg",
+                                                                       "additional_signing_field_to_validate"))));
+
+            final FAPIAdvancedDCRValidationFilter filter = (FAPIAdvancedDCRValidationFilter) new Heaplet().create(Name.of("fapiTest"), filterConfig, EMPTY_HEAP);
+
+            final Map<String, Object> validRegRequestObj = new HashMap<>(VALID_REG_REQUEST_OBJ);
+            validRegRequestObj.put("additional_signing_field_to_validate", "PS256"); // Add a value for the extra signing field that was configured via conf
+            submitRequestAndValidateSuccessful(validRegRequestObj, TEST_CERT_PEM, filter);
+        }
     }
 }

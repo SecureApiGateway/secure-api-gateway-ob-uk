@@ -348,18 +348,26 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
             final FAPIAdvancedDCRValidationFilter filter = new FAPIAdvancedDCRValidationFilter();
 
-            // TODO validate any custom conf is sane, i.e. for signing algs, should be a subset of the DEFAULT.
             final List<String> supportedSigningAlgorithms = config.get("supportedSigningAlgorithms")
                                                                    .as(evaluatedWithHeapProperties())
                                                                    .defaultTo(DEFAULT_SUPPORTED_JWS_ALGORITHMS)
                                                                    .asList(String.class);
+            // Validate that if custom configuration was supplied, then that it is equal to or a subset of the values supported by the spec
+            if (!DEFAULT_SUPPORTED_JWS_ALGORITHMS.containsAll(supportedSigningAlgorithms)) {
+                throw new HeapException("supportedSigningAlgorithms config must be the same as (or a subset of): "
+                        + DEFAULT_SUPPORTED_JWS_ALGORITHMS);
+            }
             filter.setSupportedSigningAlgorithms(supportedSigningAlgorithms);
 
-            // TODO validate any custom config is sane, should be a subset of the DEFAULT
-            filter.setSupportedTokenEndpointAuthMethods(config.get("supportedTokenEndpointAuthMethods")
-                                                              .as(evaluatedWithHeapProperties())
-                                                              .defaultTo(DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS)
-                                                              .asList(String.class));
+            final List<String> supportedTokenEndpointAuthMethods = config.get("supportedTokenEndpointAuthMethods")
+                                                                         .as(evaluatedWithHeapProperties())
+                                                                         .defaultTo(DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS)
+                                                                         .asList(String.class);
+            if (!DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS.containsAll(supportedTokenEndpointAuthMethods)) {
+                throw new HeapException("supportedTokenEndpointAuthMethods config must be the same as (or a subset of): "
+                        + DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS);
+            }
+            filter.setSupportedTokenEndpointAuthMethods(supportedTokenEndpointAuthMethods);
 
             filter.setRegistrationObjectSigningFieldNames(config.get("registrationObjectSigningFieldNames")
                                                                 .as(evaluatedWithHeapProperties())
