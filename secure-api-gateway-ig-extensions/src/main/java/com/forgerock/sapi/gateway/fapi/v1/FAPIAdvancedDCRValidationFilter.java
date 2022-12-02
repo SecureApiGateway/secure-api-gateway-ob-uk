@@ -61,15 +61,38 @@ import com.forgerock.sapi.gateway.dcr.ErrorResponseFactory;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**
- * Filter which implements the "Financial-grade API Security Profile 1.0 - Part 2: Advanced" spec validations
- * required for DCR (Dynamic Client Registration), see: https://openid.net/specs/openid-financial-api-part-2-1_0.html
- *
+ * Filter which implements the <a href="https://openid.net/specs/openid-financial-api-part-2-1_0.html">
+ * Financial-grade API Security Profile 1.0 - Part 2: Advanced</a> spec validations required for DCR (Dynamic Client Registration).
+ * <p>
  * This filter should sit in front of filter(s) which implement DCR for a particular API.
- *
+ * <p>
  * This filter will reject any requests which would result in an OAuth2 client being created which did not conform to
  * the FAPI spec.
- *
- * The {@link Heaplet} is used to construct this filter, see its documentation for the configuration options.
+ * <p>
+ * IG Config required to create this filter:
+ * <pre>
+ *     {@code {
+ *         "type": "FAPIAdvancedDCRValidationFilter",
+ *         "config": {
+ *             "clientTlsCertHeader"                    : String        [REQUIRED]
+ *             "supportedSigningAlgorithms"             : String[]      [OPTIONAL]
+ *             "supportedTokenEndpointAuthMethods"      : String[]      [OPTIONAL]
+ *             "registrationObjectSigningFieldNames"    : String[]      [OPTIONAL]
+ *         }
+ *    }
+ *    }
+ * </pre>
+ * clientTlsCertHeader is the name of the header to extract the client's MTLS cert from, this is expected to be a PEM encoded x509 certificate.
+ * This configuration is REQUIRED.
+ * <p>
+ * supportedSigningAlogrithms configures which JWS algorithms are supported for signing, see DEFAULT_SUPPORTED_JWS_ALGORITHMS for the default
+ * values if this config is omitted.
+ * <p>
+ * supportedTokenEndpointAuthMethods configures which OAuth2 token_endpoint_auth_method values are accepted,
+ * see DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS for the default values if this config is omitted.
+ * <p>
+ * registrationObjectSigningFieldNames configures which fields inside the registration request object should be validated
+ * against the supportedSigningAlgorithms
  */
 public class FAPIAdvancedDCRValidationFilter implements Filter {
 
@@ -355,12 +378,11 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         }
     }
 
-    // TODO document config
+    /** Creates and initializes a FAPIAdvancedDCRValidationFilter */
     public static class Heaplet extends GenericHeaplet {
 
         @Override
         public Object create() throws HeapException {
-
             final FAPIAdvancedDCRValidationFilter filter = new FAPIAdvancedDCRValidationFilter();
 
             final List<String> supportedSigningAlgorithms = config.get("supportedSigningAlgorithms")
