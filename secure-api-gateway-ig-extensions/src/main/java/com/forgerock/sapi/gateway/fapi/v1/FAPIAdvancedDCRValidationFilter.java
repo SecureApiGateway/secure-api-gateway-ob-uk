@@ -82,7 +82,8 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  *    }
  *    }
  * </pre>
- * clientTlsCertHeader is the name of the header to extract the client's MTLS cert from, this is expected to be a PEM encoded x509 certificate.
+ * clientTlsCertHeader is the name of the header to extract the client's MTLS cert from.
+ * The header value must contain a PEM encoded, then URL encoded, x509 certificate.
  * This configuration is REQUIRED.
  * <p>
  * supportedSigningAlogrithms configures which JWS algorithms are supported for signing, see DEFAULT_SUPPORTED_JWS_ALGORITHMS for the default
@@ -112,10 +113,29 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     private static final List<String> DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES = List.of("token_endpoint_auth_signing_alg",
                                                                                     "id_token_signed_response_alg",
                                                                                     "request_object_signing_alg");
+    /**
+     * The JWS signing algorithm's supported by FAPI.
+     *
+     * This is used to validate the registration JWT (if the registration is in JWT format) alg header and fields in
+     * the registration request object which configure the signing algorithms to use for the OAuth2 client,
+     * see {@link #registrationObjectSigningFieldNames}.
+     *
+     * This is configurable, for the default set of signing algorithms see {@link #DEFAULT_SUPPORTED_JWS_ALGORITHMS}
+     */
     private Set<String> supportedSigningAlgorithms;
 
+    /**
+     * The registration request object's token_endpoint_auth_method values which are allowed by FAPI.
+     *
+     * This is configurable, for the default set of auth methods see {@link #DEFAULT_SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS}
+     */
     private Set<String> supportedTokenEndpointAuthMethods;
 
+    /**
+     * The field's within the registration request object to validate against the {@link #supportedSigningAlgorithms}
+     *
+     * This is configurable, for the default set of fields see {@link #DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES}
+     */
     private Collection<String> registrationObjectSigningFieldNames;
 
     /**
@@ -142,6 +162,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      */
     private List<Validator<JsonValue>> registrationRequestObjectValidators;
 
+    /**
+     * Factory which produces HTTP Responses for DCR error conditions
+     */
     private final ErrorResponseFactory errorResponseFactory;
 
     /**
@@ -301,6 +324,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
     /**
      * Supplier which returns a certificate String as sourced from a Request Header.
+     *
+     * The certificate value is expected to be URL encoded, this supplier will do the URL decode to supply the
+     * certificate String.
      */
     public static class CertificateFromHeaderSupplier implements BiFunction<Context, Request, String> {
 

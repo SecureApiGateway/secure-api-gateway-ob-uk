@@ -30,6 +30,7 @@ public class ValidationException extends RuntimeException {
         INVALID_CLIENT_METADATA("invalid_client_metadata"),
         INVALID_SOFTWARE_STATEMENT("invalid_software_statement"),
         UNAPPROVED_SOFTWARE_STATEMENT("unapproved_software_statement");
+
         private final String code;
 
         ErrorCode(String code) {
