@@ -1,0 +1,33 @@
+{
+  "comment": "AM XUI routes, access the AM XUI and turns off captures to avoid IG logs being spammed with UI resources",
+  "name": "98 - AM XUI Access",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/am/XUI/.*')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        "SBATFapiInteractionFilterChain",
+        {
+          "comment": "Add host header to downstream request",
+          "name": "HeaderFilter-ChangeHostToIAM",
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "remove": [
+              "host",
+              "X-Forwarded-Host"
+            ],
+            "add": {
+              "X-Forwarded-Host": [
+                "&{ig.fqdn}"
+              ]
+            }
+          }
+        }
+      ],
+      "handler": "SBATReverseProxyHandlerIdentityPlatformNoCapture"
+    }
+  }
+}

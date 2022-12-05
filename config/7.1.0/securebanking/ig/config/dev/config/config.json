@@ -65,6 +65,10 @@
       ]
     },
     {
+      "name": "ReverseProxyHandlerNoCapture",
+      "type": "ReverseProxyHandler"
+    },
+    {
       "name": "JwtSession",
       "type": "JwtSession"
     },
@@ -106,10 +110,6 @@
       "name": "SBATReverseProxyHandlerIdentityPlatform",
       "comment": "ReverseProxyHandler for calls to Identity Platform services (AM or IDM)",
       "type": "Chain",
-      "capture": [
-        "request",
-        "response"
-      ],
       "config": {
         "filters" : [ 
           "TransactionIdOutboundFilter"
@@ -118,13 +118,20 @@
       }
     },
     {
+      "name": "SBATReverseProxyHandlerIdentityPlatformNoCapture",
+      "comment": "ReverseProxyHandler for calls to Identity Platform services (AM or IDM), capture decorator disabled",
+      "type": "Chain",
+      "config": {
+        "filters" : [
+          "TransactionIdOutboundFilter"
+        ],
+        "handler" : "ReverseProxyHandlerNoCapture"
+      }
+    },
+    {
       "name": "SBATReverseProxyHandlerRs",
       "comment": "ReverseProxyHandler for calls to the SBAT RS",
       "type": "Chain",
-      "capture": [
-        "request",
-        "response"
-      ],
       "config": {
         "filters": [
           {
