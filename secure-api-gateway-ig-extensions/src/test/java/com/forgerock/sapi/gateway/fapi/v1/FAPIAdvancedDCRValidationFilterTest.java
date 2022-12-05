@@ -33,9 +33,7 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.forgerock.http.Handler;
 import org.forgerock.http.header.ContentTypeHeader;
@@ -49,6 +47,7 @@ import org.forgerock.openig.heap.HeapException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
 import org.forgerock.services.TransactionId;
+import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.TransactionIdContext;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
@@ -169,9 +168,10 @@ class FAPIAdvancedDCRValidationFilterTest {
         }
     }
 
-    private void submitRequestAndValidateSuccessful(Map<String, Object> validRegRequestObj, String testCertPem, FAPIAdvancedDCRValidationFilter filter) throws ExecutionException, TimeoutException, InterruptedException, IOException {
+    private void submitRequestAndValidateSuccessful(String httpMethod, Map<String, Object> validRegRequestObj,
+            String testCertPem, FAPIAdvancedDCRValidationFilter filter) throws Exception {
         final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-        final Request request = new Request();
+        final Request request = new Request().setMethod(httpMethod);
         request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(testCertPem, StandardCharsets.UTF_8)));
 
         final String signedJwt = createSignedJwt(validRegRequestObj);
@@ -360,14 +360,37 @@ class FAPIAdvancedDCRValidationFilterTest {
     class FilterHttpRequestTests {
 
         @Test
-        void validRequest() throws InterruptedException, ExecutionException, TimeoutException, IOException {
-            submitRequestAndValidateSuccessful(VALID_REG_REQUEST_OBJ, TEST_CERT_PEM, fapiValidationFilter);
+        void validRequest() throws Exception{
+            submitRequestAndValidateSuccessful("POST", VALID_REG_REQUEST_OBJ, TEST_CERT_PEM, fapiValidationFilter);
+            submitRequestAndValidateSuccessful("PUT", VALID_REG_REQUEST_OBJ, TEST_CERT_PEM, fapiValidationFilter);
+        }
+
+        @Test
+        void getAndDeleteRequestsAreNotValidated() throws Exception {
+            final String httpMethod = "POST";
+            final AttributesContext context = new AttributesContext(null);
+            final Request request = new Request().setMethod(httpMethod);
+
+            // Do a POST first, verify that it fails
+            assertEquals(Status.BAD_REQUEST, fapiValidationFilter.filter(context, request, SUCCESS_HANDLER)
+                                                                 .get(1, TimeUnit.SECONDS)
+                                                                 .getStatus());
+
+            // Submit the same invalid request but use HTTP methods which should be skipped
+            final String[] skippedHttpMethods = {"GET, DELETE"};
+            for (String method : skippedHttpMethods) {
+                request.setMethod(method);
+                // Verify we hit the SUCCESS_HANDLER
+                assertEquals(Status.OK, fapiValidationFilter.filter(context, request, SUCCESS_HANDLER)
+                                                            .get(1, TimeUnit.SECONDS)
+                                                            .getStatus());
+            }
         }
 
         @Test
         void invalidRequestFailsFieldLevelValidation() throws Exception {
             final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-            final Request request = new Request();
+            final Request request = new Request().setMethod("POST");
             request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
             final Map<String, Object> invalidRegistrationRequest = new HashMap<>(VALID_REG_REQUEST_OBJ);
@@ -387,7 +410,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         @Test
         void invalidRequestMissingCert() throws Exception {
             final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-            final Request request = new Request();
+            final Request request = new Request().setMethod("POST");
 
             final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
             final String signedJwt = createSignedJwt(validRegRequestObj);
@@ -403,7 +426,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         @Test
         void invalidRequestInvalidCert() throws Exception {
             final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-            final Request request = new Request();
+            final Request request = new Request().setMethod("POST");
             request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode("this is an invalid cert......", StandardCharsets.UTF_8)));
 
             final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
@@ -420,7 +443,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         @Test
         void invalidRequestInvalidJwt() throws Exception {
             final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-            final Request request = new Request();
+            final Request request = new Request().setMethod("POST");
             request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
             request.getEntity().setString("plain text instead of a JWT");
 
@@ -434,7 +457,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         @Test
         void invalidRequestJwtSignedWithUnsupportedAlgo() throws Exception {
             final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
-            final Request request = new Request();
+            final Request request = new Request().setMethod("POST");
             request.addHeaders(new GenericHeader(CERT_HEADER_NAME, URLEncoder.encode(TEST_CERT_PEM, StandardCharsets.UTF_8)));
 
             // RS256 JWT signing algorithm not supported
@@ -496,7 +519,7 @@ class FAPIAdvancedDCRValidationFilterTest {
 
             final Map<String, Object> validRegRequestObj = new HashMap<>(VALID_REG_REQUEST_OBJ);
             validRegRequestObj.put("additional_signing_field_to_validate", "PS256"); // Add a value for the extra signing field that was configured via conf
-            submitRequestAndValidateSuccessful(validRegRequestObj, TEST_CERT_PEM, filter);
+            submitRequestAndValidateSuccessful("POST", validRegRequestObj, TEST_CERT_PEM, filter);
         }
     }
 }

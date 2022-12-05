@@ -99,6 +99,15 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FAPIAdvancedDCRValidationFilter.class);
 
+    /**
+     * The HTTP methods to apply FAPI validation to.
+     * POST is used to create new OAuth2 client's and PUT updates existing OAuth2 clients, both of these types of
+     * request must be validated.
+     * DCR API also supports GET and DELETE, there is no validation to apply here so requests with these methods should
+     * be passed on down the chain.
+     */
+    private static final Set<String> VALIDATABLE_HTTP_REQUEST_METHODS = Set.of("POST", "PUT");
+
     private static final List<String> RESPONSE_TYPE_CODE = List.of("code");
     private static final List<String> RESPONSE_TYPE_CODE_ID_TOKEN = List.of("code id_token");
 
@@ -177,6 +186,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
     @Override
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
+        if (!VALIDATABLE_HTTP_REQUEST_METHODS.contains(request.getMethod())) {
+            return next.handle(context, request);
+        }
         try {
             certificateValidator.validate(clientTlsCertificateSupplier.apply(context, request));
 
