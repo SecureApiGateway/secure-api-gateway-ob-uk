@@ -76,6 +76,9 @@ switch(method.toUpperCase()) {
         if (!tokenEndpointAuthMethod || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
         }
+        if (tokenEndpointAuthMethod.equals("tls_client_auth") && !oidcRegistration.getClaim("tls_client_auth_subject_dn")) {
+            return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
+        }
 
         def ssa = oidcRegistration.getClaim("software_statement", String.class);
         if (!ssa) {
@@ -194,8 +197,6 @@ switch(method.toUpperCase()) {
         if (oiComponents.length > 3) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("Wrong number of dashes in OI " + organizationalIdentifier +" - expected 2")
         }
-
-        // TODO: Subject DN for cert bound access tokens
 
         // Convert to JSON and pass it on
         def regJson = oidcRegistration.build();
