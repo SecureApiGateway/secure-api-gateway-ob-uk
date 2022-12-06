@@ -198,7 +198,12 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             }
             validateRegistrationRequestObject(registrationRequestObject);
         } catch (ValidationException ve) {
+            LOGGER.debug("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") FAPI Validation failed", ve);
             return Promises.newResultPromise(errorResponseFactory.errorResponse(context, ve));
+        } catch (RuntimeException re) {
+            // Log that an unexpected RuntimeException occurred and throw it on
+            LOGGER.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") FAPI Validation failed due to unexpected RuntimeException", re);
+            throw re;
         }
         return next.handle(context, request);
     }
@@ -350,11 +355,20 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
         @Override
         public String apply(Context context, Request request) {
+            final String fapInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
             final String headerValue = request.getHeaders().getFirst(certificateHeaderName);
             if (headerValue == null) {
+                LOGGER.debug("({}) No client cert could be found for header: {}", fapInteractionId, certificateHeaderName);
                 return null;
             }
-            return URLDecoder.decode(headerValue, StandardCharsets.UTF_8);
+            try {
+                final String certPem = URLDecoder.decode(headerValue, StandardCharsets.UTF_8);
+                LOGGER.debug("({}) Found client cert: {}", fapInteractionId, certPem);
+                return certPem;
+            } catch (RuntimeException ex) {
+                LOGGER.debug("(" + fapInteractionId + ") Failed to URL decode cert from header: " + certificateHeaderName, ex);
+                return null;
+            }
         }
     }
 
@@ -366,16 +380,14 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         @Override
         public void validate(String certPem) {
             if (certPem == null) {
-                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate must be supplied");
+                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate is missing or malformed");
             }
-            LOGGER.debug("Parsing cert: {}", certPem);
             final InputStream certStream = new ByteArrayInputStream(certPem.getBytes());
             try {
                 final CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
                 final Certificate certificate = certificateFactory.generateCertificate(certStream);
             } catch (CertificateException e) {
-                LOGGER.warn("FAPI DCR failed due to invalid cert", e);
-                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid");
+                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate PEM supplied is invalid", e);
             }
         }
     }
@@ -396,19 +408,21 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
 
         @Override
         public JsonValue apply(Context context, Request request) {
+            final String fapiInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
             try {
-                final SignedJwt signedJwt = new JwtReconstruction().reconstructJwt(request.getEntity().getString(),
-                                                                                   SignedJwt.class);
-                final JwsAlgorithm signingAlgo = signedJwt.getHeader().getAlgorithm();
+                final String registrationRequestJwtString = request.getEntity().getString();
+                final SignedJwt registrationRequestJwt = new JwtReconstruction().reconstructJwt(registrationRequestJwtString,
+                                                                                                SignedJwt.class);
+                LOGGER.debug("({}) Registration Request JWT to validate: {}", fapiInteractionId, registrationRequestJwtString);
+                final JwsAlgorithm signingAlgo = registrationRequestJwt.getHeader().getAlgorithm();
                 // This validation is being done here as outside the supplier we are not aware that a JWT existed
                 if (signingAlgo == null || !supportedSigningAlgorithms.contains(signingAlgo.getJwaAlgorithmName())) {
                     throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA,
                             "DCR request JWT signed must be signed with one of: " + supportedSigningAlgorithms);
                 }
-                final JwtClaimsSet claimsSet = signedJwt.getClaimsSet();
+                final JwtClaimsSet claimsSet = registrationRequestJwt.getClaimsSet();
                 return claimsSet.toJsonValue();
             } catch (InvalidJwtException | IOException e) {
-                final String fapiInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
                 LOGGER.warn("(" + fapiInteractionId + ") FAPI DCR failed: unable to extract registration object JWT from request", e);
                 // These are not validation errors, so do not raise a validation exception, instead allow the filter to handle the null response
                 return null;

@@ -51,7 +51,7 @@ public class ErrorResponseFactory {
                                                         field("error_description", errorDescription)));
         response.setEntity(errorResponseBody);
         final String fapiInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
-        logger.warn("({}) DCR Request failed FAPI validation, errorResponse: {}", fapiInteractionId, errorResponseBody);
+        logger.warn("({}) DCR Request failed validation, errorResponse: {}", fapiInteractionId, errorResponseBody);
         return response;
     }
 }

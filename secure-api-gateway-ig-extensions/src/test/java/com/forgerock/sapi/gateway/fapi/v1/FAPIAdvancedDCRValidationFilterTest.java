@@ -20,6 +20,7 @@ import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -201,45 +202,42 @@ class FAPIAdvancedDCRValidationFilterTest {
 
         @Test
         void redirectUrisFieldMissing() {
-            final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
+            final JsonValue missingField = json(object());
             runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, missingField,
                     ErrorCode.INVALID_REDIRECT_URI, "request object must contain redirect_uris field");
         }
 
         @Test
         void redirectUrisArrayEmpty() {
-            final JsonValue emptyArray = json(object(field("a", "b"), field("c", "d"),
-                    field("redirect_uris", array())));
+            final JsonValue emptyArray = json(object(field("redirect_uris", array())));
             runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, emptyArray,
                     ErrorCode.INVALID_REDIRECT_URI, "redirect_uris array must not be empty");
         }
 
         @Test
         void redirectUrisNonHttpsUri() {
-            final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
-                    field("redirect_uris", array("https://www.google.com", "http://www.google.co.uk"))));
+            final JsonValue nonHttpsRedirect = json(object(field("redirect_uris",
+                    array("https://www.google.com", "http://www.google.co.uk"))));
             runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
                     ErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
         }
 
         @Test
         void redirectUrisMalformedUri() {
-            final JsonValue nonHttpsRedirect = json(object(field("a", "b"), field("c", "d"),
-                    field("redirect_uris", array("https://www.google.com", "123:@///324dfs+w34r"))));
+            final JsonValue nonHttpsRedirect = json(object(field("redirect_uris", array("https://www.google.com", "123:@///324dfs+w34r"))));
             runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateRedirectUris, nonHttpsRedirect,
                     ErrorCode.INVALID_REDIRECT_URI, "redirect_uri: 123:@///324dfs+w34r is not a valid URI");
         }
 
         @Test
         void validRedirectUris() {
-            final JsonValue validRedirect = json(object(field("a", "b"), field("c", "d"),
-                    field("redirect_uris", array("https://www.google.com", "https://www.google.co.uk"))));
+            final JsonValue validRedirect = json(object(field("redirect_uris", array("https://www.google.com", "https://www.google.co.uk"))));
             fapiValidationFilter.validateRedirectUris(validRedirect);
         }
 
         @Test
         void tokenEndpointAuthMethodFieldMissing() {
-            final JsonValue missingField = json(object(field("a", "b"), field("c", "d")));
+            final JsonValue missingField = json(object());
             runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, missingField,
                     ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: token_endpoint_auth_method");
         }
@@ -248,7 +246,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         void tokenEndpointAuthMethodValueNotSupported() {
             final String[] invalidAuthMethods = new String[]{"", "none", "client_secret"};
             for (String invalidAuthMethod : invalidAuthMethods) {
-                final JsonValue invalidAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", invalidAuthMethod)));
+                final JsonValue invalidAuthMethodJson = json(object(field("token_endpoint_auth_method", invalidAuthMethod)));
                 runValidationAndVerifyExceptionThrown(fapiValidationFilter::validateTokenEndpointAuthMethods, invalidAuthMethodJson,
                         ErrorCode.INVALID_CLIENT_METADATA, "token_endpoint_auth_method not supported, must be one of: [private_key_jwt, self_signed_tls_client_auth, tls_client_auth]");
             }
@@ -258,7 +256,7 @@ class FAPIAdvancedDCRValidationFilterTest {
         void tokenEndpointAuthMethodValid() {
             final String[] validMethods = new String[]{"private_key_jwt", "self_signed_tls_client_auth", "tls_client_auth"};
             for (String validAuthMethod : validMethods) {
-                final JsonValue validAuthMethodJson = json(object(field("a", "b"), field("c", "d"), field("token_endpoint_auth_method", validAuthMethod)));
+                final JsonValue validAuthMethodJson = json(object(field("token_endpoint_auth_method", validAuthMethod)));
                 fapiValidationFilter.validateTokenEndpointAuthMethods(validAuthMethodJson);
             }
         }
@@ -420,7 +418,25 @@ class FAPIAdvancedDCRValidationFilterTest {
 
             final Response response = responsePromise.get(1, TimeUnit.SECONDS);
             Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
-            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate must be supplied");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate is missing or malformed");
+        }
+
+        @Test
+        void invalidRequestMalformedCert() throws Exception {
+            final TransactionIdContext context = new TransactionIdContext(null, new TransactionId("1234"));
+            final Request request = new Request().setMethod("POST");
+            // %-1 is an invalid URL escape code
+            request.addHeaders(new GenericHeader(CERT_HEADER_NAME, "%-1this is not URL encoded properly"));
+
+            final Map<String, Object> validRegRequestObj = VALID_REG_REQUEST_OBJ;
+            final String signedJwt = createSignedJwt(validRegRequestObj);
+            request.getEntity().setString(signedJwt);
+
+            final Promise<Response, NeverThrowsException> responsePromise = fapiValidationFilter.filter(context, request, SUCCESS_HANDLER);
+
+            final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+            Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
+            validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "MTLS client certificate is missing or malformed");
         }
 
         @Test
@@ -469,6 +485,20 @@ class FAPIAdvancedDCRValidationFilterTest {
             final Response response = responsePromise.get(1, TimeUnit.SECONDS);
             Assertions.assertFalse(response.getStatus().isSuccessful(), "Request must fail");
             validateErrorResponse(response, ErrorCode.INVALID_CLIENT_METADATA, "DCR request JWT signed must be signed with one of: [ES256, PS256]");
+        }
+
+        @Test
+        void verifyUnexpectedRuntimeExceptionIsThrownOnByFilter() {
+            // Trigger a runtime exception in one of the validators, verify that the exception is thrown on
+            final IllegalStateException expectedException = new IllegalStateException("this should not have happened");
+            final Validator<JsonValue> brokenValidator = req -> {
+                throw expectedException;
+            };
+            fapiValidationFilter.setRegistrationRequestObjectValidators(List.of(brokenValidator));
+
+            final IllegalStateException actualException = assertThrows(IllegalStateException.class,
+                    () -> submitRequestAndValidateSuccessful("POST", VALID_REG_REQUEST_OBJ, TEST_CERT_PEM, fapiValidationFilter));
+            assertSame(expectedException, actualException);
         }
     }
 
