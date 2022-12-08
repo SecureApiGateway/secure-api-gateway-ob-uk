@@ -33,9 +33,6 @@
           "config": {
             "type": "application/x-groovy",
             "file": "FapiCompliantAuthorizeRequestFilter.groovy",
-            "args": {
-              "comment": "TODO: use env variable"
-            }
           }
         }        
       ],

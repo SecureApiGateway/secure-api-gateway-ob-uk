@@ -19,8 +19,8 @@ import com.forgerock.sapi.gateway.oauth.OAuthErrorResponseFactory
  *
  */
 
-def fapiInteractionId = request.getHeaders().getFirst('x-fapi-interaction-id')
-if (fapiInteractionId == null) fapiInteractionId = 'No x-fapi-interaction-id'
+def fapiInteractionId = request.getHeaders().getFirst(HttpHeaderNames.X_FAPI_INTERACTION_ID)
+if (fapiInteractionId == null) fapiInteractionId = 'No ' + HttpHeaderNames.X_FAPI_INTERACTION_ID
 SCRIPT_NAME = '[FapiCompliantAuthorizeRequestFilter] (' + fapiInteractionId + ') - '
 logger.debug(SCRIPT_NAME + 'Running...')
 
@@ -47,8 +47,8 @@ switch (httpMethod.toUpperCase()) {
         //   parameter
         JwtClaimsSet requestJwtClaimSet = getRequestJtwClaimSet()
         if (!requestJwtClaimSet) {
-            Form errorForm = new Form(["error_description": ["Request must have a 'request' query parameter the value of which must be a signed jwt"]])
-            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorForm)
+            String errorDescription = "Request must have a 'request' query parameter the value of which must be a signed jwt"
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorDescription)
         }
 
         Response errorResponse = isRequestValidForRedirection(requestJwtClaimSet, acceptHeader, errorResponseFactory)
@@ -84,9 +84,8 @@ switch (httpMethod.toUpperCase()) {
         String[] requiredClaims = [ JwtClaimNames.SCOPE, JwtClaimNames.NONCE, JwtClaimNames.RESPONSE_TYPE ]
         for (requiredClaim in requiredClaims) {
             if (!requestJwtHasClaim(requiredClaim, requestJwtClaimSet)) {
-                Form errorForm = new Form(["error_description": ["Request JWT must have a '" + requiredClaim + "' claim"]])
-                logger.info("{} Creating invalidRequestErrorResponse: {}", errorForm)
-                return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorForm)
+                String errorDescription = "Request JWT must have a '" + requiredClaim + "' claim"
+                return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorDescription)
             }
         }
 
@@ -99,7 +98,7 @@ switch (httpMethod.toUpperCase()) {
         break
     default:
         logger.debug(SCRIPT_NAME + 'Method not supported')
-        return new Response(Status.NOT_FOUND)
+        return new Response(Status.METHOD_NOT_ALLOWED)
 }
 
 logger.info('Request is FAPI compliant - calling next.handle')
@@ -119,9 +118,8 @@ private Response isRequestValidForRedirection(JwtClaimsSet requestJwtClaims,
     String[] requiredClaims = [ JwtClaimNames.REDIRECT_URI, JwtClaimNames.CLIENT_ID ]
     for ( requiredClaim in requiredClaims ) {
         if (!requestJwtHasClaim(requiredClaim, requestJwtClaims) ) {
-            Form errorForm = new Form(["error_description": ["Request JWT must have a '" + requiredClaim + "' claim"]])
-            logger.info("{} Creating invalidRequestErrorResponse: {}", errorForm)
-            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorForm)
+            String errorDescription = "Request JWT must have a '" + requiredClaim + "' claim"
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, errorDescription)
         }
     }
     return null
