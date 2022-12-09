@@ -1,4 +1,4 @@
-package com.forgerock.sapi.gateway.rest
+package com.forgerock.sapi.gateway.rest.content
 
 import org.forgerock.http.util.MultiValueMap
 import org.slf4j.Logger

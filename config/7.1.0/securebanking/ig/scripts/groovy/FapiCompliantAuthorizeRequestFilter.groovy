@@ -1,3 +1,4 @@
+import com.forgerock.sapi.gateway.rest.content.ContentTypeFormatterFactory
 import org.forgerock.json.jose.jws.SignedJwt
 import org.forgerock.json.jose.common.JwtReconstruction
 import org.forgerock.json.jose.jwt.JwtClaimsSet
@@ -27,8 +28,9 @@ logger.debug(SCRIPT_NAME + 'Running...')
 
 String httpMethod = request.method
 Header acceptHeader = request.getHeaders().get('accept')
+ContentTypeFormatterFactory contentTypeFormatterFactory = new ContentTypeFormatterFactory()
 
-OAuthErrorResponseFactory errorResponseFactory = new OAuthErrorResponseFactory(SCRIPT_NAME)
+OAuthErrorResponseFactory errorResponseFactory = new OAuthErrorResponseFactory(SCRIPT_NAME, contentTypeFormatterFactory)
 
 switch (httpMethod.toUpperCase()) {
     case 'GET':
