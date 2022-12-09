@@ -4,6 +4,7 @@ import org.forgerock.json.jose.jwt.JwtClaimsSet
 import org.forgerock.http.protocol.Status
 import com.forgerock.sapi.gateway.jwt.JwtClaimNames
 import com.forgerock.sapi.gateway.rest.HttpRequestParameterNames
+import com.forgerock.sapi.gateway.rest.HttpHeaderNames
 import com.forgerock.sapi.gateway.oauth.OAuthErrorResponseFactory
 
 

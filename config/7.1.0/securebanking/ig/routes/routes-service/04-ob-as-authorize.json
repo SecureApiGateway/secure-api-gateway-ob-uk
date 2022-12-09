@@ -32,7 +32,7 @@
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "FapiCompliantAuthorizeRequestFilter.groovy",
+            "file": "FapiCompliantAuthorizeRequestFilter.groovy"
           }
         }        
       ],
