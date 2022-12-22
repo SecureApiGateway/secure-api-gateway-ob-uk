@@ -23,21 +23,16 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
      */
     final static String issuer = "test-publisher";
 
-    final static Boolean softwareStatementHoldsJwksUri = false;
-
-    final static String softwareStatementJwksClaimName = "software_jwks";
-
     /*
      * The URL at which the Open Banking Test Directory JWKS are held, containing public certificates that may be used
      * to validate Open Banking Test directory issues Software Statements.
      */
     String jwksUri = null;
 
-    /*
-     * The name of the claim in the Open Banking Test Directory issued software statement that holds the jwks_uri
-     * against which certificates associated with this software statement may be validated
-     */
-    final static String softwareJwksEndpointClaimName = "software_jwks_endpoint";
+    final static Boolean softwareStatementHoldsJwksUri = false;
+
+    final static String softwareStatementJwksClaimName = "software_jwks";
+
     /*
      * The name of the claim in the Open Banking Test Directory issued software statement that holds a uid for the
      * organisation
@@ -61,12 +56,12 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
 
     @Override
     public String getJwksUri() {
-        return null;
+        return this.jwksUri;
     }
 
     @Override
     public Boolean softwareStatementHoldsJwksUri() {
-        return null;
+        return softwareStatementHoldsJwksUri;
     }
 
     @Override
@@ -76,16 +71,16 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
 
     @Override
     public String getSoftwareStatementJwksClaimName() {
-        return null;
+        return softwareStatementJwksClaimName;
     }
 
     @Override
     public String getSoftwareStatementOrgIdClaimName() {
-        return null;
+        return softwareStatementOrgIdClaimName;
     }
 
     @Override
     public String getSoftwareStatementSoftwareIdClaimName() {
-        return null;
+        return softwareStatementSoftwareIdClaimName;
     }
 }
