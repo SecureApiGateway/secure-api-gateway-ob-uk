@@ -400,6 +400,14 @@
       }
     },
     {
+      "name": "TrustedDirectoriesService",
+      "type": "TrustedDirectoriesService",
+      "config": {
+        "enableIGTestTrustedDirectory": true,
+        "testDirectoryFQDN": "https://&{ig.fqdn}/jwkms/apiclient/jwks"
+      }
+    },
+    {
       "name": "RsaJwtSignatureValidator",
       "type": "RsaJwtSignatureValidator"
     }

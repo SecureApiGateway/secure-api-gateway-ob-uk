@@ -4,6 +4,7 @@ import java.net.URI;
 import java.security.SignatureException
 import com.securebanking.gateway.dcr.ErrorResponseFactory
 import static org.forgerock.util.promise.Promises.newResultPromise
+import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
@@ -41,6 +42,13 @@ switch(method.toUpperCase()) {
         def ssaIssuer = ssaClaims.getIssuer()
         if (!ssaIssuer) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer claim is required")
+        }
+
+        TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
+        if(trustedDirectory){
+            logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
+        } else {
+            logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
         }
 
         def ssaJwksUrl = routeArgSSAIssuerJwksUrls[ssaIssuer]
