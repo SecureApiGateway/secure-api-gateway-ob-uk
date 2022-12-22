@@ -35,6 +35,7 @@ import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.Context;
+import org.forgerock.util.Reject;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
@@ -46,12 +47,14 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 public class FetchApiClientFilter implements Filter {
 
     public static final String API_CLIENT_ATTR_KEY = "apiClient";
+    private static final String AUD_CLAIM = "aud";
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
     private final Client httpClient;
     private final String idmGetApiClientBaseUri;
 
     public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri) {
+        Reject.ifNull(clientHandler, "clientHandler must be provided");
+        Reject.ifBlank(idmGetApiClientBaseUri, "idmGetApiClientBaseUri must be provided");
         this.httpClient = clientHandler;
         this.idmGetApiClientBaseUri = idmGetApiClientBaseUri;
     }
@@ -60,11 +63,11 @@ public class FetchApiClientFilter implements Filter {
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
         final OAuth2Context oAuth2Context = context.asContext(OAuth2Context.class);
         final Map<String, Object> info = oAuth2Context.getAccessToken().getInfo();
-        if (!info.containsKey("aud")) {
-            logger.error("({}) access token is missing required aud claim", FAPIUtils.getFapiInteractionIdForDisplay(context));
+        if (!info.containsKey(AUD_CLAIM)) {
+            logger.error("({}) access token is missing required " + AUD_CLAIM + " claim", FAPIUtils.getFapiInteractionIdForDisplay(context));
             return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
         }
-        final String clientId = (String)info.get("aud");
+        final String clientId = (String)info.get(AUD_CLAIM);
         return getApiClientFromIdm(clientId).thenAsync(apiClient -> {
             context.asContext(AttributesContext.class).getAttributes().put(API_CLIENT_ATTR_KEY, apiClient);
             return next.handle(context, request);
@@ -106,8 +109,26 @@ public class FetchApiClientFilter implements Filter {
         return apiClient;
     }
 
+    /**
+     * Responsible for creating the {@link FetchApiClientFilter}
+     *
+     * Mandatory config:
+     * - idmGetApiClientBaseUri: the base uri used to build the IDM query to get the apiClient, the client_id is expected
+     * to be appended to this uri (and some query params).
+     * - clientHandler: the clientHandler to use to call out to IDM.
+     *
+     * Example config:
+     * {
+     *           "comment": "Add ApiClient data to the context attributes",
+     *           "name": "FetchApiClientFilter",
+     *           "type": "com.forgerock.sapi.gateway.dcr.FetchApiClientFilter",
+     *           "config": {
+     *             "idmGetApiClientBaseUri": "https://&{identity.platform.fqdn}/openidm/managed/apiClient",
+     *             "clientHandler": "IDMClientHandler"
+     *            }
+     * }
+     */
     public static class Heaplet extends GenericHeaplet {
-
         @Override
         public Object create() throws HeapException {
             final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
