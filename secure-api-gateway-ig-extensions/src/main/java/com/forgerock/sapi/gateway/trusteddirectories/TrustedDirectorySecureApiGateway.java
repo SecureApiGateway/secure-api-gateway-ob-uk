@@ -65,7 +65,7 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
     }
 
     @Override
-    public String getSoftwareStatementJwksUriClaimFName() {
+    public String getSoftwareStatementJwksUriClaimName() {
         return null;
     }
 

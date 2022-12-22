@@ -51,14 +51,14 @@ switch(method.toUpperCase()) {
         }
 
         TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
-
         if(trustedDirectory){
             logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
         } else {
             logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
+            return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
         }
 
-        def ssaJwksUrl = routeArgSSAIssuerJwksUrls[ssaIssuer]
+        def ssaJwksUrl = trustedDirectory.getJwksUri()
         if (!ssaJwksUrl) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
         }
@@ -75,7 +75,7 @@ switch(method.toUpperCase()) {
           def jwksResponseStatus = jwksResponse.getStatus()
 
           logger.debug(SCRIPT_NAME + "status " + jwksResponseStatus)
-          logger.debug(SCRIPT_NAME + "entity " + jwksResponseContent)
+          logger.debug(SCRIPT_NAME + "entity " + jwksResponseContent.replaceAll("[\\n\\t ]", ""))
 
           if (jwksResponseStatus != Status.OK) {
               return newResultPromise(errorResponseFactory.errorResponse(Status.UNAUTHORIZED, "Bad response from JWKS URI " + jwksResponseStatus))

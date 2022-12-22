@@ -64,7 +64,7 @@ public class TrustedDirectoryOpenBankingTest implements TrustedDirectory {
     }
 
     @Override
-    public String getSoftwareStatementJwksUriClaimFName() {
+    public String getSoftwareStatementJwksUriClaimName() {
         return softwareJwksUriClaimName;
     }
 

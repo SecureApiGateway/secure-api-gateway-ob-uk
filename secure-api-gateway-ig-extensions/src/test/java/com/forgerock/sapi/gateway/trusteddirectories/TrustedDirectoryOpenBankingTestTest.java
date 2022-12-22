@@ -29,7 +29,7 @@ class TrustedDirectoryOpenBankingTestTest {
         assertThat(trustedDirectory.getJwksUri()).isEqualTo(TrustedDirectoryOpenBankingTest.jwksUri);
         assertThat(trustedDirectory.softwareStatementHoldsJwksUri()).isTrue();
         assertThat(trustedDirectory.getSoftwareStatementJwksClaimName()).isNull();
-        assertThat(trustedDirectory.getSoftwareStatementJwksUriClaimFName()).isEqualTo(TrustedDirectoryOpenBankingTest.softwareJwksUriClaimName);
+        assertThat(trustedDirectory.getSoftwareStatementJwksUriClaimName()).isEqualTo(TrustedDirectoryOpenBankingTest.softwareJwksUriClaimName);
         assertThat(trustedDirectory.getSoftwareStatementOrgIdClaimName()).isEqualTo(TrustedDirectoryOpenBankingTest.softwareStatementOrgIdClaimName);
         assertThat(trustedDirectory.getSoftwareStatementSoftwareIdClaimName()).isEqualTo(TrustedDirectoryOpenBankingTest.softwareStatementSoftwareIdClaimName);
     }

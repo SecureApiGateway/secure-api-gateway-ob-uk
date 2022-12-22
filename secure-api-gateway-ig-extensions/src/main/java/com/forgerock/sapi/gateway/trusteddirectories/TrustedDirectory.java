@@ -42,7 +42,7 @@ public interface TrustedDirectory {
      * software statement that holds the jwks_uri against which certificates associated with the software statement can
      * be found. If @link #softwareStatementHoldsJwksUri() returns false this will return null
      */
-    String getSoftwareStatementJwksUriClaimFName();
+    String getSoftwareStatementJwksUriClaimName();
 
 
     /**

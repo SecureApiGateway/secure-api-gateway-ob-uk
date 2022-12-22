@@ -16,7 +16,6 @@
 package com.forgerock.sapi.gateway.trusteddirectories;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +46,7 @@ class TrustedDirectoryServiceStaticTest {
         assertThat(directoryConfig.getIssuer()).isEqualTo(TrustedDirectorySecureApiGateway.issuer);
         assertThat(directoryConfig.getJwksUri()).isEqualTo(testDirectoryFQDN);
         assertThat(directoryConfig.softwareStatementHoldsJwksUri()).isEqualTo(false);
-        assertThat(directoryConfig.getSoftwareStatementJwksUriClaimFName()).isNull();
+        assertThat(directoryConfig.getSoftwareStatementJwksUriClaimName()).isNull();
         assertThat(directoryConfig.getSoftwareStatementJwksClaimName()).isEqualTo(TrustedDirectorySecureApiGateway.softwareStatementJwksClaimName);
         assertThat(directoryConfig.getSoftwareStatementOrgIdClaimName()).isEqualTo(TrustedDirectorySecureApiGateway.softwareStatementOrgIdClaimName);
         assertThat(directoryConfig.getSoftwareStatementSoftwareIdClaimName()).isEqualTo(TrustedDirectorySecureApiGateway.softwareStatementSoftwareIdClaimName);
