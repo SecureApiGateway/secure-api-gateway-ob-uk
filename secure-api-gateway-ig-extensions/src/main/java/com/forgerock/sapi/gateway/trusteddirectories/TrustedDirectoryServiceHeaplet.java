@@ -21,11 +21,14 @@ import java.time.Duration;
 
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.jwks.cache.caffeine.CaffeineCache;
 
 public class TrustedDirectoryServiceHeaplet extends GenericHeaplet {
 
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Boolean DEFAULT_IG_TEST_DIRECTORY_ENABLED = false;
 
     @Override
@@ -43,6 +46,9 @@ public class TrustedDirectoryServiceHeaplet extends GenericHeaplet {
                 .defaultTo(null)
                 .asString();
 
+
+        logger.debug("Creating Trusted Directory Service with enableIGTestTrustedDirectory: {}, testDirectoryFQDN: {}",
+                enableIGTestTrustedDirectory, testDirectoryFQDN);
         return new TrustedDirectoryServiceStatic(enableIGTestTrustedDirectory, testDirectoryFQDN);
     }
 }

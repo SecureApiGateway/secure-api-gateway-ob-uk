@@ -16,5 +16,6 @@
 package com.forgerock.sapi.gateway.trusteddirectories;
 
 public interface TrustedDirectoryService {
+
     TrustedDirectory getTrustedDirectoryConfiguration(String issuer);
 }
