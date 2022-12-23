@@ -347,6 +347,8 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      */
     public static class CertificateFromHeaderSupplier implements BiFunction<Context, Request, String> {
 
+        private static final Logger LOGGER = LoggerFactory.getLogger(CertificateFromHeaderSupplier.class);
+
         private final String certificateHeaderName;
 
         public CertificateFromHeaderSupplier(String certificateHeaderName) {

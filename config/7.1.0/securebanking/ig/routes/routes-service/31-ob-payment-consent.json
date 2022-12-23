@@ -108,6 +108,16 @@
           }
         },
         {
+          "comment": "Validate the MTLS transport cert",
+          "name": "TransportCertValidationFilter",
+          "type": "TransportCertValidationFilter",
+          "config": {
+            "jwkSetService": "OBJwkSetService",
+            "clientTlsCertHeader": "ssl-client-cert",
+            "jwkUse": "tls"
+          }
+        },
+        {
           "comment": "Check grant type",
           "name": "Grant Type Verifier",
           "type": "ScriptableFilter",
