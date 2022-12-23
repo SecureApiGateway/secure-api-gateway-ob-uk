@@ -56,6 +56,7 @@ public class FetchApiClientFilter implements Filter {
     public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri, String accessTokenClientIdClaim) {
         Reject.ifNull(clientHandler, "clientHandler must be provided");
         Reject.ifBlank(idmGetApiClientBaseUri, "idmGetApiClientBaseUri must be provided");
+        Reject.ifBlank(accessTokenClientIdClaim, "accessTokenClientIdClaim must be provided");
         this.httpClient = clientHandler;
         this.idmGetApiClientBaseUri = idmGetApiClientBaseUri;
         this.accessTokenClientIdClaim = accessTokenClientIdClaim;
@@ -121,6 +122,9 @@ public class FetchApiClientFilter implements Filter {
      * - idmGetApiClientBaseUri: the base uri used to build the IDM query to get the apiClient, the client_id is expected
      * to be appended to this uri (and some query params).
      * - clientHandler: the clientHandler to use to call out to IDM.
+     *
+     * Optional config:
+     * - accessTokenClientIdClaim: name of the claim used to extract the client_id from the access_token, defaults to "aud"
      *
      * Example config:
      * {
