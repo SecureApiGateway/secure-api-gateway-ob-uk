@@ -102,9 +102,16 @@ class FetchApiClientFilterTest {
         final JsonValue idmClientData = createIdmApiClientData(clientId);
         final IdmResponseHandler idmResponseHandler = new IdmResponseHandler(idmBaseUri, clientId, idmClientData);
 
-        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(idmResponseHandler), idmBaseUri);
+        final String clientIdClaim = "aud";
+        final AccessTokenInfo accessToken = createAccessToken(clientIdClaim, clientId);
+        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(idmResponseHandler), idmBaseUri, clientIdClaim);
+        callFilterValidateResponseAndContext(accessToken, idmClientData, filter);
+    }
+
+    private static void callFilterValidateResponseAndContext(AccessTokenInfo accessToken, JsonValue idmClientData,
+                                                             FetchApiClientFilter filter) throws Exception{
         final AttributesContext attributesContext = new AttributesContext(new RootContext("root"));
-        final OAuth2Context oauth2Context = new OAuth2Context(attributesContext, createAccessToken(clientId));
+        final OAuth2Context oauth2Context = new OAuth2Context(attributesContext, accessToken);
 
         // This is the next filter called after the FetchApiClientFilter
         final Handler endOfFilterChainHandler = Handlers.NO_CONTENT;
@@ -119,20 +126,20 @@ class FetchApiClientFilterTest {
         verifyIdmClientDataMatchesApiClientObject(idmClientData, apiClient);
     }
 
-    private static AccessTokenInfo createAccessToken(String clientId) {
-        return new AccessTokenInfo(json(object(field("aud", clientId))), "token", Set.of("scope1"), 0L);
+    private static AccessTokenInfo createAccessToken(String clientIdClaim, String clientId) {
+        return new AccessTokenInfo(json(object(field(clientIdClaim, clientId))), "token", Set.of("scope1"), 0L);
     }
 
     @Test
     void failsWhenNoOAuth2ContextIsFound() {
-        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.INTERNAL_SERVER_ERROR), "notUsed");
+        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.INTERNAL_SERVER_ERROR), "notUsed", "aud");
         assertThrows(IllegalArgumentException.class, () -> filter.filter(new RootContext("root"), new Request(), Handlers.FORBIDDEN),
                 "No context of type org.forgerock.http.oauth2.OAuth2Context found");
     }
 
     @Test
     void returnsErrorResponseWhenUnableToDetermineClientId() throws Exception{
-        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.FORBIDDEN), "notUsed");
+        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.FORBIDDEN), "notUsed", "aud");
         final AccessTokenInfo accessTokenWithoutAudClaim = new AccessTokenInfo(json(object()), "token", Set.of("scope1"), 0L);
         final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new OAuth2Context(new RootContext("root"), accessTokenWithoutAudClaim), new Request(), Handlers.FORBIDDEN);
 
@@ -145,8 +152,10 @@ class FetchApiClientFilterTest {
     void returnsErrorResponseWhenIdmReturnsErrorResponse() throws Exception {
         // Mock IDM returning 500 response
         final Client idmClientHandler = new Client(Handlers.INTERNAL_SERVER_ERROR);
-        final FetchApiClientFilter filter = new FetchApiClientFilter(idmClientHandler, "notUsed");
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new OAuth2Context(new RootContext("root"), createAccessToken("1234")), new Request(), Handlers.FORBIDDEN);
+        final String clientIdClaim = "client_id";
+        final FetchApiClientFilter filter = new FetchApiClientFilter(idmClientHandler, "notUsed", clientIdClaim);
+        final OAuth2Context context = new OAuth2Context(new RootContext("root"), createAccessToken(clientIdClaim, "1234"));
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, new Request(), Handlers.FORBIDDEN);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
@@ -156,9 +165,12 @@ class FetchApiClientFilterTest {
     @Test
     void returnsErrorResponseWhenIdmReturnsInvalidJsonResponse() throws Exception {
         // IDM returns a Form instead of json
-        final Client idmClientHandler = new Client((ctx, req) -> Promises.newResultPromise(new Response(Status.OK).setEntity(new Form())));
-        final FetchApiClientFilter filter = new FetchApiClientFilter(idmClientHandler, "notUsed");
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new OAuth2Context(new RootContext("root"), createAccessToken("1234")), new Request(), Handlers.FORBIDDEN);
+        final Response invalidIdmResponse = new Response(Status.OK).setEntity(new Form());
+        final Client idmClientHandler = new Client((ctx, req) -> Promises.newResultPromise(invalidIdmResponse));
+        final String clientIdClaim = "aud";
+        final FetchApiClientFilter filter = new FetchApiClientFilter(idmClientHandler, "notUsed", clientIdClaim);
+        final OAuth2Context context = new OAuth2Context(new RootContext("root"), createAccessToken(clientIdClaim, "1234"));
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, new Request(), Handlers.FORBIDDEN);
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
@@ -184,38 +196,72 @@ class FetchApiClientFilterTest {
         }
 
         @Test
-        void successfullyCreatesFilter() throws Exception {
+        void successfullyCreatesFilterWithRequiredConfigOnly() throws Exception {
+            final String idmBaseUri = "http://idm/managed/";
+            final String clientId = "999999999";
+            final JsonValue idmApiClientData = createIdmApiClientData(clientId);
+            final Handler idmClientHandler = new IdmResponseHandler(idmBaseUri, clientId, idmApiClientData);
+
             final HeapImpl heap = new HeapImpl(Name.of("heap"));
-            final Handler idmClientHandler = (ctx, req) -> Promises.newResultPromise(new Response(Status.OK));
             heap.put("idmClientHandler", idmClientHandler);
-            final FetchApiClientFilter filter = (FetchApiClientFilter) new Heaplet().create(Name.of("test"),
-                    json(object(field("clientHandler", "idmClientHandler"), field("idmGetApiClientBaseUri", "http://idm"))), heap);
+
+            final JsonValue config = json(object(field("clientHandler", "idmClientHandler"),
+                                                 field("idmGetApiClientBaseUri", idmBaseUri)));
+            final FetchApiClientFilter filter = (FetchApiClientFilter) new Heaplet().create(Name.of("test"), config, heap);
+
+
+            // optional config: accessTokenClientIdClaim will be defaulted to aud
+            final AccessTokenInfo accessToken = createAccessToken("aud", clientId);
+            // Test the filter created by the Heaplet
+
+            callFilterValidateResponseAndContext(accessToken, idmApiClientData, filter);
+        }
+
+        @Test
+        void successfullyCreatesFilterWithAllOptionalConfigSupplied() throws Exception {
+            final String idmBaseUri = "http://idm/managed/";
+            final String clientId = "999999999";
+            final JsonValue idmApiClientData = createIdmApiClientData(clientId);
+            final Handler idmClientHandler = new IdmResponseHandler(idmBaseUri, clientId, idmApiClientData);
+
+            final HeapImpl heap = new HeapImpl(Name.of("heap"));
+            heap.put("idmClientHandler", idmClientHandler);
+
+            final String clientIdClaim = "client_id";
+            final JsonValue config = json(object(field("clientHandler", "idmClientHandler"),
+                                                 field("idmGetApiClientBaseUri", idmBaseUri),
+                                                 field("accessTokenClientIdClaim", clientIdClaim)));
+            final FetchApiClientFilter filter = (FetchApiClientFilter) new Heaplet().create(Name.of("test"), config, heap);
+
+            final AccessTokenInfo accessToken = createAccessToken(clientIdClaim, clientId);
+            // Test the filter created by the Heaplet
+            callFilterValidateResponseAndContext(accessToken, createIdmApiClientData(clientId), filter);
         }
     }
 
     private static void verifyIdmClientDataMatchesApiClientObject(JsonValue idmClientData, ApiClient actualApiClient) {
         assertEquals(idmClientData.get("id").asString(), actualApiClient.getSoftwareClientId());
         assertEquals(idmClientData.get("name").asString(), actualApiClient.getClientName());
-        final String ssaStr = idmClientData.get("ssa").asString();
-        final SignedJwt expectedSignedJwt = new JwtReconstruction().reconstructJwt(ssaStr, SignedJwt.class);
-        assertEquals(expectedSignedJwt.getHeader(), actualApiClient.getSoftwareStatementAssertion().getHeader());
-        assertEquals(expectedSignedJwt.getClaimsSet(), actualApiClient.getSoftwareStatementAssertion().getClaimsSet());
         assertEquals(idmClientData.get("oauth2ClientId").asString(), actualApiClient.getOauth2ClientId());
         assertEquals(idmClientData.get("jwksUri").asString(), actualApiClient.getJwksUri().toString());
         assertEquals(idmClientData.get("apiClientOrg").get("id").asString(), actualApiClient.getOrganisation().getId());
         assertEquals(idmClientData.get("apiClientOrg").get("name").asString(), actualApiClient.getOrganisation().getName());
+
+        final String ssaStr = idmClientData.get("ssa").asString();
+        final SignedJwt expectedSignedJwt = new JwtReconstruction().reconstructJwt(ssaStr, SignedJwt.class);
+        assertEquals(expectedSignedJwt.getHeader(), actualApiClient.getSoftwareStatementAssertion().getHeader());
+        assertEquals(expectedSignedJwt.getClaimsSet(), actualApiClient.getSoftwareStatementAssertion().getClaimsSet());
     }
 
     private static JsonValue createIdmApiClientData(String clientId) {
-        final JsonValue idmClientData = json(object(field("id", "ebSqTNqmQXFYz6VtWGXZAa"),
-                field("name", "Automated Testing"),
-                field("description", "Blah blah blah"),
-                field("ssa", createTestSoftwareStatementAssertion().build()),
-                field("oauth2ClientId", clientId),
-                field("jwksUri", "https://somelocation/jwks.jwks"),
-                field("apiClientOrg", object(field("id", "98761234"),
-                                             field("name", "Test Organisation")))));
-        return idmClientData;
+        return json(object(field("id", "ebSqTNqmQXFYz6VtWGXZAa"),
+                           field("name", "Automated Testing"),
+                           field("description", "Blah blah blah"),
+                           field("ssa", createTestSoftwareStatementAssertion().build()),
+                           field("oauth2ClientId", clientId),
+                           field("jwksUri", "https://somelocation/jwks.jwks"),
+                           field("apiClientOrg", object(field("id", "98761234"),
+                                                        field("name", "Test Organisation")))));
     }
 
     /**

@@ -51,23 +51,26 @@ public class FetchApiClientFilter implements Filter {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Client httpClient;
     private final String idmGetApiClientBaseUri;
+    private final String accessTokenClientIdClaim;
 
-    public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri) {
+    public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri, String accessTokenClientIdClaim) {
         Reject.ifNull(clientHandler, "clientHandler must be provided");
         Reject.ifBlank(idmGetApiClientBaseUri, "idmGetApiClientBaseUri must be provided");
         this.httpClient = clientHandler;
         this.idmGetApiClientBaseUri = idmGetApiClientBaseUri;
+        this.accessTokenClientIdClaim = accessTokenClientIdClaim;
     }
 
     @Override
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
         final OAuth2Context oAuth2Context = context.asContext(OAuth2Context.class);
         final Map<String, Object> info = oAuth2Context.getAccessToken().getInfo();
-        if (!info.containsKey(AUD_CLAIM)) {
-            logger.error("({}) access token is missing required " + AUD_CLAIM + " claim", FAPIUtils.getFapiInteractionIdForDisplay(context));
+        if (!info.containsKey(accessTokenClientIdClaim)) {
+            logger.error("({}) access token is missing required " + accessTokenClientIdClaim + " claim", FAPIUtils.getFapiInteractionIdForDisplay(context));
             return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
         }
-        final String clientId = (String)info.get(AUD_CLAIM);
+        final String clientId = (String)info.get(accessTokenClientIdClaim);
+
         return getApiClientFromIdm(clientId).thenAsync(apiClient -> {
             context.asContext(AttributesContext.class).getAttributes().put(API_CLIENT_ATTR_KEY, apiClient);
             return next.handle(context, request);
@@ -79,15 +82,17 @@ public class FetchApiClientFilter implements Filter {
 
     private Promise<ApiClient, Exception> getApiClientFromIdm(String clientId) {
         try {
-            return httpClient.send(new Request().setMethod("GET")
-                            .setUri(idmGetApiClientBaseUri + clientId + "?_fields=apiClientOrg,*"))
-                    .thenAsync(response -> {
-                        if (!response.getStatus().isSuccessful()) {
-                            throw new Exception("Failed to get ApiClient from IDM, response status: " + response.getStatus());
-                        }
-                        return response.getEntity().getJsonAsync().then(json -> convertJsonObjectToApiClient(JsonValue.json(json)),
-                                                                        ioe -> { throw new Exception("Failed to decode apiClient response json", ioe); });
-                    }, nte -> Promises.newExceptionPromise(new Exception(nte)));
+            final Request getApiClientRequest = new Request().setMethod("GET")
+                                                             .setUri(idmGetApiClientBaseUri + clientId + "?_fields=apiClientOrg,*");
+            return httpClient.send(getApiClientRequest)
+                             .thenAsync(response -> {
+                                 if (!response.getStatus().isSuccessful()) {
+                                     throw new Exception("Failed to get ApiClient from IDM, response status: " + response.getStatus());
+                                 }
+                                 return response.getEntity().getJsonAsync()
+                                                            .then(json -> convertJsonObjectToApiClient(JsonValue.json(json)),
+                                                                  ioe -> { throw new Exception("Failed to decode apiClient response json", ioe); });
+                             }, nte -> Promises.newExceptionPromise(new Exception(nte)));
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
@@ -138,8 +143,9 @@ public class FetchApiClientFilter implements Filter {
             if (!idmGetApiClientBaseUri.endsWith("/")) {
                 idmGetApiClientBaseUri = idmGetApiClientBaseUri + '/';
             }
+            final String accessTokenClientIdClaim = config.get("accessTokenClientIdClaim").defaultTo(AUD_CLAIM).asString();
 
-            return new FetchApiClientFilter(httpClient, idmGetApiClientBaseUri);
+            return new FetchApiClientFilter(httpClient, idmGetApiClientBaseUri, accessTokenClientIdClaim);
         }
     }
 }
