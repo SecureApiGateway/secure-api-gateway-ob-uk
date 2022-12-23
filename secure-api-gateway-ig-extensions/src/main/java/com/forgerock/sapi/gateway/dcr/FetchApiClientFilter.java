@@ -72,7 +72,7 @@ public class FetchApiClientFilter implements Filter {
     private final Client httpClient;
 
     /**
-     * The base to use in GET requests to IDM to query for the apiClient
+     * The base uri to use in GET requests to IDM to query for the apiClient
      *
      * Of the form: https://$IDM_HOST/openidm/managed/$API_CLIENT_MANAGED_OBJECT_NAME
      */
@@ -152,7 +152,8 @@ public class FetchApiClientFilter implements Filter {
      * Mandatory config:
      * - idmGetApiClientBaseUri: the base uri used to build the IDM query to get the apiClient, the client_id is expected
      * to be appended to this uri (and some query params).
-     * - clientHandler: the clientHandler to use to call out to IDM.
+     * - clientHandler: the clientHandler to use to call out to IDM (must be configured with the credentials required to
+     * query IDM)
      *
      * Optional config:
      * - accessTokenClientIdClaim: name of the claim used to extract the client_id from the access_token, defaults to "aud"
