@@ -19,6 +19,9 @@ import java.net.URI;
 
 import org.forgerock.json.jose.jws.SignedJwt;
 
+/**
+ * Data object which represents a registered OAuth2 client.
+ */
 public class ApiClient {
 
     private String oauth2ClientId;
