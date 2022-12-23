@@ -44,13 +44,43 @@ import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
+/**
+ * Fetches {@link ApiClient} data from IDM using the client_id identified from the access_token provided with this request.
+ * The {@link ApiClient} retrieved is then made accessible via the AttributesContext as key: "apiClient", other filters
+ * in the chain can then access this data using the context.
+ *
+ * This filter relies on the OAuth2Context being present, therefore it must be installed after a filter which adds this
+ * context, such as OAuth2ResourceServerFilter.
+ */
 public class FetchApiClientFilter implements Filter {
 
+    /**
+     * The key to use to get the ApiClient from the AttributesContext
+     */
     public static final String API_CLIENT_ATTR_KEY = "apiClient";
-    private static final String AUD_CLAIM = "aud";
+
+    /**
+     * The default claim to use to extract the client_id from the access_token
+     */
+    private static final String DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM = "aud";
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    /**
+     * The HTTP client to use when calling IDM.
+     * Must be configured to provide credentials that allow access to the IDM REST API
+     */
     private final Client httpClient;
+
+    /**
+     * The base to use in GET requests to IDM to query for the apiClient
+     *
+     * Of the form: https://$IDM_HOST/openidm/managed/$API_CLIENT_MANAGED_OBJECT_NAME
+     */
     private final String idmGetApiClientBaseUri;
+
+    /**
+     * The claim in the access_token where the client_id can be found, see DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM
+     */
     private final String accessTokenClientIdClaim;
 
     public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri, String accessTokenClientIdClaim) {
@@ -73,6 +103,7 @@ public class FetchApiClientFilter implements Filter {
         final String clientId = (String)info.get(accessTokenClientIdClaim);
 
         return getApiClientFromIdm(clientId).thenAsync(apiClient -> {
+            logger.debug("({}) adding apiClient: {} to AttributesContext[\"{}\"]", FAPIUtils.getFapiInteractionIdForDisplay(context), apiClient, API_CLIENT_ATTR_KEY);
             context.asContext(AttributesContext.class).getAttributes().put(API_CLIENT_ATTR_KEY, apiClient);
             return next.handle(context, request);
         }, ex -> {
@@ -147,7 +178,7 @@ public class FetchApiClientFilter implements Filter {
             if (!idmGetApiClientBaseUri.endsWith("/")) {
                 idmGetApiClientBaseUri = idmGetApiClientBaseUri + '/';
             }
-            final String accessTokenClientIdClaim = config.get("accessTokenClientIdClaim").defaultTo(AUD_CLAIM).asString();
+            final String accessTokenClientIdClaim = config.get("accessTokenClientIdClaim").defaultTo(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM).asString();
 
             return new FetchApiClientFilter(httpClient, idmGetApiClientBaseUri, accessTokenClientIdClaim);
         }

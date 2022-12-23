@@ -57,6 +57,12 @@ import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter.Heaplet;
 
+/**
+ * Unit tests for {@link FetchApiClientFilter}.
+ *
+ * IDM behaviour is simulated using Handlers installed as the httpClient within the Filter.
+ * See {@link MockApiClientTestDataIdmHandler} for an example Handler which returns mocked ApiClient data.
+ */
 class FetchApiClientFilterTest {
 
     @Test
@@ -74,7 +80,7 @@ class FetchApiClientFilterTest {
 
     @Test
     void failsWhenNoOAuth2ContextIsFound() {
-        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.INTERNAL_SERVER_ERROR), "notUsed", "aud");
+        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.FORBIDDEN), "notUsed", "aud");
         assertThrows(IllegalArgumentException.class, () -> filter.filter(new RootContext("root"), new Request(), Handlers.FORBIDDEN),
                 "No context of type org.forgerock.http.oauth2.OAuth2Context found");
     }
@@ -87,7 +93,6 @@ class FetchApiClientFilterTest {
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
-        // FIXME improve assertion
     }
 
     @Test
@@ -101,7 +106,6 @@ class FetchApiClientFilterTest {
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
-        // FIXME improve assertion
     }
 
     @Test
@@ -155,7 +159,6 @@ class FetchApiClientFilterTest {
             // optional config: accessTokenClientIdClaim will be defaulted to aud
             final AccessTokenInfo accessToken = createAccessToken("aud", clientId);
             // Test the filter created by the Heaplet
-
             callFilterValidateSuccessBehaviour(accessToken, idmApiClientData, filter);
         }
 
@@ -189,7 +192,7 @@ class FetchApiClientFilterTest {
      *
      * If the validation fails then a Runtime exception is returned, which will be thrown when Promise.get is called.
      */
-    private class MockApiClientTestDataIdmHandler implements Handler {
+    private static class MockApiClientTestDataIdmHandler implements Handler {
         private final MutableUri idmBaseUri;
         private final String expectedClientId;
         private final JsonValue staticApiClientData;
@@ -218,7 +221,7 @@ class FetchApiClientFilterTest {
     }
 
     private static void callFilterValidateSuccessBehaviour(AccessTokenInfo accessToken, JsonValue idmClientData,
-            FetchApiClientFilter filter) throws Exception {
+                                                           FetchApiClientFilter filter) throws Exception {
         final AttributesContext attributesContext = new AttributesContext(new RootContext("root"));
         final OAuth2Context oauth2Context = new OAuth2Context(attributesContext, accessToken);
 

@@ -15,6 +15,9 @@
  */
 package com.forgerock.sapi.gateway.dcr;
 
+/**
+ * Data object which represents an Organisation to which one or more {@link ApiClient} objects belong
+ */
 public class ApiClientOrganisation {
 
     private final String id;
