@@ -130,7 +130,7 @@ public class FetchApiClientFilter implements Filter {
      * {
      *           "comment": "Add ApiClient data to the context attributes",
      *           "name": "FetchApiClientFilter",
-     *           "type": "com.forgerock.sapi.gateway.dcr.FetchApiClientFilter",
+     *           "type": "FetchApiClientFilter",
      *           "config": {
      *             "idmGetApiClientBaseUri": "https://&{identity.platform.fqdn}/openidm/managed/apiClient",
      *             "clientHandler": "IDMClientHandler"
