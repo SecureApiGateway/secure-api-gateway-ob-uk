@@ -74,7 +74,7 @@ public class TransportCertValidationFilter implements Filter {
      *
      * If this is configured as null then checking the use field will be skipped.
      */
-    private final String jwkUseValue;
+    private final String keyUse;
 
     public TransportCertValidationFilter(JwkSetService jwkSetService,
                                          BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
@@ -83,12 +83,12 @@ public class TransportCertValidationFilter implements Filter {
 
     public TransportCertValidationFilter(JwkSetService jwkSetService,
                                          BiFunction<Context, Request, String> clientTlsCertificateSupplier,
-                                         String jwkUseValue) {
+                                         String keyUse) {
         Reject.ifNull(jwkSetService, "jwkSetService must be provided");
         Reject.ifNull(clientTlsCertificateSupplier, "clientTlsCertificate must be provded");
         this.jwkSetService = jwkSetService;
         this.clientTlsCertificateSupplier = clientTlsCertificateSupplier;
-        this.jwkUseValue = jwkUseValue;
+        this.keyUse = keyUse;
     }
 
     private Response createErrorResponse(String message) {
@@ -164,7 +164,7 @@ public class TransportCertValidationFilter implements Filter {
         for (JWK jwk : jwkSet.getJWKsAsList()) {
             final List<String> x509Chain = jwk.getX509Chain();
             final String jwkX5c = x509Chain.get(0);
-            if (isJwkUseValid(jwk) && clientCertX5c.equals(jwkX5c)) {
+            if (isKeyUseValid(jwk) && clientCertX5c.equals(jwkX5c)) {
                 logger.debug("Found matching tls cert for provided pem, with kid: " + jwk.getKeyId() + " x5t#S256: " + jwk.getX509ThumbprintS256());
                 return true;
             }
@@ -177,26 +177,49 @@ public class TransportCertValidationFilter implements Filter {
      * Validates that the JWK "use".
      *
      * @param jwk the JWK to validate
-     * @return If jwkUseValue field is not configured, then this always returns true.
-     *         Otherwise, returns whether the JWK.use matches the jwkUseValue field
+     * @return If keyUse field is not configured, then this always returns true.
+     *         Otherwise, returns whether the JWK.use matches the keyUse field
      */
-    private boolean isJwkUseValid(JWK jwk) {
-        if (jwkUseValue == null) {
+    private boolean isKeyUseValid(JWK jwk) {
+        if (keyUse == null) {
             return true;
         }
-        return jwkUseValue.equals(jwk.getUse());
+        return keyUse.equals(jwk.getUse());
     }
 
+    /**
+     * Heaplet used to create {@link TransportCertValidationFilter} objects
+     *
+     * Mandatory fields:
+     *  - jwkSetService: the name of a {@link JwkSetService} on the heap to use to validate the transport cert against
+     *  - clientTlsCertHeader: the name of the Request Header which contains the client's TLS cert
+     *
+     * Optional fields:
+     *  - keyUse: the value to validate the JWK.use against, if this configuration is omitted then no validation is applied
+     *  to this field. For Open Banking Directory this should be configured as "tls"
+     *
+     * Example config:
+     * {
+     *           "comment": "Validate the MTLS transport cert",
+     *           "name": "TransportCertValidationFilter",
+     *           "type": "TransportCertValidationFilter",
+     *           "config": {
+     *             "jwkSetService": "OBJwkSetService",
+     *             "clientTlsCertHeader": "ssl-client-cert",
+     *             "keyUse": "tls"
+     *           }
+     * }
+     */
     public static class Heaplet extends GenericHeaplet {
 
         @Override
         public Object create() throws HeapException {
             final JwkSetService jwkSetService = config.get("jwkSetService").as(requiredHeapObject(heap, JwkSetService.class));
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            // jwkUse is optional config
-            final String jwkUse = config.get("jwkUse").asString();
+            // keyUse is optional config
+            final String keyUse = config.get("keyUse").asString();
             final BiFunction<Context, Request, String> certificateSupplier = new CertificateFromHeaderSupplier(clientCertHeaderName);
-            return new TransportCertValidationFilter(jwkSetService, certificateSupplier, jwkUse);
+            return new TransportCertValidationFilter(jwkSetService, certificateSupplier, keyUse);
         }
     }
 }
