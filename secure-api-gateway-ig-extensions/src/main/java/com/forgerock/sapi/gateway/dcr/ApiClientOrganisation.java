@@ -15,6 +15,8 @@
  */
 package com.forgerock.sapi.gateway.dcr;
 
+import java.util.Objects;
+
 /**
  * Data object which represents an Organisation to which one or more {@link ApiClient} objects belong
  */
@@ -34,5 +36,26 @@ public class ApiClientOrganisation {
 
     public String getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final ApiClientOrganisation that = (ApiClientOrganisation) o;
+        return Objects.equals(id, that.id) && Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name);
+    }
+
+    @Override
+    public String toString() {
+        return "ApiClientOrganisation{" +
+                "id='" + id + '\'' +
+                ", name='" + name + '\'' +
+                '}';
     }
 }

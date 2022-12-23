@@ -16,6 +16,7 @@
 package com.forgerock.sapi.gateway.dcr;
 
 import java.net.URI;
+import java.util.Objects;
 
 import org.forgerock.json.jose.jws.SignedJwt;
 
@@ -80,5 +81,35 @@ public class ApiClient {
 
     public void setOrganisation(ApiClientOrganisation organisation) {
         this.organisation = organisation;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final ApiClient apiClient = (ApiClient) o;
+        return Objects.equals(oauth2ClientId, apiClient.oauth2ClientId)
+                && Objects.equals(softwareClientId, apiClient.softwareClientId)
+                && Objects.equals(clientName, apiClient.clientName)
+                && Objects.equals(jwksUri, apiClient.jwksUri)
+                && Objects.equals(softwareStatementAssertion, apiClient.softwareStatementAssertion)
+                && Objects.equals(organisation, apiClient.organisation);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(oauth2ClientId, softwareClientId, clientName, jwksUri, softwareStatementAssertion, organisation);
+    }
+
+    @Override
+    public String toString() {
+        return "ApiClient{" +
+                "oauth2ClientId='" + oauth2ClientId + '\'' +
+                ", softwareClientId='" + softwareClientId + '\'' +
+                ", clientName='" + clientName + '\'' +
+                ", jwksUri=" + jwksUri +
+                ", softwareStatementAssertion=" + softwareStatementAssertion +
+                ", organisation=" + organisation +
+                '}';
     }
 }
