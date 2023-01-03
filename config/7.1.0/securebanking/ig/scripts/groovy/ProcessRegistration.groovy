@@ -56,7 +56,7 @@ def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 def defaultResponseTypes =  ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]
 
-if(trustedDirectoryService) {
+if(!trustedDirectoryService) {
     logger.error(SCRIPT_NAME + "No TrustedDirectoriesService defined on the heap in config.json")
     return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
 }
@@ -113,10 +113,18 @@ switch(method.toUpperCase()) {
         // rejected by AM. This is set to change when OBIE release a new version of the Directory in Feb 2023.
         registrationJwtClaimSet.setClaim("software_statement", null);
 
-        String ssaIssuer = registrationJwtClaimSet.getIssuer()
-        if(issuer == null || issuer.isBlank()){
+        Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
+        if (!ssaJwt) {
+            logger.warn(SCRIPT_NAME + "failed to decode software_statement JWT", e)
+            return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
+        }
+
+        def ssaClaims = ssaJwt.getClaimsSet();
+        String ssaIssuer = ssaClaims.getIssuer()
+        if(ssaIssuer == null || ssaIssuer.isBlank()){
             return errorResponseFactory.invalidClientMetadataErrorResponse("Registration jwt must contain an issuer")
         }
+        logger.debug(SCRIPT_NAME + "issuer is {}", ssaIssuer)
 
         TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
         if(trustedDirectory){
@@ -125,14 +133,6 @@ switch(method.toUpperCase()) {
             logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
         }
-
-        Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
-        if (!ssaJwt) {
-            logger.warn(SCRIPT_NAME + "failed to decode software_statement JWT", e)
-            return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
-        }
-
-        def ssaClaims = ssaJwt.getClaimsSet();
 
         try {
             validateRegistrationRedirectUris(registrationJwtClaimSet, ssaClaims)
@@ -153,13 +153,9 @@ switch(method.toUpperCase()) {
         def apiClientOrgName = ssaClaims.getClaim("software_client_name", String.class);
         def apiClientOrgCertId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementOrgIdClaimName(), String.class);
 
-
-
-        logger.debug(SCRIPT_NAME + "Inbound details from SSA: apiClientOrgName: {} apiClientOrgCertId: {} apiClientOrgJwksUri: {} apiClientOrgJwks: {}",
+        logger.debug(SCRIPT_NAME + "Inbound details from SSA: apiClientOrgName: {} apiClientOrgCertId: {}",
                 apiClientOrgName,
-                apiClientOrgCertId,
-                apiClientOrgJwksUri,
-                apiClientOrgJwks
+                apiClientOrgCertId
         )
 
         // Update OIDC registration request
