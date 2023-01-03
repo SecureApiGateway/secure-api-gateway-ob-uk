@@ -402,9 +402,10 @@
     {
       "name": "TrustedDirectoriesService",
       "type": "TrustedDirectoriesService",
+      "comment": "Used to obtain meta information about a trusted directory by look up using the 'iss' field value",
       "config": {
         "enableIGTestTrustedDirectory": true,
-        "testDirectoryFQDN": "https://&{ig.fqdn}/jwkms/apiclient/jwks"
+        "SecureApiGatewayJwksUri": "https://&{ig.fqdn}/jwkms/apiclient/jwks"
       }
     },
     {

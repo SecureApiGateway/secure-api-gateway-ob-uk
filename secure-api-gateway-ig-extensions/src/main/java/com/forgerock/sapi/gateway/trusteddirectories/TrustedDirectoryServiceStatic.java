@@ -18,27 +18,51 @@ package com.forgerock.sapi.gateway.trusteddirectories;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * This class provides access to static config data. By static I mean the underlying classes hold Trusted Directory
+ * configuration data that is hard coded. This class allows us to access this information via the TrustedDirectoryService
+ * while we hone what needs to be in the Trusted Directory configuration data. Once we have settled on what data needs
+ * to be held we can then create a TrustedDirectoryService that will read the Trusted Directory configuration from
+ * a store such as Identity Manager in the FIdC.
+ */
 public class TrustedDirectoryServiceStatic implements TrustedDirectoryService {
 
-    Map<String, TrustedDirectory> directoryConfigurations;
+    private final Map<String, TrustedDirectory> directoryConfigurations;
 
-    public TrustedDirectoryServiceStatic(Boolean enableIGTestTrustedDirectory, String testDirectoryFQDN) {
+    /**
+     * Constructor. The Secure API Gateway can itself be a trusted directory. This means it can issue software statements
+     * and issue certificates associated with those software statements. This is useful for development and testing
+     * but SHOULD NOT BE USED IN PRODUCTION. Whether the Secure API Gateway acts as a trusted directory or not is
+     * controlled by the 'enableIGTestTrustedDirectory' parameter.
+     * @param enableIGTestTrustedDirectory indicates if the Secure API Gateway should act as a Trusted Directory.</br>
+     *                                     <b>NOTE: this should NOT be true in production deployments</b>
+     * @param secureApiGatewayJwksUri The jwks_uri against which the signature of SSAs issued by the Trusted Directory
+     *                                may be validated
+     */
+    public TrustedDirectoryServiceStatic(Boolean enableIGTestTrustedDirectory, String secureApiGatewayJwksUri) {
         directoryConfigurations = new HashMap<>();
 
         addOpenBankingTestTrustedDirectory();
         if(enableIGTestTrustedDirectory) {
-            addGatewayTestTrustedDirectory(testDirectoryFQDN);
+            addGatewayTestTrustedDirectory(secureApiGatewayJwksUri);
         }
     }
 
-    private void addGatewayTestTrustedDirectory(String testDirectoryFQDN) {
-         TrustedDirectory secureApiGatewayTrustedDirectory = new TrustedDirectorySecureApiGateway(testDirectoryFQDN);
-         directoryConfigurations.put(secureApiGatewayTrustedDirectory.getIssuer(), secureApiGatewayTrustedDirectory);
-    }
-
+    /**
+     *
+     * @param issuer - the value of the 'iss' field that is used by the Trusted Directory in Software Statement
+     *               Assertions. For the Open Banking Directories for example, this will be "OpenBanking Ltd"
+     * @return The {@code TrustedDirectory} associated with the issuer or null if no value is held for the provided
+     * issuer
+     */
     @Override
     public TrustedDirectory getTrustedDirectoryConfiguration(String issuer) {
         return directoryConfigurations.get(issuer);
+    }
+
+    private void addGatewayTestTrustedDirectory(String testDirectoryFQDN) {
+        TrustedDirectory secureApiGatewayTrustedDirectory = new TrustedDirectorySecureApiGateway(testDirectoryFQDN);
+        directoryConfigurations.put(secureApiGatewayTrustedDirectory.getIssuer(), secureApiGatewayTrustedDirectory);
     }
 
     private void addOpenBankingTestTrustedDirectory() {

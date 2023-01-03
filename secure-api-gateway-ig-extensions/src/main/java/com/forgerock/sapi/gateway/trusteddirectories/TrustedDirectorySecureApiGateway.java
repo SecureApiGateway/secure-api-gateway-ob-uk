@@ -15,6 +15,11 @@
  */
 package com.forgerock.sapi.gateway.trusteddirectories;
 
+/**
+ * Holds static configuration information for the Trusted Directory provided by the Secure API Gateway itself. For
+ * development and test purposes it is useful to be able to use the Secure API Gateway to issue SSAs and Certificates
+ * associated with the SSA itself.
+ */
 public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
 
     /*
@@ -27,9 +32,9 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
      * The URL at which the Open Banking Test Directory JWKS are held, containing public certificates that may be used
      * to validate Open Banking Test directory issues Software Statements.
      */
-    String jwksUri = null;
+    String secureApiGatewayJwksUri = null;
 
-    final static Boolean softwareStatementHoldsJwksUri = false;
+    final static boolean softwareStatementHoldsJwksUri = false;
 
     final static String softwareStatementJwksClaimName = "software_jwks";
 
@@ -44,9 +49,13 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
      */
     final static String softwareStatementSoftwareIdClaimName = "software_client_id";
 
-    public TrustedDirectorySecureApiGateway(String testDirectoryFQDN){
-        super();
-        this.jwksUri = testDirectoryFQDN;
+    /**
+     * Constructor
+     * @param secureApiGatewayJwksUri The jwks_uri against which SSAs issued by the Secure API Gateway can be
+     *                                validated
+     */
+    public TrustedDirectorySecureApiGateway(String secureApiGatewayJwksUri){
+        this.secureApiGatewayJwksUri = secureApiGatewayJwksUri;
     }
 
     @Override
@@ -56,11 +65,11 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
 
     @Override
     public String getJwksUri() {
-        return this.jwksUri;
+        return this.secureApiGatewayJwksUri;
     }
 
     @Override
-    public Boolean softwareStatementHoldsJwksUri() {
+    public boolean softwareStatementHoldsJwksUri() {
         return softwareStatementHoldsJwksUri;
     }
 

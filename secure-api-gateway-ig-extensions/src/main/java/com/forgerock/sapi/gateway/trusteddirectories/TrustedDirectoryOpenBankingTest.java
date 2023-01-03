@@ -24,7 +24,7 @@ public class TrustedDirectoryOpenBankingTest implements TrustedDirectory {
     final static String issuer = "OpenBanking Ltd";
 
 
-    final static Boolean softwareStatementHoldsJwksUri = true;
+    final static boolean softwareStatementHoldsJwksUri = true;
 
     /*
      * The URL at which the Open Banking Test Directory JWKS are held, containing public certificates that may be used
@@ -59,7 +59,7 @@ public class TrustedDirectoryOpenBankingTest implements TrustedDirectory {
     }
 
     @Override
-    public Boolean softwareStatementHoldsJwksUri() {
+    public boolean softwareStatementHoldsJwksUri() {
         return softwareStatementHoldsJwksUri;
     }
 

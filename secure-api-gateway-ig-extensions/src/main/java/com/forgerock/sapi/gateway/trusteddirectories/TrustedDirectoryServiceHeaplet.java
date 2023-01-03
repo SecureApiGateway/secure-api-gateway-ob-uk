@@ -41,14 +41,14 @@ public class TrustedDirectoryServiceHeaplet extends GenericHeaplet {
                 .as(evaluatedWithHeapProperties())
                 .defaultTo(DEFAULT_IG_TEST_DIRECTORY_ENABLED)
                 .asBoolean();
-        final String testDirectoryFQDN = config.get("testDirectoryFQDN")
+        final String secureApiGatewayJwksUri = config.get("SecureApiGatewayJwksUri")
                 .as(evaluatedWithHeapProperties())
                 .defaultTo(null)
                 .asString();
 
 
-        logger.debug("Creating Trusted Directory Service with enableIGTestTrustedDirectory: {}, testDirectoryFQDN: {}",
-                enableIGTestTrustedDirectory, testDirectoryFQDN);
-        return new TrustedDirectoryServiceStatic(enableIGTestTrustedDirectory, testDirectoryFQDN);
+        logger.debug("Creating Trusted Directory Service with enableIGTestTrustedDirectory: {}, secureApiGatewayJwksUri: {}",
+                enableIGTestTrustedDirectory, secureApiGatewayJwksUri);
+        return new TrustedDirectoryServiceStatic(enableIGTestTrustedDirectory, secureApiGatewayJwksUri);
     }
 }

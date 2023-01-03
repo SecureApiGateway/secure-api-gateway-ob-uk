@@ -15,6 +15,17 @@
  */
 package com.forgerock.sapi.gateway.trusteddirectories;
 
+/**
+ * A Trusted Directory is an external 'trust anchor' that the Secure API Gateway should trust to be the issuer
+ * of software statements and the certificates associated with those statements. This interface allows access to
+ * configuration information for a trusted directory. In the UK this is the Open Banking Directory, or the Open Banking
+ * Sandbox Directory. It is trusted by both the ApiClient and the ApiProvider. In other eco-systems the registry will
+ * be different. In some cases it can be a registry provided by the ApiProvider. For example a bank wishing to provide
+ * innovative new custom APIs outside of a regulated system could create their own Trusted Registry.
+ *
+ * @see <a href="https://github.com/SecureApiGateway/SecureApiGateway/wiki/About-Dynamic-Client-Registration">
+ *     About Dynamic Client Registration</a>
+ */
 public interface TrustedDirectory {
     /**
      * @return the value that can be expected to be found in the issuer field of Software Statements issued
@@ -35,7 +46,7 @@ public interface TrustedDirectory {
      * Using a jwks_uri against which Certificates associated with Software Statement can be validated allows for
      * key rotation
      */
-    Boolean softwareStatementHoldsJwksUri();
+    boolean softwareStatementHoldsJwksUri();
     /**
      *
      * @return If @link #softwareStatementHoldsJwksUri() returns true this method will return the name of the claim in the
