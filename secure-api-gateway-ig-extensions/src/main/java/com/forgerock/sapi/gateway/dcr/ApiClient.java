@@ -25,11 +25,37 @@ import org.forgerock.json.jose.jws.SignedJwt;
  */
 public class ApiClient {
 
+    /**
+     * The OAuth2 Client ID for this client. This is generated and assigned at registration.
+     *
+     * This ID can uniquely identify the ApiClient.
+     */
     private String oauth2ClientId;
+
+    /**
+     * The Client ID for this client as defined in the software statement used to at registration (not necessarily unique).
+     */
     private String softwareClientId;
+
+    /**
+     * Name of the client
+     */
     private String clientName;
+
+    /**
+     * The URI of the JWKS which contains the certificates which can be used by this ApiClient for transport and
+     * signing purposes.
+     */
     private URI jwksUri;
+
+    /**
+     * The Software Statement Assertions (SSA), which is a signed JWT containing the Software Statement registered.
+     */
     private SignedJwt softwareStatementAssertion;
+
+    /**
+     * The organisation that this client belongs to
+     */
     private ApiClientOrganisation organisation;
 
     public ApiClient(){
