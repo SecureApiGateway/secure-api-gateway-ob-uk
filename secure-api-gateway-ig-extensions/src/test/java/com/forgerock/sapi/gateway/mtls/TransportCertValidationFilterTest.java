@@ -89,37 +89,37 @@ class TransportCertValidationFilterTest {
             " ]\n" +
             "}");
 
-    @Disabled
-    @Test
-    public void testValidCert() throws ExecutionException, InterruptedException, TimeoutException {
-        final String certificateHeaderName = "ssl-client-cert";
-        final String jwksUrl = "https://test.jwks";
-        final TransportCertValidationFilter transportCertValidationFilter = new TransportCertValidationFilter(new JwkSetService() {
-            @Override
-            public Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUrl) {
-                if (jwkStoreUrl.toString().equals(jwksUrl)) {
-                    return Promises.newResultPromise(testJwks);
-                } else {
-                    return Promises.newExceptionPromise(new FailedToLoadJWKException("unexpected jwkStoreUrl, expected: " + jwksUrl + " got: " + jwkStoreUrl));
-                }
-            }
-
-            @Override
-            public Promise<JWK, FailedToLoadJWKException> getJwk(URL jwkStoreUrl, String keyId) {
-                return Promises.newExceptionPromise(new FailedToLoadJWKException("getJwk should not be called by this test"));
-            }
-        }, new CertificateFromHeaderSupplier(certificateHeaderName));
-
-        final AttributesContext context = new AttributesContext(new TransactionIdContext(null, new TransactionId("1234")));
-
-        final ApiClient apiClient = new ApiClient();
-        apiClient.setJwksUri(URI.create(jwksUrl));
-        context.getAttributes().put(FetchApiClientFilter.API_CLIENT_ATTR_KEY, apiClient);
-        final Request request = new Request().setMethod("GET");
-        request.addHeaders(new GenericHeader(certificateHeaderName, certString));
-
-        final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(context, request,(ctx, req) -> Promises.newResultPromise(new Response(Status.OK)));
-        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertEquals(200, response.getStatus().getCode(), "HTTP Response Code");
-    }
+//    @Disabled
+//    @Test
+//    public void testValidCert() throws ExecutionException, InterruptedException, TimeoutException {
+//        final String certificateHeaderName = "ssl-client-cert";
+//        final String jwksUrl = "https://test.jwks";
+//        final TransportCertValidationFilter transportCertValidationFilter = new TransportCertValidationFilter(new JwkSetService() {
+//            @Override
+//            public Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUrl) {
+//                if (jwkStoreUrl.toString().equals(jwksUrl)) {
+//                    return Promises.newResultPromise(testJwks);
+//                } else {
+//                    return Promises.newExceptionPromise(new FailedToLoadJWKException("unexpected jwkStoreUrl, expected: " + jwksUrl + " got: " + jwkStoreUrl));
+//                }
+//            }
+//
+//            @Override
+//            public Promise<JWK, FailedToLoadJWKException> getJwk(URL jwkStoreUrl, String keyId) {
+//                return Promises.newExceptionPromise(new FailedToLoadJWKException("getJwk should not be called by this test"));
+//            }
+//        }, new CertificateFromHeaderSupplier(certificateHeaderName));
+//
+//        final AttributesContext context = new AttributesContext(new TransactionIdContext(null, new TransactionId("1234")));
+//
+//        final ApiClient apiClient = new ApiClient();
+//        apiClient.setJwksUri(URI.create(jwksUrl));
+//        context.getAttributes().put(FetchApiClientFilter.API_CLIENT_ATTR_KEY, apiClient);
+//        final Request request = new Request().setMethod("GET");
+//        request.addHeaders(new GenericHeader(certificateHeaderName, certString));
+//
+//        final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(context, request,(ctx, req) -> Promises.newResultPromise(new Response(Status.OK)));
+//        final Response response = responsePromise.get(1, TimeUnit.SECONDS);
+//        Assertions.assertEquals(200, response.getStatus().getCode(), "HTTP Response Code");
+//    }
 }
