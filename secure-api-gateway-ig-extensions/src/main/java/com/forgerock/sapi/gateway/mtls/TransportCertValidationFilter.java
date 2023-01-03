@@ -34,9 +34,11 @@ import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
+import org.forgerock.json.JsonValue;
 import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
+import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.AttributesContext;
@@ -53,6 +55,8 @@ import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter.CertificateFromHeaderSupplier;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
+import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
+import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
 
@@ -74,6 +78,12 @@ public class TransportCertValidationFilter implements Filter {
     private final JwkSetService jwkSetService;
 
     /**
+     * Service used to obtain {@link com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory} configuration.
+     * The TrustedDirectory config is required to determine where to find the JWKS to use to validate the cert.
+     */
+    private final TrustedDirectoryService trustedDirectoryService;
+
+    /**
      * Function which returns the client's PEM encoded x509 certificate which is used for MTLS as a String.
      */
     private final BiFunction<Context, Request, String> clientTlsCertificateSupplier;
@@ -85,17 +95,20 @@ public class TransportCertValidationFilter implements Filter {
      */
     private final String keyUse;
 
-    public TransportCertValidationFilter(JwkSetService jwkSetService,
+
+    public TransportCertValidationFilter(JwkSetService jwkSetService, TrustedDirectoryService trustedDirectoryService,
                                          BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
-        this(jwkSetService, clientTlsCertificateSupplier, null);
+        this(jwkSetService, trustedDirectoryService, clientTlsCertificateSupplier, null);
     }
 
-    public TransportCertValidationFilter(JwkSetService jwkSetService,
+    public TransportCertValidationFilter(JwkSetService jwkSetService, TrustedDirectoryService trustedDirectoryService,
                                          BiFunction<Context, Request, String> clientTlsCertificateSupplier,
                                          String keyUse) {
         Reject.ifNull(jwkSetService, "jwkSetService must be provided");
+        Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
         Reject.ifNull(clientTlsCertificateSupplier, "clientTlsCertificate must be provded");
         this.jwkSetService = jwkSetService;
+        this.trustedDirectoryService = trustedDirectoryService;
         this.clientTlsCertificateSupplier = clientTlsCertificateSupplier;
         this.keyUse = keyUse;
     }
@@ -158,8 +171,22 @@ public class TransportCertValidationFilter implements Filter {
     }
 
     private Promise<JWKSet, FailedToLoadJWKException> getJwkSet(ApiClient apiClient) throws MalformedURLException {
-        // TODO fetch based on the Trusted Directory config
-        return jwkSetService.getJwkSet(apiClient.getJwksUri().toURL());
+        final JwtClaimsSet ssaClaims = apiClient.getSoftwareStatementAssertion().getClaimsSet();
+        final String issuer = ssaClaims.getIssuer();
+        final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(issuer);
+        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
+            return jwkSetService.getJwkSet(apiClient.getJwksUri().toURL());
+        } else {
+            final String jwksClaimsName = trustedDirectory.getSoftwareStatementJwksClaimName();
+            if (jwksClaimsName == null) {
+                return Promises.newExceptionPromise(new FailedToLoadJWKException("Trusted Directory for issuer: " + issuer + " has softwareStatemdntHoldsJwksUri=false but is missing softwareStatementJwksClaimName value"));
+            }
+            final JsonValue rawJwks = ssaClaims.get(jwksClaimsName);
+            if (rawJwks == null) {
+                return Promises.newExceptionPromise(new FailedToLoadJWKException("SSA is missing claim: " + jwksClaimsName));
+            }
+            return Promises.newResultPromise(JWKSet.parse(rawJwks));
+        }
     }
 
     private X509Certificate parseCertificate(String cert) throws CertificateException {
@@ -232,6 +259,7 @@ public class TransportCertValidationFilter implements Filter {
      *
      * Mandatory fields:
      *  - jwkSetService: the name of a {@link JwkSetService} on the heap to use to validate the transport cert against
+     *  - trustedDirectoryService: the name of a {@link TrustedDirectoryService} on the heap to use to obtain directory configuration from
      *  - clientTlsCertHeader: the name of the Request Header which contains the client's TLS cert
      *
      * Optional fields:
@@ -245,6 +273,7 @@ public class TransportCertValidationFilter implements Filter {
      *           "type": "TransportCertValidationFilter",
      *           "config": {
      *             "jwkSetService": "OBJwkSetService",
+     *             "trustedDirectoryService": "TrustedDirectoriesService",
      *             "clientTlsCertHeader": "ssl-client-cert",
      *             "keyUse": "tls"
      *           }
@@ -255,11 +284,13 @@ public class TransportCertValidationFilter implements Filter {
         @Override
         public Object create() throws HeapException {
             final JwkSetService jwkSetService = config.get("jwkSetService").as(requiredHeapObject(heap, JwkSetService.class));
+            final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
+                                                                          .as(requiredHeapObject(heap, TrustedDirectoryService.class));
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             // keyUse is optional config
             final String keyUse = config.get("keyUse").asString();
             final BiFunction<Context, Request, String> certificateSupplier = new CertificateFromHeaderSupplier(clientCertHeaderName);
-            return new TransportCertValidationFilter(jwkSetService, certificateSupplier, keyUse);
+            return new TransportCertValidationFilter(jwkSetService, trustedDirectoryService, certificateSupplier, keyUse);
         }
     }
 }

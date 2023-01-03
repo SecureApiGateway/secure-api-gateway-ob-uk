@@ -113,6 +113,7 @@
           "type": "TransportCertValidationFilter",
           "config": {
             "jwkSetService": "OBJwkSetService",
+            "trustedDirectoryService": "TrustedDirectoriesService",
             "clientTlsCertHeader": "ssl-client-cert",
             "keyUse": "tls"
           }
