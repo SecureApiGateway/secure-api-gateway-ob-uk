@@ -22,7 +22,14 @@ import java.util.Objects;
  */
 public class ApiClientOrganisation {
 
+    /**
+     * Unique identifier of this organisation.
+     */
     private final String id;
+
+    /**
+     * Organisation name, typically the company name.
+     */
     private final String name;
 
     public ApiClientOrganisation(String id, String name) {
