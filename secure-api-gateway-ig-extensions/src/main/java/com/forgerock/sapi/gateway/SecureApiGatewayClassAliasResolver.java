@@ -20,10 +20,12 @@ import java.util.Map;
 
 import org.forgerock.openig.alias.ClassAliasResolver;
 
+import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetService;
 import com.forgerock.sapi.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService;
 import com.forgerock.sapi.gateway.jws.RsaJwtSignatureValidator;
+import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
     private static final Map<String, Class<?>> ALIASES = new HashMap<>();
