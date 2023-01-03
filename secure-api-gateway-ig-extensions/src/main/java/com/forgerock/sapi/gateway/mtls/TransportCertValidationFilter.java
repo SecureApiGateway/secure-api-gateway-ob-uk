@@ -34,6 +34,7 @@ import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.openig.heap.GenericHeaplet;
@@ -55,6 +56,14 @@ import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
 
+/**
+ * Filter to validate that the client's MTLS transport certificate is valid.
+ *
+ * This filter depends on the {@link ApiClient} being present in the {@link AttributesContext}, therefore it should be
+ * registered after the {@link FetchApiClientFilter} in the filter chain.
+ *
+ * The certificate is deemed valid if it exists in the JWKS registered for the {@link ApiClient}.
+ */
 public class TransportCertValidationFilter implements Filter {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -72,7 +81,7 @@ public class TransportCertValidationFilter implements Filter {
     /**
      * Optionally validate that the JWK entry in the JWKS has a "use" value that matches this value.
      *
-     * If this is configured as null then checking the use field will be skipped.
+     * If this is configured as null, then checking of the use field will be skipped.
      */
     private final String keyUse;
 
@@ -111,7 +120,7 @@ public class TransportCertValidationFilter implements Filter {
             return Promises.newResultPromise(createErrorResponse("client tls certificate is not valid"));
         }
 
-        // JWK x5c string representation of this cert to validate against an x5c value in the JWKS
+        // JWK x5c string representation of this cert to validate against a x5c value in the JWKS
         final String x5cForClientCert;
         try {
             x5cForClientCert = getX5cForClientCert(certificate);
@@ -120,30 +129,40 @@ public class TransportCertValidationFilter implements Filter {
             return Promises.newResultPromise(createErrorResponse("client tls certificate is not valid"));
         }
 
+        final ApiClient apiClient = getApiClient(context);
+        try {
+            return getJwkSet(apiClient).thenAsync(jwkSet -> {
+                if (!tlsClientCertExistsInJwkSet(jwkSet, x5cForClientCert)) {
+                    logger.debug("({}) transport cert failed validation: not present in JWKS", FAPIUtils.getFapiInteractionIdForDisplay(context));
+                    return Promises.newResultPromise(createErrorResponse("client tls certificate not found in JWKS for software statement"));
+                }
+                logger.debug("({}) transport cert validated successfully", FAPIUtils.getFapiInteractionIdForDisplay(context));
+                return next.handle(context, request);
+            }, ex -> {
+                logger.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") unable to validate transport cert failed to get JWKS", ex);
+                return Promises.newResultPromise(createErrorResponse("unable to retrieve JWKS for software statement to validate transport cert"));
+            });
+        } catch (MalformedURLException e) {
+            // TODO improve this
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static ApiClient getApiClient(Context context) {
         final AttributesContext attributesContext = context.asContext(AttributesContext.class);
         final ApiClient apiClient = (ApiClient)attributesContext.getAttributes().get(FetchApiClientFilter.API_CLIENT_ATTR_KEY);
         if (apiClient == null) {
             throw new IllegalStateException("Failed to find: " + FetchApiClientFilter.API_CLIENT_ATTR_KEY + " context attribute required by this filter");
         }
-        try {
-            return jwkSetService.getJwkSet(apiClient.getJwksUri().toURL())
-                                .thenAsync(jwkSet -> {
-                                    if (!tlsClientCertExistsInJwkSet(jwkSet, x5cForClientCert)) {
-                                        logger.debug("({}) transport cert failed validation: not present in JWKS", FAPIUtils.getFapiInteractionIdForDisplay(context));
-                                        return Promises.newResultPromise(createErrorResponse("client tls certificate not found in JWKS for software statement"));
-                                    }
-                                    logger.debug("({}) transport cert validated successfully", FAPIUtils.getFapiInteractionIdForDisplay(context));
-                                    return next.handle(context, request);
-                                }, ex -> {
-                                    logger.warn("("+  FAPIUtils.getFapiInteractionIdForDisplay(context) + ") unable to validate transport cert failed to get JWKS", ex);
-                                    return Promises.newResultPromise(createErrorResponse("unable to retrieve JWKS for software statement to validate transport cert"));
-                                });
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
+        return apiClient;
     }
 
-    X509Certificate parseCertificate(String cert) throws CertificateException {
+    private Promise<JWKSet, FailedToLoadJWKException> getJwkSet(ApiClient apiClient) throws MalformedURLException {
+        // TODO fetch based on the Trusted Directory config
+        return jwkSetService.getJwkSet(apiClient.getJwksUri().toURL());
+    }
+
+    private X509Certificate parseCertificate(String cert) throws CertificateException {
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         Certificate certificate = cf.generateCertificate(new ByteArrayInputStream(cert.getBytes(StandardCharsets.UTF_8)));
         if (!(certificate instanceof X509Certificate)) {
@@ -154,13 +173,34 @@ public class TransportCertValidationFilter implements Filter {
         return x509Cert;
     }
 
-    String getX5cForClientCert(X509Certificate certificate) throws JOSEException {
+    /**
+     * Converts the X509 certificate into x5c format (see https://www.rfc-editor.org/rfc/rfc7517#section-4.7) so
+     * that it can be compared to the x5c values present for the JWK objects in the JWKS
+     *
+     * @param certificate X509Certificate to get the x5c value for
+     * @return String representing the x5c value of the cert
+     * @throws JOSEException if the certificate cannot be converted into a JWK
+     */
+    private String getX5cForClientCert(X509Certificate certificate) throws JOSEException {
         if (certificate.getPublicKey() instanceof RSAPublicKey) {
             return RSAKey.parse(certificate).getX509CertChain().get(0).toString();
         }
         throw new IllegalStateException("Unsupported certificate type: " + certificate.getClass());
     }
-    boolean tlsClientCertExistsInJwkSet(JWKSet jwkSet, String clientCertX5c) {
+
+    /**
+     * Check if the client's transport cert exists in the JWKSet by comparing JWK.x5c values with the supplied clientCertX5c
+     *
+     * If the cert does exist, then optionally test the key's use to see if it is valid for use as a transport key.
+     * See {@link TransportCertValidationFilter#keyUse}
+     *
+     * @param jwkSet JWKSet to check
+     * @param clientCertX5c String representing the JWK.x5c value we are expecting to matching.
+     *                      NOTE: we are only testing the client cert portion of the x5c array, the first item in the array
+     *                      and not the whole cert chain.
+     * @return true if the cert exists in the JWK and has the correct keyUse
+     */
+    private boolean tlsClientCertExistsInJwkSet(JWKSet jwkSet, String clientCertX5c) {
         for (JWK jwk : jwkSet.getJWKsAsList()) {
             final List<String> x509Chain = jwk.getX509Chain();
             final String jwkX5c = x509Chain.get(0);
@@ -174,7 +214,7 @@ public class TransportCertValidationFilter implements Filter {
     }
 
     /**
-     * Validates that the JWK "use".
+     * Validates the JWK "use" value.
      *
      * @param jwk the JWK to validate
      * @return If keyUse field is not configured, then this always returns true.
