@@ -56,7 +56,7 @@ def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 def defaultResponseTypes =  ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]
 
-if(trustedDirectoryService == null) {
+if(trustedDirectoryService) {
     logger.error(SCRIPT_NAME + "No TrustedDirectoriesService defined on the heap in config.json")
     return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
 }
