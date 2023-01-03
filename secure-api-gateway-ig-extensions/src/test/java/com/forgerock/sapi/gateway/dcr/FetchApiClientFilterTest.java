@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import org.forgerock.http.Client;
 import org.forgerock.http.Handler;
@@ -120,6 +121,21 @@ class FetchApiClientFilterTest {
 
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
+    }
+
+    @Test
+    void returnsErrorResponseWhenIdmUrlIsInvalid() throws Exception {
+        // Invalid base uri
+        final String idmBaseUri = "999://localhost/openidm/managed/";
+        final String clientId = "1234-5678-9101";
+
+        final String clientIdClaim = "aud";
+        final AccessTokenInfo accessToken = createAccessToken(clientIdClaim, clientId);
+        final FetchApiClientFilter filter = new FetchApiClientFilter(new Client(Handlers.FORBIDDEN), idmBaseUri, clientIdClaim);
+
+        callFilter(accessToken, filter, (response, attributesContext) -> {
+            assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
+        });
     }
 
     @Nested
@@ -221,7 +237,22 @@ class FetchApiClientFilterTest {
     }
 
     private static void callFilterValidateSuccessBehaviour(AccessTokenInfo accessToken, JsonValue idmClientData,
-                                                           FetchApiClientFilter filter) throws Exception {
+                                                          FetchApiClientFilter filter) throws Exception {
+
+        final BiConsumer<Response, AttributesContext> successBehaviourValidator = (response, ctxt) -> {
+            // Verify we hit the end of the chain and got the NO_CONTENT response
+            assertEquals(Status.NO_CONTENT, response.getStatus());
+
+            // Verify that the context was updated with the apiClient data
+            final ApiClient apiClient = (ApiClient) ctxt.getAttributes().get(API_CLIENT_ATTR_KEY);
+            assertNotNull(apiClient, "apiClient was not found in context");
+            verifyIdmClientDataMatchesApiClientObject(idmClientData, apiClient);
+        };
+        callFilter(accessToken, filter, successBehaviourValidator);
+    }
+
+    private static void callFilter(AccessTokenInfo accessToken, FetchApiClientFilter filter,
+                                   BiConsumer<Response, AttributesContext> responseAndContextValidator) throws Exception {
         final AttributesContext attributesContext = new AttributesContext(new RootContext("root"));
         final OAuth2Context oauth2Context = new OAuth2Context(attributesContext, accessToken);
 
@@ -230,13 +261,9 @@ class FetchApiClientFilterTest {
         final Promise<Response, NeverThrowsException> responsePromise = filter.filter(oauth2Context, new Request(), endOfFilterChainHandler);
 
         final Response response = responsePromise.get(1L, TimeUnit.SECONDS);
-        // Verify we hit the end of the chain and got the NO_CONTENT response
-        assertEquals(Status.NO_CONTENT, response.getStatus());
 
-        // Verify that the context was updated with the apiClient data
-        final ApiClient apiClient = (ApiClient) attributesContext.getAttributes().get(API_CLIENT_ATTR_KEY);
-        assertNotNull(apiClient, "apiClient was not found in context");
-        verifyIdmClientDataMatchesApiClientObject(idmClientData, apiClient);
+        // Do the validation
+        responseAndContextValidator.accept(response, attributesContext);
     }
 
     private static AccessTokenInfo createAccessToken(String clientIdClaim, String clientId) {
