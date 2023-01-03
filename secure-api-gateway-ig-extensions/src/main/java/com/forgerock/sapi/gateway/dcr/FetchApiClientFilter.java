@@ -126,7 +126,7 @@ public class FetchApiClientFilter implements Filter {
                                                                   ioe -> { throw new Exception("Failed to decode apiClient response json", ioe); });
                              }, nte -> Promises.newExceptionPromise(new Exception(nte)));
         } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+            return Promises.newExceptionPromise(new Exception(e));
         }
     }
 
