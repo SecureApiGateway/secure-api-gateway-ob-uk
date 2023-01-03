@@ -1,4 +1,5 @@
 import com.forgerock.sapi.gateway.jwt.JwtUtils
+import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory
 import org.forgerock.util.promise.*
 import org.forgerock.http.protocol.*
 import org.forgerock.json.jose.*
@@ -14,6 +15,7 @@ import java.security.SignatureException
 import com.nimbusds.jose.jwk.RSAKey;
 import com.securebanking.gateway.dcr.ErrorResponseFactory
 import static org.forgerock.util.promise.Promises.newResultPromise
+
 
 /*
  * Script to verify the registration request, and prepare AM OIDC dynamic client reg
@@ -54,6 +56,11 @@ def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 def defaultResponseTypes =  ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]
 
+if(trustedDirectoryService == null) {
+    logger.error(SCRIPT_NAME + "No TrustedDirectoriesService defined on the heap in config.json")
+    return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
+}
+
 def method = request.method
 
 switch(method.toUpperCase()) {
@@ -79,12 +86,10 @@ switch(method.toUpperCase()) {
         }
 
         JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
-
         if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
             logger.debug(SCRIPT_NAME, "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
-
 
         def responseTypes = registrationJwtClaimSet.getClaim("response_types")
         if (!responseTypes) {
@@ -108,13 +113,25 @@ switch(method.toUpperCase()) {
         // rejected by AM. This is set to change when OBIE release a new version of the Directory in Feb 2023.
         registrationJwtClaimSet.setClaim("software_statement", null);
 
-        def ssaJwt
-        try {
-            ssaJwt = new JwtReconstruction().reconstructJwt(ssa, SignedJwt.class)
-        } catch (e) {
+        String ssaIssuer = registrationJwtClaimSet.getIssuer()
+        if(issuer == null || issuer.isBlank()){
+            return errorResponseFactory.invalidClientMetadataErrorResponse("Registration jwt must contain an issuer")
+        }
+
+        TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
+        if(trustedDirectory){
+            logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
+        } else {
+            logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
+            return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
+        }
+
+        Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
+        if (!ssaJwt) {
             logger.warn(SCRIPT_NAME + "failed to decode software_statement JWT", e)
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
         }
+
         def ssaClaims = ssaJwt.getClaimsSet();
 
         try {
@@ -128,15 +145,15 @@ switch(method.toUpperCase()) {
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
         def registrationIssuer = registrationJwtClaimSet.getIssuer()
-        def ssaSoftwareId = ssaClaims.getClaim("software_id")
+        def ssaSoftwareId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementSoftwareIdClaimName())
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("invalid issuer claim")
         }
 
         def apiClientOrgName = ssaClaims.getClaim("software_client_name", String.class);
-        def apiClientOrgCertId = ssaClaims.getClaim("org_id", String.class);
-        def apiClientOrgJwksUri = ssaClaims.getClaim("software_jwks_endpoint");
-        def apiClientOrgJwks = ssaClaims.getClaim("software_jwks");
+        def apiClientOrgCertId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementOrgIdClaimName(), String.class);
+
+
 
         logger.debug(SCRIPT_NAME + "Inbound details from SSA: apiClientOrgName: {} apiClientOrgCertId: {} apiClientOrgJwksUri: {} apiClientOrgJwks: {}",
                 apiClientOrgName,
@@ -146,7 +163,8 @@ switch(method.toUpperCase()) {
         )
 
         // Update OIDC registration request
-        if (apiClientOrgJwksUri) {
+        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
+            def apiClientOrgJwksUri = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksUriClaimName());
             logger.debug(SCRIPT_NAME + "Using jwks uri: {}", apiClientOrgJwksUri)
             if (routeArgObJwksHosts) {
                 // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
@@ -166,18 +184,16 @@ switch(method.toUpperCase()) {
                 }
             }
             registrationJwtClaimSet.setClaim("jwks_uri", apiClientOrgJwksUri)
-        }
-        else if (apiClientOrgJwks) {
-            if (!allowIgIssuedTestCerts) {
-                logger.debug(SCRIPT_NAME + "configuration to allowIgIssuedTestCerts is disabled")
-                return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
-            }
+        } else {
+            def apiClientOrgJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
+//            if (!allowIgIssuedTestCerts) {
+//                logger.debug(SCRIPT_NAME + "configuration to allowIgIssuedTestCerts is disabled")
+//                return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
+//            }
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
             registrationJwtClaimSet.setClaim("jwks",  apiClientOrgJwks )
         }
-        else {
-            return errorResponseFactory.invalidSoftwareStatementErrorResponse("No JWKS or JWKS URI in software_statement")
-        }
+
 
         // Store SSA and registration JWT for signature check
         attributes.registrationJWTs = [
