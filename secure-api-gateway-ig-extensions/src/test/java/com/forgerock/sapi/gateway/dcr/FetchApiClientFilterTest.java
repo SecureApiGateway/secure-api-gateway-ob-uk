@@ -244,7 +244,7 @@ class FetchApiClientFilterTest {
             assertEquals(Status.NO_CONTENT, response.getStatus());
 
             // Verify that the context was updated with the apiClient data
-            final ApiClient apiClient = (ApiClient) ctxt.getAttributes().get(API_CLIENT_ATTR_KEY);
+            final ApiClient apiClient = FetchApiClientFilter.getApiClientFromContext(ctxt);
             assertNotNull(apiClient, "apiClient was not found in context");
             verifyIdmClientDataMatchesApiClientObject(idmClientData, apiClient);
         };

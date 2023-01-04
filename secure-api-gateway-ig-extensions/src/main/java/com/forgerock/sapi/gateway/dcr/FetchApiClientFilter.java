@@ -83,6 +83,18 @@ public class FetchApiClientFilter implements Filter {
      */
     private final String accessTokenClientIdClaim;
 
+    /**
+     * Utility method to retrieve an ApiClient object from a Context.
+     * This method can be used by other filters to retrieve the ApiClient installed into the attributes context by
+     * this filter.
+     *
+     * @param context the context to retrieve the ApiClient from
+     * @return the ApiClient or null if it is not set in the context.
+     */
+    public static ApiClient getApiClientFromContext(Context context) {
+        return (ApiClient) context.asContext(AttributesContext.class).getAttributes().get(API_CLIENT_ATTR_KEY);
+    }
+
     public FetchApiClientFilter(Client clientHandler, String idmGetApiClientBaseUri, String accessTokenClientIdClaim) {
         Reject.ifNull(clientHandler, "clientHandler must be provided");
         Reject.ifBlank(idmGetApiClientBaseUri, "idmGetApiClientBaseUri must be provided");
