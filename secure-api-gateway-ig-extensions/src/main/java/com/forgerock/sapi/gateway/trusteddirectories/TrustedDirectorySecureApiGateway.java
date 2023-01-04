@@ -47,7 +47,7 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
      * The name of the claim in the Open Banking Test Directory issued software statement that holds a uid for the
      * software statement
      */
-    final static String softwareStatementSoftwareIdClaimName = "software_client_id";
+    final static String softwareStatementSoftwareIdClaimName = "software_id";
 
     /**
      * Constructor
