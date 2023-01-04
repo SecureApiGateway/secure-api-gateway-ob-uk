@@ -44,6 +44,9 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  */
 public class FetchTrustedDirectoryFilter implements Filter {
 
+    /**
+     * The key to use to get the TrustedDirectory from the AttributesContext
+     */
     public static final String TRUSTED_DIRECTORY_ATTR_KEY = "trustedDirectory";
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
