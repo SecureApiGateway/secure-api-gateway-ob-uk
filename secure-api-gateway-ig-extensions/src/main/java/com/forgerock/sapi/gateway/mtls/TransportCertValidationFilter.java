@@ -67,6 +67,12 @@ import com.nimbusds.jose.jwk.RSAKey;
  * registered after the {@link FetchApiClientFilter} in the filter chain.
  *
  * The certificate is deemed valid if it exists in the JWKS registered for the {@link ApiClient}.
+ *
+ * Certificate matching is achieved by transforming the incoming client certificate into a JWK and then testing for
+ * equality between the x5c[0] values. The x5c[0] represents the base64 encoded DER PKIX certificate value. The first
+ * item in the x5c array must be the certificate, therefore we only check this entry and not the full chain.
+ *
+ * Spec for JWK.x5c field: https://www.rfc-editor.org/rfc/rfc7517#section-4.7
  */
 public class TransportCertValidationFilter implements Filter {
 
@@ -94,7 +100,6 @@ public class TransportCertValidationFilter implements Filter {
      * If this is configured as null, then checking of the use field will be skipped.
      */
     private final String keyUse;
-
 
     public TransportCertValidationFilter(JwkSetService jwkSetService, TrustedDirectoryService trustedDirectoryService,
                                          BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
@@ -156,7 +161,7 @@ public class TransportCertValidationFilter implements Filter {
                 return Promises.newResultPromise(createErrorResponse("unable to retrieve JWKS for software statement to validate transport cert"));
             });
         } catch (MalformedURLException e) {
-            // TODO improve this
+            logger.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") unable to validate transport cert failed to get JWKS", e);
             throw new RuntimeException(e);
         }
     }
@@ -179,7 +184,8 @@ public class TransportCertValidationFilter implements Filter {
         } else {
             final String jwksClaimsName = trustedDirectory.getSoftwareStatementJwksClaimName();
             if (jwksClaimsName == null) {
-                return Promises.newExceptionPromise(new FailedToLoadJWKException("Trusted Directory for issuer: " + issuer + " has softwareStatemdntHoldsJwksUri=false but is missing softwareStatementJwksClaimName value"));
+                return Promises.newExceptionPromise(new FailedToLoadJWKException("Trusted Directory for issuer: " + issuer
+                        + " has softwareStatemdntHoldsJwksUri=false but is missing required softwareStatementJwksClaimName value"));
             }
             final JsonValue rawJwks = ssaClaims.get(jwksClaimsName);
             if (rawJwks == null) {
@@ -212,6 +218,7 @@ public class TransportCertValidationFilter implements Filter {
         if (certificate.getPublicKey() instanceof RSAPublicKey) {
             return RSAKey.parse(certificate).getX509CertChain().get(0).toString();
         }
+
         throw new IllegalStateException("Unsupported certificate type: " + certificate.getClass());
     }
 
@@ -264,7 +271,8 @@ public class TransportCertValidationFilter implements Filter {
      *
      * Optional fields:
      *  - keyUse: the value to validate the JWK.use against, if this configuration is omitted then no validation is applied
-     *  to this field. For Open Banking Directory this should be configured as "tls"
+     *  to this field. For Open Banking Directory this should be configured as "tls", which means the cert is a transport
+     *  cert.
      *
      * Example config:
      * {
