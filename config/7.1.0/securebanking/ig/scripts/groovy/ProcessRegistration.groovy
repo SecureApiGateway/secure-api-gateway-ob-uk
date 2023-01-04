@@ -87,7 +87,7 @@ switch(method.toUpperCase()) {
 
         JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
         if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
-            logger.debug(SCRIPT_NAME, "Registration request JWT has expired")
+            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
 
@@ -144,8 +144,10 @@ switch(method.toUpperCase()) {
         // Validate the issuer claim for the registration matches the SSA software_id
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
-        def registrationIssuer = registrationJwtClaimSet.getIssuer()
-        def ssaSoftwareId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementSoftwareIdClaimName())
+        String registrationIssuer = registrationJwtClaimSet.getIssuer()
+        logger.debug(SCRIPT_NAME + "registrationIssuer: '{}'", registrationIssuer?registrationIssuer:"null")
+        String ssaSoftwareId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementSoftwareIdClaimName())
+        logger.debug("{}registrationIssuer is {}, ssaSoftwareId is {}", SCRIPT_NAME, registrationIssuer, ssaSoftwareId)
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("invalid issuer claim")
         }
@@ -158,6 +160,13 @@ switch(method.toUpperCase()) {
                 apiClientOrgCertId
         )
 
+        def registrationJWTs = [
+                "ssaStr": ssa,
+                "ssaJwt" : ssaJwt,
+                "registrationJwt": regJwt,
+                "registrationJwksUri": null,
+                "registrationJwks": null
+        ]
         // Update OIDC registration request
         if (trustedDirectory.softwareStatementHoldsJwksUri()) {
             def apiClientOrgJwksUri = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksUriClaimName());
@@ -180,6 +189,7 @@ switch(method.toUpperCase()) {
                 }
             }
             registrationJwtClaimSet.setClaim("jwks_uri", apiClientOrgJwksUri)
+            registrationJWTs["registrationJwksUri"] = apiClientOrgJwksUri
         } else {
             def apiClientOrgJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
 //            if (!allowIgIssuedTestCerts) {
@@ -188,21 +198,17 @@ switch(method.toUpperCase()) {
 //            }
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
             registrationJwtClaimSet.setClaim("jwks",  apiClientOrgJwks )
+            registrationJWTs["registrationJwks"] = apiClientOrgJwks
         }
 
-
+        // The Jwks will be added by filters run on each route... we won't need  to store them here.
         // Store SSA and registration JWT for signature check
-        attributes.registrationJWTs = [
-                "ssaStr": ssa,
-                "ssaJwt" : ssaJwt,
-                "registrationJwt": regJwt,
-                "registrationJwksUri": apiClientOrgJwksUri,
-                "registrationJwks": apiClientOrgJwks
-        ]
+        attributes.registrationJWTs = registrationJWTs
 
         registrationJwtClaimSet.setClaim("client_name",apiClientOrgName)
         registrationJwtClaimSet.setClaim("tls_client_certificate_bound_access_tokens", true)
 
+        // Why is this here?
         def subject_type = registrationJwtClaimSet.getClaim("subject_type", String.class);
         if(!subject_type){
             registrationJwtClaimSet.setClaim("subject_type", "pairwise");
