@@ -209,20 +209,10 @@ switch(method.toUpperCase()) {
             registrationJwtClaimSet.setClaim("subject_type", "pairwise");
         }
 
-        Response errorResponse = performOpenBankingScopeChecks(registrationJwtClaimSet, ssaClaims)
+        Response errorResponse = performOpenBankingScopeChecks(errorResponseFactory, registrationJwtClaimSet, ssaClaims)
         if(errorResponse != null){
             return errorResponse
         }
-
-        // Sanity check on scopes
-//        def registrationJwtScopes = registrationJwtClaimSet.getClaim("scope")
-//        def eidasCertRoles = attributes.clientCertificate.roles
-//        if (registrationJwtScopes.contains(SCOPE_ACCOUNTS) && !(eidasCertRoles.contains(ROLE_ACCOUNT_INFORMATION))) {
-//            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_ACCOUNTS + " requires certificate role " + ROLE_ACCOUNT_INFORMATION)
-//        }
-//        if (registrationJwtScopes.contains(SCOPE_PAYMENTS) && !(eidasCertRoles.contains(ROLE_PAYMENT_INITIATION))) {
-//            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_PAYMENTS + " requires certificate role " + ROLE_PAYMENT_INITIATION)
-//        }
 
         // TODO: Subject DN for cert bound access tokens
 
@@ -311,26 +301,47 @@ switch(method.toUpperCase()) {
  * @param ssaClaims the claims from the ssa
  * @return false if the OBIE specification rules are met, true if they are not
  */
-private Response performOpenBankingScopeChecks(JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims){
-    String requestScopes = ssaClaims.getClaim("scope")
+private Response performOpenBankingScopeChecks(ErrorResponseFactory errorResponseFactory,
+                                               JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims){
+    logger.debug("{}performing OpenBanking Scope tests", SCRIPT_NAME)
+    String requestedScopes = registrationRequestClaims.getClaim("scope")
     if(requestedScopes == null){
         String errorDescription = "The request jwt does not contain the required scopes claim"
         logger.info(SCRIPT_NAME + errorDescription)
         return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
     }
+    logger.debug("{}requestedScopes are {}", SCRIPT_NAME, requestedScopes)
 
     String[] ssaRoles = ssaClaims.getClaim("software_roles")
-    if (ssaRoles == null | ssaRoles.empty) {
+    logger.debug("{}ssaRoles are {}", SCRIPT_NAME, ssaRoles)
+    if (ssaRoles == null | ssaRoles.length == 0) {
         String errorDescription = "The software_statement jwt does not contain a 'software_roles' claim"
         logger.debug(SCRIPT_NAME + errorDescription)
         return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
-    } else {
-        for (role in ssaRoles) {
-            logger.debug(SCRIPT_NAME + "SSA has the role {}", role)
-        }
     }
 
+    if (requestedScopes.contains("accounts") && !ssaRoles.contains("AISP")) {
+        String errorDescription = "registration request contains scopes not allowed " +
+                "for the presented software statement"
+        logger.debug("{}{}{}", SCRIPT_NAME, errorDescription, ": accounts")
+        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+    }
 
+    if (requestedScopes.contains("payments") && !ssaRoles.contains("PISP")) {
+        String errorDescription = "registration request contains scopes not allowed " +
+                "for the presented software statement"
+        logger.debug("{}{}{}", SCRIPT_NAME, errorDescription, ": payments")
+        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+    }
+
+    if (requestedScopes.contains("fundsconformations") && !ssaRoles.contains("CBPII")) {
+        String errorDescription = "registration request contains scopes not allowed " +
+                "for the presented software statement"
+        logger.debug("{}{}{}", SCRIPT_NAME, errorDescription, ": fundsconformations")
+        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+    }
+
+    logger.debug("{} passed Open Banking scope tests", SCRIPT_NAME)
     return null;
 }
 
