@@ -107,15 +107,7 @@
             }
           }
         },
-        {
-          "comment": "Add ApiClient data to the context attributes",
-          "name": "FetchApiClientFilter",
-          "type": "FetchApiClientFilter",
-          "config": {
-            "idmGetApiClientBaseUri": "&{urls.idmGetApiClientBaseUri}",
-            "clientHandler": "IDMClientHandler"
-          }
-        },
+        "FetchApiClientAndTrustedDirectoryDataChain",
         {
           "comment": "Validate the MTLS transport cert",
           "name": "TransportCertValidationFilter",
