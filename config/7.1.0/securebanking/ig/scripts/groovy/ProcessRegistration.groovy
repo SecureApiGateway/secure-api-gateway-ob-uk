@@ -40,7 +40,7 @@ import static org.forgerock.util.promise.Promises.newResultPromise
  *   - if response type is "code", response_mode is "jwt"
  *   - if response type is "code id_token" then request must contain field 'scope' and scope must contain 'openid'
  * - validateSigningAlgorithmUsed
- *   - that the signing algorythm supported is PS256
+ *   - that the signing algorithm supported is PS256
  * - validateTokenEndpointAuthMethods
  *   - request object must contain field: token_endpoint_auth_method
  *   - that token_endpoint_auth_method is a valid value, either 'private_key_jwt' or 'tls_client_auth'
@@ -145,7 +145,6 @@ switch(method.toUpperCase()) {
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
         String registrationIssuer = registrationJwtClaimSet.getIssuer()
-        logger.debug(SCRIPT_NAME + "registrationIssuer: '{}'", registrationIssuer?registrationIssuer:"null")
         String ssaSoftwareId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementSoftwareIdClaimName())
         logger.debug("{}registrationIssuer is {}, ssaSoftwareId is {}", SCRIPT_NAME, registrationIssuer, ssaSoftwareId)
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
@@ -192,10 +191,6 @@ switch(method.toUpperCase()) {
             registrationJWTs["registrationJwksUri"] = apiClientOrgJwksUri
         } else {
             def apiClientOrgJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
-//            if (!allowIgIssuedTestCerts) {
-//                logger.debug(SCRIPT_NAME + "configuration to allowIgIssuedTestCerts is disabled")
-//                return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
-//            }
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
             registrationJwtClaimSet.setClaim("jwks",  apiClientOrgJwks )
             registrationJWTs["registrationJwks"] = apiClientOrgJwks
@@ -214,28 +209,20 @@ switch(method.toUpperCase()) {
             registrationJwtClaimSet.setClaim("subject_type", "pairwise");
         }
 
+        Response errorResponse = performOpenBankingScopeChecks(registrationJwtClaimSet, ssaClaims)
+        if(errorResponse != null){
+            return errorResponse
+        }
+
         // Sanity check on scopes
-        def scopes = registrationJwtClaimSet.getClaim("scope")
-        def roles = attributes.clientCertificate.roles
-        if (scopes.contains(SCOPE_ACCOUNTS) && !(roles.contains(ROLE_ACCOUNT_INFORMATION))) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_ACCOUNTS + " requires certificate role " + ROLE_ACCOUNT_INFORMATION)
-        }
-        if (scopes.contains(SCOPE_PAYMENTS) && !(roles.contains(ROLE_PAYMENT_INITIATION))) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_PAYMENTS + " requires certificate role " + ROLE_PAYMENT_INITIATION)
-        }
-
-        // Cross check ID with cert
-        //
-        // e.g. PSDGB-FFA-5f563e89742b2800145c7da1 or PSDGB-OB-Unknown0015800001041REAAY (issue by OB)
-        def  organizationalIdentifier = attributes.clientCertificate.subjectDNComponents.OI
-        if (!organizationalIdentifier) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("No organizational identifier in cert")
-        }
-
-        def oiComponents = organizationalIdentifier.split("-")
-        if (oiComponents.length > 3) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("Wrong number of dashes in OI " + organizationalIdentifier +" - expected 2")
-        }
+//        def registrationJwtScopes = registrationJwtClaimSet.getClaim("scope")
+//        def eidasCertRoles = attributes.clientCertificate.roles
+//        if (registrationJwtScopes.contains(SCOPE_ACCOUNTS) && !(eidasCertRoles.contains(ROLE_ACCOUNT_INFORMATION))) {
+//            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_ACCOUNTS + " requires certificate role " + ROLE_ACCOUNT_INFORMATION)
+//        }
+//        if (registrationJwtScopes.contains(SCOPE_PAYMENTS) && !(eidasCertRoles.contains(ROLE_PAYMENT_INITIATION))) {
+//            return errorResponseFactory.invalidClientMetadataErrorResponse("Requested scope " + SCOPE_PAYMENTS + " requires certificate role " + ROLE_PAYMENT_INITIATION)
+//        }
 
         // TODO: Subject DN for cert bound access tokens
 
@@ -304,7 +291,48 @@ switch(method.toUpperCase()) {
 
 }
 
+/**
+ * This method enforces the rule set by OBIE
+ * <a href="https://openbankinguk.github.io/dcr-docs-pub/v3.3/dynamic-client-registration.html#data-mapping">here</a>
+ * that states:
+ * "scope: Specified in the scope claimed. This must be a subset of the scopes in the SSA"
+ * also in the
+ * <a href="https://openbankinguk.github.io/dcr-docs-pub/v3.3/dynamic-client-registration.html#obclientregistrationrequest1">
+ * data dictionary for OBClientRegistrationRequest1 </a>
+ * it is stated that:
+ * "scope 	1..1 	scope 	Scopes the client is asking for (if not specified, default scopes are assigned by the AS).
+ * This consists of a list scopes separated by spaces. 	String(256)"
+ *
+ * In the Open Banking issues SSA we can find no scopes defined, however, we do have 'software_roles' which is an array
+ * of strings containing AISP, PISP, or a subset thereof, or ASPSP. We must check that the scopes requested are allowed
+ * according to the roles defined in the software statement.
+ *
+ * @param registrationRequestClaims The claims from the registration request jwt
+ * @param ssaClaims the claims from the ssa
+ * @return false if the OBIE specification rules are met, true if they are not
+ */
+private Response performOpenBankingScopeChecks(JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims){
+    String requestScopes = ssaClaims.getClaim("scope")
+    if(requestedScopes == null){
+        String errorDescription = "The request jwt does not contain the required scopes claim"
+        logger.info(SCRIPT_NAME + errorDescription)
+        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+    }
 
+    String[] ssaRoles = ssaClaims.getClaim("software_roles")
+    if (ssaRoles == null | ssaRoles.empty) {
+        String errorDescription = "The software_statement jwt does not contain a 'software_roles' claim"
+        logger.debug(SCRIPT_NAME + errorDescription)
+        return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
+    } else {
+        for (role in ssaRoles) {
+            logger.debug(SCRIPT_NAME + "SSA has the role {}", role)
+        }
+    }
+
+
+    return null;
+}
 
 /**
  * For operations on an existing registration, AM expects a uri of the form:
