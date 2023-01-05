@@ -15,11 +15,11 @@
  */
 package com.forgerock.sapi.gateway.mtls;
 
-import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
-import static org.forgerock.json.JsonValue.*;
+import static org.forgerock.json.JsonValue.field;
+import static org.forgerock.json.JsonValue.json;
+import static org.forgerock.json.JsonValue.object;
 
 import java.io.ByteArrayInputStream;
-import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -34,11 +34,8 @@ import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.JsonValue;
-import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.AttributesContext;
@@ -51,22 +48,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.dcr.ApiClient;
-import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter.CertificateFromHeaderSupplier;
-import com.forgerock.sapi.gateway.jwks.JwkSetService;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
+import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
 
 /**
  * Filter to validate that the client's MTLS transport certificate is valid.
  *
- * This filter depends on the {@link ApiClient} being present in the {@link AttributesContext}, therefore it should be
- * registered after the {@link FetchApiClientFilter} in the filter chain.
+ * This filter depends on the {@link JWKSet} containing the keys for this {@link ApiClient} being present in
+ * the {@link AttributesContext}.
  *
- * The certificate is deemed valid if it exists in the JWKS registered for the {@link ApiClient}.
+ * The certificate for the request is supplied by the clientTlsCertificateSupplier, which is then matched with one of
+ * the JWKs in the JWKSet.
  *
  * Certificate matching is achieved by transforming the incoming client certificate into a JWK and then testing for
  * equality between the x5c[0] values. The x5c[0] represents the base64 encoded DER PKIX certificate value. The first
@@ -77,17 +72,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 public class TransportCertValidationFilter implements Filter {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    /**
-     * Service used to get the JWKS to validate the transport cert against
-     */
-    private final JwkSetService jwkSetService;
-
-    /**
-     * Service used to obtain {@link com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory} configuration.
-     * The TrustedDirectory config is required to determine where to find the JWKS to use to validate the cert.
-     */
-    private final TrustedDirectoryService trustedDirectoryService;
 
     /**
      * Function which returns the client's PEM encoded x509 certificate which is used for MTLS as a String.
@@ -101,19 +85,12 @@ public class TransportCertValidationFilter implements Filter {
      */
     private final String keyUse;
 
-    public TransportCertValidationFilter(JwkSetService jwkSetService, TrustedDirectoryService trustedDirectoryService,
-                                         BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
-        this(jwkSetService, trustedDirectoryService, clientTlsCertificateSupplier, null);
+    public TransportCertValidationFilter(BiFunction<Context, Request, String> clientTlsCertificateSupplier) {
+        this(clientTlsCertificateSupplier, null);
     }
 
-    public TransportCertValidationFilter(JwkSetService jwkSetService, TrustedDirectoryService trustedDirectoryService,
-                                         BiFunction<Context, Request, String> clientTlsCertificateSupplier,
-                                         String keyUse) {
-        Reject.ifNull(jwkSetService, "jwkSetService must be provided");
-        Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
-        Reject.ifNull(clientTlsCertificateSupplier, "clientTlsCertificate must be provded");
-        this.jwkSetService = jwkSetService;
-        this.trustedDirectoryService = trustedDirectoryService;
+    public TransportCertValidationFilter(BiFunction<Context, Request, String> clientTlsCertificateSupplier, String keyUse) {
+        Reject.ifNull(clientTlsCertificateSupplier, "clientTlsCertificate must be provided");
         this.clientTlsCertificateSupplier = clientTlsCertificateSupplier;
         this.keyUse = keyUse;
     }
@@ -147,52 +124,22 @@ public class TransportCertValidationFilter implements Filter {
             return Promises.newResultPromise(createErrorResponse("client tls certificate is not valid"));
         }
 
-        final ApiClient apiClient = getApiClient(context);
-        try {
-            return getJwkSet(apiClient).thenAsync(jwkSet -> {
-                if (!tlsClientCertExistsInJwkSet(jwkSet, x5cForClientCert)) {
-                    logger.debug("({}) transport cert failed validation: not present in JWKS", FAPIUtils.getFapiInteractionIdForDisplay(context));
-                    return Promises.newResultPromise(createErrorResponse("client tls certificate not found in JWKS for software statement"));
-                }
-                logger.debug("({}) transport cert validated successfully", FAPIUtils.getFapiInteractionIdForDisplay(context));
-                return next.handle(context, request);
-            }, ex -> {
-                logger.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") unable to validate transport cert failed to get JWKS", ex);
-                return Promises.newResultPromise(createErrorResponse("unable to retrieve JWKS for software statement to validate transport cert"));
-            });
-        } catch (MalformedURLException e) {
-            logger.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(context) + ") unable to validate transport cert failed to get JWKS", e);
-            throw new RuntimeException(e);
+        final JWKSet apiClientJwkSet = getJwkSet(context);
+        if (!tlsClientCertExistsInJwkSet(apiClientJwkSet, x5cForClientCert)) {
+            logger.debug("({}) transport cert failed validation: not present in JWKS", FAPIUtils.getFapiInteractionIdForDisplay(context));
+            return Promises.newResultPromise(createErrorResponse("client tls certificate not found in JWKS for software statement"));
         }
+        logger.debug("({}) transport cert validated successfully", FAPIUtils.getFapiInteractionIdForDisplay(context));
+        return next.handle(context, request);
     }
 
-    private static ApiClient getApiClient(Context context) {
-        final AttributesContext attributesContext = context.asContext(AttributesContext.class);
-        final ApiClient apiClient = (ApiClient)attributesContext.getAttributes().get(FetchApiClientFilter.API_CLIENT_ATTR_KEY);
-        if (apiClient == null) {
-            throw new IllegalStateException("Failed to find: " + FetchApiClientFilter.API_CLIENT_ATTR_KEY + " context attribute required by this filter");
+    private JWKSet getJwkSet(Context context) {
+        final JWKSet apiClientJwkSet = FetchApiClientJwksFilter.getApiClientJwkSetFromContext(context);
+        if (apiClientJwkSet == null) {
+            logger.error("({}) apiClientJwkSet not found in request context", FAPIUtils.getFapiInteractionIdForDisplay(context));
+            throw new IllegalStateException("apiClientJwkSet not found in request context");
         }
-        return apiClient;
-    }
-
-    private Promise<JWKSet, FailedToLoadJWKException> getJwkSet(ApiClient apiClient) throws MalformedURLException {
-        final JwtClaimsSet ssaClaims = apiClient.getSoftwareStatementAssertion().getClaimsSet();
-        final String issuer = ssaClaims.getIssuer();
-        final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(issuer);
-        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
-            return jwkSetService.getJwkSet(apiClient.getJwksUri().toURL());
-        } else {
-            final String jwksClaimsName = trustedDirectory.getSoftwareStatementJwksClaimName();
-            if (jwksClaimsName == null) {
-                return Promises.newExceptionPromise(new FailedToLoadJWKException("Trusted Directory for issuer: " + issuer
-                        + " has softwareStatemdntHoldsJwksUri=false but is missing required softwareStatementJwksClaimName value"));
-            }
-            final JsonValue rawJwks = ssaClaims.get(jwksClaimsName);
-            if (rawJwks == null) {
-                return Promises.newExceptionPromise(new FailedToLoadJWKException("SSA is missing claim: " + jwksClaimsName));
-            }
-            return Promises.newResultPromise(JWKSet.parse(rawJwks));
-        }
+        return apiClientJwkSet;
     }
 
     private X509Certificate parseCertificate(String cert) throws CertificateException {
@@ -265,8 +212,6 @@ public class TransportCertValidationFilter implements Filter {
      * Heaplet used to create {@link TransportCertValidationFilter} objects
      *
      * Mandatory fields:
-     *  - jwkSetService: the name of a {@link JwkSetService} on the heap to use to validate the transport cert against
-     *  - trustedDirectoryService: the name of a {@link TrustedDirectoryService} on the heap to use to obtain directory configuration from
      *  - clientTlsCertHeader: the name of the Request Header which contains the client's TLS cert
      *
      * Optional fields:
@@ -280,8 +225,6 @@ public class TransportCertValidationFilter implements Filter {
      *           "name": "TransportCertValidationFilter",
      *           "type": "TransportCertValidationFilter",
      *           "config": {
-     *             "jwkSetService": "OBJwkSetService",
-     *             "trustedDirectoryService": "TrustedDirectoriesService",
      *             "clientTlsCertHeader": "ssl-client-cert",
      *             "keyUse": "tls"
      *           }
@@ -291,14 +234,11 @@ public class TransportCertValidationFilter implements Filter {
 
         @Override
         public Object create() throws HeapException {
-            final JwkSetService jwkSetService = config.get("jwkSetService").as(requiredHeapObject(heap, JwkSetService.class));
-            final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
-                                                                          .as(requiredHeapObject(heap, TrustedDirectoryService.class));
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             // keyUse is optional config
             final String keyUse = config.get("keyUse").asString();
             final BiFunction<Context, Request, String> certificateSupplier = new CertificateFromHeaderSupplier(clientCertHeaderName);
-            return new TransportCertValidationFilter(jwkSetService, trustedDirectoryService, certificateSupplier, keyUse);
+            return new TransportCertValidationFilter(certificateSupplier, keyUse);
         }
     }
 }

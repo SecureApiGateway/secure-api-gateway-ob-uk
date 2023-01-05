@@ -15,8 +15,9 @@
  */
 package com.forgerock.sapi.gateway.mtls;
 
-import java.net.URI;
-import java.net.URL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -24,35 +25,31 @@ import java.util.concurrent.TimeoutException;
 import org.forgerock.http.header.GenericHeader;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
-import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
-import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jws.JwsHeader;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.services.TransactionId;
 import org.forgerock.services.context.AttributesContext;
+import org.forgerock.services.context.Context;
 import org.forgerock.services.context.TransactionIdContext;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
-import org.forgerock.util.promise.Promises;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.ApiClient;
-import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter.CertificateFromHeaderSupplier;
-import com.forgerock.sapi.gateway.jwks.JwkSetService;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
+import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
+import com.forgerock.sapi.gateway.util.TestHandlers.TestSuccessResponseHandler;
 
 class TransportCertValidationFilterTest {
 
 
-    final String certString = "-----BEGIN%20CERTIFICATE-----%0AMIIGWDCCBUCgAwIBAgIEWcaJ8TANBgkqhkiG9w0BAQsFADBTMQswCQYDVQQGEwJH%0AQjEUMBIGA1UEChMLT3BlbkJhbmtpbmcxLjAsBgNVBAMTJU9wZW5CYW5raW5nIFBy%0AZS1Qcm9kdWN0aW9uIElzc3VpbmcgQ0EwHhcNMjIwODIyMTIzMTQ0WhcNMjMwOTIy%0AMTMwMTQ0WjBzMQswCQYDVQQGEwJHQjEaMBgGA1UEChMRRk9SR0VST0NLIExJTUlU%0ARUQxKzApBgNVBGETIlBTREdCLU9CLVVua25vd24wMDE1ODAwMDAxMDQxUkVBQVkx%0AGzAZBgNVBAMTEjAwMTU4MDAwMDEwNDFSRUFBWTCCASIwDQYJKoZIhvcNAQEBBQAD%0AggEPADCCAQoCggEBAKa7CxtFxQykdmFZ0dtn6xlO8Ms4RKQhFVH6eygrS2XnNN9J%0ACn09SXE2bCVwnWGwvn5iIn262N1WkBS1%2B7zVDM7%2FdjZ8NNSxJD2fP0f0uETdrj7h%0ACyAmTXtt57edxDGDpwGOc7tfZ6HYQiIYQ4WLeJw2xHHrFffBOIok3Gb3R28cke0u%0AMVW%2BqZf6LX3H45Fl4VEWrV28tBMmOBkdUxiy%2FPReYcW7mH20OdqizVELf5Z8Flnq%0A6Z5gs3i5BE5oIDpLiXT2Drs%2BOVmCR4K1HgG7PZOLRsVPyZRf3hBSpFhfS4IaEQR2%0A81dwRZZyUCIvQSayqSwEz%2FuYcFEmGrP9PN6NV2UCAwEAAaOCAxIwggMOMA4GA1Ud%0ADwEB%2FwQEAwIHgDCBkQYIKwYBBQUHAQMEgYQwgYEwEwYGBACORgEGMAkGBwQAjkYB%0ABgMwagYGBACBmCcCMGAwOTARBgcEAIGYJwEBDAZQU1BfQVMwEQYHBACBmCcBAgwG%0AUFNQX1BJMBEGBwQAgZgnAQMMBlBTUF9BSQwbRmluYW5jaWFsIENvbmR1Y3QgQXV0%0AaG9yaXR5DAZHQi1GQ0EwIAYDVR0lAQH%2FBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC%0AMIHgBgNVHSAEgdgwgdUwgdIGCysGAQQBqHWBBgFkMIHCMCoGCCsGAQUFBwIBFh5o%0AdHRwOi8vb2IudHJ1c3Rpcy5jb20vcG9saWNpZXMwgZMGCCsGAQUFBwICMIGGDIGD%0AVXNlIG9mIHRoaXMgQ2VydGlmaWNhdGUgY29uc3RpdHV0ZXMgYWNjZXB0YW5jZSBv%0AZiB0aGUgT3BlbkJhbmtpbmcgUm9vdCBDQSBDZXJ0aWZpY2F0aW9uIFBvbGljaWVz%0AIGFuZCBDZXJ0aWZpY2F0ZSBQcmFjdGljZSBTdGF0ZW1lbnQwbQYIKwYBBQUHAQEE%0AYTBfMCYGCCsGAQUFBzABhhpodHRwOi8vb2IudHJ1c3Rpcy5jb20vb2NzcDA1Bggr%0ABgEFBQcwAoYpaHR0cDovL29iLnRydXN0aXMuY29tL29iX3BwX2lzc3VpbmdjYS5j%0AcnQweAYDVR0RBHEwb4IlbWF0bHMucnMuYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFu%0AY2lhbIIlbWF0bHMuYXMuYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFuY2lhbIIfcnMu%0AYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFuY2lhbDA6BgNVHR8EMzAxMC%2BgLaArhilo%0AdHRwOi8vb2IudHJ1c3Rpcy5jb20vb2JfcHBfaXNzdWluZ2NhLmNybDAfBgNVHSME%0AGDAWgBRQc5HGIXLTd%2FT%2BABIGgVx5eW4%2FUDAdBgNVHQ4EFgQUlV66Ey7k3wP1k6Qx%0A0E81D8pYbqgwDQYJKoZIhvcNAQELBQADggEBACQ2pAfVVTCmP0wTg3J7bLtp7aei%0AIglcRCTQus0TFGAnIbTeTgkOGza6GSWBjpqyGX%2F4m8wdeDYz6xsZw%2Fda2253w8fB%0ARAaps%2FGSUvpqRY8aVL1y3rWQPjbO1xVi%2FgZfvWSyiMJBaDalIYJmO0fMHhl4%2Fckr%0AjwnponCmeTpWUdXvEVx%2B5kaOkoVnPuJOjqlfU2luAq7s6l3KBiJzu0tYMqnL97er%0ALleYQkFPpTksh3mB2Hk8vAuKVJd%2Bv2ViGzB6eAsiFzsU8Yfm4ixfOih2FKdFKKUR%0AzdhiQ4NP8Ee6H13l0E%2BRuCoSsFEgkFiCdVDStKxLtct6nAnBSGArhoznsJ8%3D%0A-----END%20CERTIFICATE-----%0A";
-    final org.forgerock.json.jose.jwk.JWKSet testJwks = org.forgerock.json.jose.jwk.JWKSet.parse("{\n" +
+    /**
+     * Example public cert in base64 encoded then url encoded format (the format as used by nginx when setting the ssl-client-cert header)
+     */
+    public static final String TEST_TLS_CERT = "-----BEGIN%20CERTIFICATE-----%0AMIIGWDCCBUCgAwIBAgIEWcaJ8TANBgkqhkiG9w0BAQsFADBTMQswCQYDVQQGEwJH%0AQjEUMBIGA1UEChMLT3BlbkJhbmtpbmcxLjAsBgNVBAMTJU9wZW5CYW5raW5nIFBy%0AZS1Qcm9kdWN0aW9uIElzc3VpbmcgQ0EwHhcNMjIwODIyMTIzMTQ0WhcNMjMwOTIy%0AMTMwMTQ0WjBzMQswCQYDVQQGEwJHQjEaMBgGA1UEChMRRk9SR0VST0NLIExJTUlU%0ARUQxKzApBgNVBGETIlBTREdCLU9CLVVua25vd24wMDE1ODAwMDAxMDQxUkVBQVkx%0AGzAZBgNVBAMTEjAwMTU4MDAwMDEwNDFSRUFBWTCCASIwDQYJKoZIhvcNAQEBBQAD%0AggEPADCCAQoCggEBAKa7CxtFxQykdmFZ0dtn6xlO8Ms4RKQhFVH6eygrS2XnNN9J%0ACn09SXE2bCVwnWGwvn5iIn262N1WkBS1%2B7zVDM7%2FdjZ8NNSxJD2fP0f0uETdrj7h%0ACyAmTXtt57edxDGDpwGOc7tfZ6HYQiIYQ4WLeJw2xHHrFffBOIok3Gb3R28cke0u%0AMVW%2BqZf6LX3H45Fl4VEWrV28tBMmOBkdUxiy%2FPReYcW7mH20OdqizVELf5Z8Flnq%0A6Z5gs3i5BE5oIDpLiXT2Drs%2BOVmCR4K1HgG7PZOLRsVPyZRf3hBSpFhfS4IaEQR2%0A81dwRZZyUCIvQSayqSwEz%2FuYcFEmGrP9PN6NV2UCAwEAAaOCAxIwggMOMA4GA1Ud%0ADwEB%2FwQEAwIHgDCBkQYIKwYBBQUHAQMEgYQwgYEwEwYGBACORgEGMAkGBwQAjkYB%0ABgMwagYGBACBmCcCMGAwOTARBgcEAIGYJwEBDAZQU1BfQVMwEQYHBACBmCcBAgwG%0AUFNQX1BJMBEGBwQAgZgnAQMMBlBTUF9BSQwbRmluYW5jaWFsIENvbmR1Y3QgQXV0%0AaG9yaXR5DAZHQi1GQ0EwIAYDVR0lAQH%2FBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC%0AMIHgBgNVHSAEgdgwgdUwgdIGCysGAQQBqHWBBgFkMIHCMCoGCCsGAQUFBwIBFh5o%0AdHRwOi8vb2IudHJ1c3Rpcy5jb20vcG9saWNpZXMwgZMGCCsGAQUFBwICMIGGDIGD%0AVXNlIG9mIHRoaXMgQ2VydGlmaWNhdGUgY29uc3RpdHV0ZXMgYWNjZXB0YW5jZSBv%0AZiB0aGUgT3BlbkJhbmtpbmcgUm9vdCBDQSBDZXJ0aWZpY2F0aW9uIFBvbGljaWVz%0AIGFuZCBDZXJ0aWZpY2F0ZSBQcmFjdGljZSBTdGF0ZW1lbnQwbQYIKwYBBQUHAQEE%0AYTBfMCYGCCsGAQUFBzABhhpodHRwOi8vb2IudHJ1c3Rpcy5jb20vb2NzcDA1Bggr%0ABgEFBQcwAoYpaHR0cDovL29iLnRydXN0aXMuY29tL29iX3BwX2lzc3VpbmdjYS5j%0AcnQweAYDVR0RBHEwb4IlbWF0bHMucnMuYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFu%0AY2lhbIIlbWF0bHMuYXMuYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFuY2lhbIIfcnMu%0AYXNwc3Aub2IuZm9yZ2Vyb2NrLmZpbmFuY2lhbDA6BgNVHR8EMzAxMC%2BgLaArhilo%0AdHRwOi8vb2IudHJ1c3Rpcy5jb20vb2JfcHBfaXNzdWluZ2NhLmNybDAfBgNVHSME%0AGDAWgBRQc5HGIXLTd%2FT%2BABIGgVx5eW4%2FUDAdBgNVHQ4EFgQUlV66Ey7k3wP1k6Qx%0A0E81D8pYbqgwDQYJKoZIhvcNAQELBQADggEBACQ2pAfVVTCmP0wTg3J7bLtp7aei%0AIglcRCTQus0TFGAnIbTeTgkOGza6GSWBjpqyGX%2F4m8wdeDYz6xsZw%2Fda2253w8fB%0ARAaps%2FGSUvpqRY8aVL1y3rWQPjbO1xVi%2FgZfvWSyiMJBaDalIYJmO0fMHhl4%2Fckr%0AjwnponCmeTpWUdXvEVx%2B5kaOkoVnPuJOjqlfU2luAq7s6l3KBiJzu0tYMqnL97er%0ALleYQkFPpTksh3mB2Hk8vAuKVJd%2Bv2ViGzB6eAsiFzsU8Yfm4ixfOih2FKdFKKUR%0AzdhiQ4NP8Ee6H13l0E%2BRuCoSsFEgkFiCdVDStKxLtct6nAnBSGArhoznsJ8%3D%0A-----END%20CERTIFICATE-----%0A";
+
+    /**
+     * JWKSet which contains the TEST_TLS_CERT as one of its entries
+     */
+    public static final org.forgerock.json.jose.jwk.JWKSet TEST_JWKS = org.forgerock.json.jose.jwk.JWKSet.parse("{\n" +
             "  \"keys\" : [ \n" +
             "    {\n" +
             "    \"kid\" : \"9C0VQ80zzyxrdAjWGaIgw0Wx4HA\",\n" +
@@ -81,58 +78,22 @@ class TransportCertValidationFilterTest {
     @Test
     public void testValidCert() throws ExecutionException, InterruptedException, TimeoutException {
         final String certificateHeaderName = "ssl-client-cert";
-        final String jwksUrl = "https://test.jwks";
-        final String testIssuer = "testIssuer";
-        final TransportCertValidationFilter transportCertValidationFilter = new TransportCertValidationFilter(new MockJwkSetService(jwksUrl, testJwks), new TrustedDirectoryService() {
-            @Override
-            public TrustedDirectory getTrustedDirectoryConfiguration(String issuer) {
-                return new TrustedDirectoryOpenBankingTest();
-            }
-        }, new CertificateFromHeaderSupplier(certificateHeaderName));
+        final TransportCertValidationFilter transportCertValidationFilter = new TransportCertValidationFilter(new CertificateFromHeaderSupplier(certificateHeaderName));
 
-        final AttributesContext context = new AttributesContext(new TransactionIdContext(null, new TransactionId("1234")));
-        final ApiClient apiClient = createTestApiClient(jwksUrl, testIssuer);
-        context.getAttributes().put(FetchApiClientFilter.API_CLIENT_ATTR_KEY, apiClient);
+        final Context context = new AttributesContext(new TransactionIdContext(null, new TransactionId("1234")));
+        addJwkSetToAttributesContext(context, TEST_JWKS);
 
         final Request request = new Request().setMethod("GET");
-        request.addHeaders(new GenericHeader(certificateHeaderName, certString));
+        request.addHeaders(new GenericHeader(certificateHeaderName, TEST_TLS_CERT));
 
-        final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(context, request,(ctx, req) -> Promises.newResultPromise(new Response(Status.OK)));
+        final TestSuccessResponseHandler responseHandler = new TestSuccessResponseHandler();
+        final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(context, request, responseHandler);
         final Response response = responsePromise.get(1, TimeUnit.SECONDS);
-        Assertions.assertEquals(200, response.getStatus().getCode(), "HTTP Response Code");
+        assertEquals(200, response.getStatus().getCode(), "HTTP Response Code");
+        assertTrue(responseHandler.hasBeenInteractedWith(), "ResponseHandler must be called");
     }
 
-    private static ApiClient createTestApiClient(String jwksUrl, String testIssuer) {
-        final ApiClient apiClient = new ApiClient();
-        apiClient.setJwksUri(URI.create(jwksUrl));
-        final JwtClaimsSet claimsSet = new JwtClaimsSet();
-        claimsSet.setIssuer(testIssuer);
-        final SignedJwt signedJwt = new SignedJwt(new JwsHeader(), claimsSet, new byte[32], new byte[32]);
-        apiClient.setSoftwareStatementAssertion(signedJwt);
-        return apiClient;
-    }
-
-    private static class MockJwkSetService implements JwkSetService {
-        private final String jwksUrl;
-        private final JWKSet jwks;
-
-        public MockJwkSetService(String jwksUrl, JWKSet jwks) {
-            this.jwksUrl = jwksUrl;
-            this.jwks = jwks;
-        }
-
-        @Override
-        public Promise<JWKSet, FailedToLoadJWKException> getJwkSet(URL jwkStoreUrl) {
-            if (jwkStoreUrl.toString().equals(jwksUrl)) {
-                return Promises.newResultPromise(jwks);
-            } else {
-                return Promises.newExceptionPromise(new FailedToLoadJWKException("unexpected jwkStoreUrl, expected: " + jwksUrl + " got: " + jwkStoreUrl));
-            }
-        }
-
-        @Override
-        public Promise<JWK, FailedToLoadJWKException> getJwk(URL jwkStoreUrl, String keyId) {
-            return Promises.newExceptionPromise(new FailedToLoadJWKException("getJwk should not be called by this test"));
-        }
+    private static void addJwkSetToAttributesContext(Context context, JWKSet jwkSet) {
+        context.asContext(AttributesContext.class).getAttributes().put(FetchApiClientJwksFilter.API_CLIENT_JWKS_ATTR_KEY, jwkSet);
     }
 }
