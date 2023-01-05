@@ -64,7 +64,7 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
     }
 
     @Override
-    public String getJwksUri() {
+    public String getDirectoryJwksUri() {
         return this.secureApiGatewayJwksUri;
     }
 

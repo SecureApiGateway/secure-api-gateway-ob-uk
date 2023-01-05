@@ -2,6 +2,7 @@ import com.forgerock.sapi.gateway.jwt.JwtUtils
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory
 import org.forgerock.util.promise.*
 import org.forgerock.http.protocol.*
+import org.forgerock.json.JsonValue
 import org.forgerock.json.jose.*
 import org.forgerock.json.jose.jwk.*
 import org.forgerock.json.jose.common.JwtReconstruction
@@ -15,7 +16,6 @@ import java.security.SignatureException
 import com.nimbusds.jose.jwk.RSAKey;
 import com.securebanking.gateway.dcr.ErrorResponseFactory
 import static org.forgerock.util.promise.Promises.newResultPromise
-
 
 /*
  * Script to verify the registration request, and prepare AM OIDC dynamic client reg
@@ -47,29 +47,29 @@ import static org.forgerock.util.promise.Promises.newResultPromise
  */
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
-if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
+if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[ProcessRegistration] (" + fapiInteractionId + ") - "
 logger.debug(SCRIPT_NAME + "Running...")
 
 def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 
-def defaultResponseTypes =  ["code id_token"]
+def defaultResponseTypes = ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]
 
-if(!trustedDirectoryService) {
+if (!trustedDirectoryService) {
     logger.error(SCRIPT_NAME + "No TrustedDirectoriesService defined on the heap in config.json")
     return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
 }
 
 def method = request.method
 
-switch(method.toUpperCase()) {
+switch (method.toUpperCase()) {
     case "POST":
     case "PUT":
         def SCOPE_ACCOUNTS = "accounts"
         def SCOPE_PAYMENTS = "payments"
-        def ROLE_PAYMENT_INITIATION             = "0.4.0.19495.1.2"
-        def ROLE_ACCOUNT_INFORMATION            = "0.4.0.19495.1.3"
+        def ROLE_PAYMENT_INITIATION = "0.4.0.19495.1.2"
+        def ROLE_ACCOUNT_INFORMATION = "0.4.0.19495.1.3"
         def ROLE_CARD_BASED_PAYMENT_INSTRUMENTS = "0.4.0.19495.1.4"
 
         // Check we have everything we need from the client certificate
@@ -81,7 +81,7 @@ switch(method.toUpperCase()) {
         }
 
         Jwt regJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, request.entity.getString(), "registration JWT")
-        if(!regJwt){
+        if (!regJwt) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
         }
 
@@ -121,13 +121,13 @@ switch(method.toUpperCase()) {
 
         def ssaClaims = ssaJwt.getClaimsSet();
         String ssaIssuer = ssaClaims.getIssuer()
-        if(ssaIssuer == null || ssaIssuer.isBlank()){
+        if (ssaIssuer == null || ssaIssuer.isBlank()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("Registration jwt must contain an issuer")
         }
         logger.debug(SCRIPT_NAME + "issuer is {}", ssaIssuer)
 
         TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
-        if(trustedDirectory){
+        if (trustedDirectory) {
             logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
         } else {
             logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
@@ -160,57 +160,42 @@ switch(method.toUpperCase()) {
         )
 
         def registrationJWTs = [
-                "ssaStr": ssa,
-                "ssaJwt" : ssaJwt,
-                "registrationJwt": regJwt,
+                "ssaStr"             : ssa,
+                "ssaJwt"             : ssaJwt,
+                "registrationJwt"    : regJwt,
                 "registrationJwksUri": null,
-                "registrationJwks": null
+                "registrationJwks"   : null
         ]
+
+
         // Update OIDC registration request
         if (trustedDirectory.softwareStatementHoldsJwksUri()) {
             def apiClientOrgJwksUri = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksUriClaimName());
             logger.debug(SCRIPT_NAME + "Using jwks uri: {}", apiClientOrgJwksUri)
-            if (routeArgObJwksHosts) {
-                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                def jwksUri = null;
-                try {
-                    jwksUri = new URI(apiClientOrgJwksUri)
-                }
-                catch (e) {
-                    return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_jwks_endpoint does not contain a valid URI")
-                }
-                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                if (routeArgObJwksHosts && routeArgObJwksHosts.contains(jwksUri.getHost())) {
-                    def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
-                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}", apiClientOrgJwksUri, newUri);
-                    apiClientOrgJwksUri = newUri
-
-                }
-            }
             registrationJwtClaimSet.setClaim("jwks_uri", apiClientOrgJwksUri)
             registrationJWTs["registrationJwksUri"] = apiClientOrgJwksUri
         } else {
-            def apiClientOrgJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
+            def apiClientJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
             logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
-            registrationJwtClaimSet.setClaim("jwks",  apiClientOrgJwks )
-            registrationJWTs["registrationJwks"] = apiClientOrgJwks
+            registrationJwtClaimSet.setClaim("jwks", apiClientJwks)
+            registrationJWTs["registrationJwks"] = apiClientJwks
         }
 
         // The Jwks will be added by filters run on each route... we won't need  to store them here.
         // Store SSA and registration JWT for signature check
         attributes.registrationJWTs = registrationJWTs
 
-        registrationJwtClaimSet.setClaim("client_name",apiClientOrgName)
+        registrationJwtClaimSet.setClaim("client_name", apiClientOrgName)
         registrationJwtClaimSet.setClaim("tls_client_certificate_bound_access_tokens", true)
 
         // Why is this here?
         def subject_type = registrationJwtClaimSet.getClaim("subject_type", String.class);
-        if(!subject_type){
+        if (!subject_type) {
             registrationJwtClaimSet.setClaim("subject_type", "pairwise");
         }
 
         Response errorResponse = performOpenBankingScopeChecks(errorResponseFactory, registrationJwtClaimSet, ssaClaims)
-        if(errorResponse != null){
+        if (errorResponse != null) {
             return errorResponse
         }
 
@@ -227,40 +212,51 @@ switch(method.toUpperCase()) {
         }
 
         // Verify that the tls transport cert is registered for the TPP's software statement
-        if (apiClientOrgJwksUri != null) {
+        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
+            URL apiClientOrgJwksUri = new URL(registrationJWTs["registrationJwksUri"])
             logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + apiClientOrgJwksUri)
-            return jwkSetService.getJwkSet(new URL(apiClientOrgJwksUri))
-                                .thenCatchAsync(e -> {
-                                    logger.warn(SCRIPT_NAME + "failed to get jwks due to exception", e)
-                                    return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse("unable to get jwks from url: " + apiClientOrgJwksUri))
-                                })
-                                .thenAsync(jwkSet -> {
-                                    if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                                        return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse("tls transport cert does not match any certs registered in jwks for software statement"))
-                                    }
-                                    if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
-                                        return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse("registration JWT signature invalid"))
-                                    }
-                                    return next.handle(context, request)
-                                               .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
-                                })
-
+            return jwkSetService.getJwkSet(apiClientOrgJwksUri)
+                .thenCatchAsync(e -> {
+                    String errorDescription = "Unable to get jwks from url: " + apiClientOrgJwksUri
+                    logger.warn(SCRIPT_NAME + "Failed to get jwks due to exception: " + errorDescription, e)
+                    return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
+                })
+                .thenAsync(jwkSet -> {
+                    if (!tlsClientCertExistsInJwkSet(jwkSet)) {
+                        String errorDescription = "tls transport cert does not match any certs " +
+                                "registered in jwks for software statement"
+                        logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                        return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
+                    }
+                    if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
+                        String errorDescription = "registration JWT signature invalid"
+                        logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                        return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
+                    }
+                    return next.handle(context, request)
+                            .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
+                })
         } else {
             // Verify against the software_jwks which is a JWKSet embedded within the software_statement
             // NOTE: this is only suitable for developer testing purposes
             if (!allowIgIssuedTestCerts) {
                 return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
             }
+            def apiClientOrgJwks = registrationJWTs["registrationJwks"]
             logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientOrgJwks)
             def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
             if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse( "tls transport cert does not match any certs registered in jwks for software statement"))
+                String errorDescription = "tls transport cert does not match any certs registered in jwks for software statement"
+                logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
             }
             if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
-                return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse("registration JWT signature invalid"))
+                String errorDescription = "registration JWT signature invalid"
+                logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
             }
             return next.handle(context, request)
-                       .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
+                    .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
         }
 
     case "DELETE":
@@ -269,12 +265,12 @@ switch(method.toUpperCase()) {
     case "GET":
         rewriteUriToAccessExistingAmRegistration()
         return next.handle(context, request)
-                   .thenOnResult(response -> {
-                       var apiClient = attributes.apiClient
-                       if (apiClient && apiClient.ssa) {
-                           addSoftwareStatementToResponse(response, apiClient.ssa)
-                       }
-                   })
+                .thenOnResult(response -> {
+                    var apiClient = attributes.apiClient
+                    if (apiClient && apiClient.ssa) {
+                        addSoftwareStatementToResponse(response, apiClient.ssa)
+                    }
+                })
     default:
         logger.debug(SCRIPT_NAME + "Method not supported")
         return next.handle(context, request)
@@ -302,10 +298,10 @@ switch(method.toUpperCase()) {
  * @return false if the OBIE specification rules are met, true if they are not
  */
 private Response performOpenBankingScopeChecks(ErrorResponseFactory errorResponseFactory,
-                                               JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims){
+                                               JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims) {
     logger.debug("{}performing OpenBanking Scope tests", SCRIPT_NAME)
     String requestedScopes = registrationRequestClaims.getClaim("scope")
-    if(requestedScopes == null){
+    if (requestedScopes == null) {
         String errorDescription = "The request jwt does not contain the required scopes claim"
         logger.info(SCRIPT_NAME + errorDescription)
         return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
@@ -380,7 +376,7 @@ private boolean tlsClientCertExistsInJwkSet(jwkSet) {
         if ("tls".equals(jwk.getUse()) && tlsClientCertX5c.equals(jwkX5c)) {
             logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId() + " x5t#S256: " + jwk.getX509ThumbprintS256())
             return true
-        }
+        } 
     }
     logger.debug(SCRIPT_NAME + "tls transport cert does not match any certs registered in jwks for software statement")
     return false
