@@ -99,7 +99,7 @@
             }
           }
         },
-        "FetchApiClientAndTrustedDirectoryDataChain",
+        "FetchApiClientResourcesChain",
         {
           "comment": "Check grant type",
           "name": "Grant Type Verifier",
@@ -125,8 +125,7 @@
               "routeArgObjApiClient": "apiClient",
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "routeArgTrustedAnchor": "openbanking.org.uk",
-              "routeArgClientIdFieldName": "client_id",
-              "jwkSetService": "${heap['OBJwkSetService']}"
+              "routeArgClientIdFieldName": "client_id"
             }
           }
         },
