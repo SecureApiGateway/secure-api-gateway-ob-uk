@@ -73,21 +73,28 @@ public class CryptoUtils {
     }
 
     /**
-     * Generate a self signed X509 cert for a KeyPair
+     * Generate a self-signed X509 cert for a KeyPair
      */
     public static X509Certificate generateX509Cert(KeyPair keyPair, String subjectDN) {
+        return generateX509Cert(keyPair, subjectDN, null, null);
+    }
+
+    public static X509Certificate generateX509Cert(KeyPair keyPair, String subjectDN, Date startDate, Date endDate) {
         Provider bcProvider = new BouncyCastleProvider();
         Security.addProvider(bcProvider);
         long now = System.currentTimeMillis();
-        Date startDate = new Date(now);
+        if (startDate == null) {
+            startDate = new Date(now);
+        }
+        if (endDate == null) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(startDate);
+            calendar.add(Calendar.YEAR, 1);
+            endDate = calendar.getTime();
+        }
 
         X500Name dnName = new X500Name(subjectDN);
         BigInteger certSerialNumber = new BigInteger(Long.toString(now));
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(startDate);
-        calendar.add(Calendar.YEAR, 1);
-        Date endDate = calendar.getTime();
-
         String signatureAlgorithm;
         final String algorithm = keyPair.getPublic().getAlgorithm();
         if (algorithm.equals("RSA")) {

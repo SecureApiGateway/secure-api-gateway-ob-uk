@@ -15,16 +15,28 @@
  */
 package com.forgerock.sapi.gateway.mtls;
 
+import static com.forgerock.sapi.gateway.util.CryptoUtils.generateRsaKeyPair;
+import static com.forgerock.sapi.gateway.util.CryptoUtils.generateX509Cert;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.forgerock.json.JsonValue.field;
+import static org.forgerock.json.JsonValue.json;
+import static org.forgerock.json.JsonValue.object;
+
 import java.security.cert.CertificateException;
 
 import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.Date;
 
 import org.forgerock.json.jose.jwk.JWKSet;
+import org.forgerock.openig.heap.HeapImpl;
+import org.forgerock.openig.heap.Name;
 import org.forgerock.util.Pair;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.forgerock.sapi.gateway.mtls.DefaultTransportCertValidator.Heaplet;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 
 class DefaultTransportCertValidatorTest {
@@ -52,10 +64,59 @@ class DefaultTransportCertValidatorTest {
     }
 
     @Test
-    void failsWhenCertMatchButUseDoesNot() throws CertificateException {
+    void failsWhenCertMatchButUseDoesNot() {
+        final DefaultTransportCertValidator validator = new DefaultTransportCertValidator("blah");
+        failsWhenCertMatchButUseDoesNot(validator);
+    }
+
+    private static void failsWhenCertMatchButUseDoesNot(DefaultTransportCertValidator validator) {
         final CertificateException certificateException = Assertions.assertThrows(CertificateException.class,
-                () -> new DefaultTransportCertValidator("blah").validate(TEST_TLS_CERT, TEST_JWKS));
+                () -> validator.validate(TEST_TLS_CERT, TEST_JWKS));
 
         Assertions.assertEquals("Failed to find JWK entry in provided JWKSet which matches the X509 cert", certificateException.getMessage());
+    }
+
+    @Test
+    void failsWhenCertIsExpired() {
+        final Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_YEAR, -5);
+        final Date certStartDate = calendar.getTime();
+        calendar.add(Calendar.DAY_OF_YEAR, 1);
+        final Date certEndDate = calendar.getTime();
+
+        final X509Certificate expiredCert = generateX509Cert(generateRsaKeyPair(), "CN=abc", certStartDate, certEndDate);
+        final CertificateException certificateException = Assertions.assertThrows(CertificateException.class,
+                () -> new DefaultTransportCertValidator("blah").validate(expiredCert, TEST_JWKS));
+        assertThat(certificateException.getMessage()).contains("certificate expired on");
+    }
+
+    @Test
+    void failsWhenBeforeCertStartDate() {
+        final Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_YEAR, 5);
+        final Date certStartDate = calendar.getTime();
+        calendar.add(Calendar.DAY_OF_YEAR, 50);
+        final Date certEndDate = calendar.getTime();
+
+        final X509Certificate certStartDateNotReached = generateX509Cert(generateRsaKeyPair(), "CN=abc", certStartDate, certEndDate);
+        final CertificateException certificateException = Assertions.assertThrows(CertificateException.class,
+                () -> new DefaultTransportCertValidator("blah").validate(certStartDateNotReached, TEST_JWKS));
+        assertThat(certificateException.getMessage()).contains("certificate not valid till");
+    }
+
+    @Test
+    void testSuccessfullyCreatedByHeaplet() throws Exception {
+        final Name name = Name.of("test");
+        final HeapImpl heap = new HeapImpl(name);
+        final DefaultTransportCertValidator validatorNoUseCheck = (DefaultTransportCertValidator) new Heaplet().create(name, json(object()), heap);
+        validatorNoUseCheck.validate(TEST_TLS_CERT, TEST_JWKS);
+
+        final DefaultTransportCertValidator validatorTlsUseCheck = (DefaultTransportCertValidator) new Heaplet().create(name,
+                json(object(field("validKeyUse", TLS_KEY_USE))), heap);
+        validatorTlsUseCheck.validate(TEST_TLS_CERT, TEST_JWKS);
+
+        final DefaultTransportCertValidator validatorUnknownKeyUse= (DefaultTransportCertValidator) new Heaplet().create(name,
+                json(object(field("validKeyUse", "unknown"))), heap);
+        failsWhenCertMatchButUseDoesNot(validatorUnknownKeyUse);
     }
 }

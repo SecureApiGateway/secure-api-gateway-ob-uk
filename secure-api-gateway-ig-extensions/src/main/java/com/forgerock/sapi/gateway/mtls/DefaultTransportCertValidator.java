@@ -24,6 +24,7 @@ import org.forgerock.json.jose.jwk.JWK;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
+import org.forgerock.util.Reject;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -32,7 +33,7 @@ import com.nimbusds.jose.jwk.RSAKey;
  * Certificate validation is achieved by transforming the incoming client certificate into a JWK and then testing if the
  * JWK exists in the supplied JWKSet for the client.
  *
- * JWK equality between is determined by comparing the x5c[0] values.
+ * As we do not have a keyId (kid) for the certificate, then JWK equality is determined by comparing the x5c[0] values.
  * The x5c[0] represents the base64 encoded DER PKIX certificate value. The first item in the x5c array must be the
  * certificate, therefore we only check this entry and not the full chain.
  *
@@ -62,6 +63,9 @@ public class DefaultTransportCertValidator implements TransportCertValidator {
 
     @Override
     public void validate(X509Certificate certificate, JWKSet jwkSet) throws CertificateException {
+        Reject.ifNull(certificate, "certificate must be supplied");
+        Reject.ifNull(jwkSet, "jwkSet must be supplied");
+        certificate.checkValidity();
         try {
             final String x5cForClientCert = getX5cForClientCert(certificate);
             if (!tlsClientCertExistsInJwkSet(jwkSet, x5cForClientCert)) {
