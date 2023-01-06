@@ -97,7 +97,7 @@ public class DefaultTransportCertValidator implements TransportCertValidator {
      * If the cert does exist, then optionally test the key's use to see if it is valid for use as a transport key.
      *
      * @param jwkSet JWKSet to check
-     * @param clientCertX5c String representing the JWK.x5c value we are expecting to matching.
+     * @param clientCertX5c String representing the JWK.x5c value we are expecting to match.
      *                      NOTE: we are only testing the client cert portion of the x5c array, the first item in the array
      *                      and not the whole cert chain.
      * @return true if the cert exists in the JWK and has the correct keyUse
