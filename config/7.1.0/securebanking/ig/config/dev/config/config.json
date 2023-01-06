@@ -129,6 +129,15 @@
             "config": {
               "jwkSetService": "OBJwkSetService"
             }
+          },
+          {
+            "comment": "Validate the MTLS transport cert",
+            "name": "TransportCertValidationFilter",
+            "type": "TransportCertValidationFilter",
+            "config": {
+              "clientTlsCertHeader": "ssl-client-cert",
+              "transportCertValidator": "OBTransportCertValidator"
+            }
           }
         ]
       }

@@ -100,15 +100,6 @@
         },
         "FetchApiClientResourcesChain",
         {
-          "comment": "Validate the MTLS transport cert",
-          "name": "TransportCertValidationFilter",
-          "type": "TransportCertValidationFilter",
-          "config": {
-            "clientTlsCertHeader": "ssl-client-cert",
-            "transportCertValidator": "OBTransportCertValidator"
-          }
-        },
-        {
           "comment": "Check grant type",
           "name": "Grant Type Verifier",
           "type": "ScriptableFilter",
