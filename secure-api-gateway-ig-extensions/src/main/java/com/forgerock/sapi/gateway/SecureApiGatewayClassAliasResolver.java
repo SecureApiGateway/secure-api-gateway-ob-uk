@@ -21,6 +21,7 @@ import java.util.Map;
 import org.forgerock.openig.alias.ClassAliasResolver;
 
 import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
+import com.forgerock.sapi.gateway.dcr.request.RequestAndSsaSignatureValidationFilter;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetService;
@@ -45,6 +46,7 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("FetchApiClientJwksFilter", FetchApiClientJwksFilter.class);
         ALIASES.put("TransportCertValidationFilter", TransportCertValidationFilter.class);
         ALIASES.put("DefaultTransportCertValidator", DefaultTransportCertValidator.class);
+        ALIASES.put("RequestAndSsaSignatureValidationFilter", RequestAndSsaSignatureValidationFilter.class);
     }
 
     /**

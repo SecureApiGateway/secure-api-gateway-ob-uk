@@ -39,6 +39,15 @@
           }
         },
         {
+          "comment": "Validate the signature of the SSA and the request Jwt",
+          "name": "RequestAndSsaSignatureValidationFilter",
+          "type": "RequestAndSsaSignatureValidationFilter",
+          "config": {
+            "clientHandler": "OBClientHandler",
+            "trustedDirectoryService": "TrustedDirectoriesService"
+          }
+        },
+        {
           "comment": "Validate that the request will result in an OAuth2 client that is FAPI compliant",
           "name": "FAPIAdvancedDCRValidationFilter",
           "type": "FAPIAdvancedDCRValidationFilter",
