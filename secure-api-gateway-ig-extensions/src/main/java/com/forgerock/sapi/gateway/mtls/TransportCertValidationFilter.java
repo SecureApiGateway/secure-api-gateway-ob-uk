@@ -103,7 +103,7 @@ public class TransportCertValidationFilter implements Filter {
             certificate = parseCertificate(clientCertPem);
         } catch (CertificateException e) {
             logger.warn("("+  FAPIUtils.getFapiInteractionIdForDisplay(context) + ") transport cert not valid", e);
-            return Promises.newResultPromise(createErrorResponse("client tls certificate is not valid"));
+            return Promises.newResultPromise(createErrorResponse("client tls certificate could not be parsed as an X509 certificate"));
         }
 
         try {
