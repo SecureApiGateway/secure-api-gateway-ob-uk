@@ -137,10 +137,10 @@ public class CryptoUtils {
 
         final KeyUse keyUse = new KeyUse(transportCertKeyUse);
         final List<JWK> keys = new ArrayList<>();
-        // Add TEST_TLS_CERT to the JWKS
+        // Add testTransportCert to the JWKS
         keys.add(createJwkForCert(testTransportCert, keyUse));
 
-        // Generate several others certs to add to the JWKS that do not match TEST_TLS_CERT
+        // Generate several others certs to add to the JWKS
         for (int i = 0 ; i < 5; i++) {
             final KeyUse randomKeyUse = i % 2 == 0 ? keyUse : new KeyUse("keyUse" + i);
             keys.add(createJwkForCert(generateX509Cert(generateRsaKeyPair(), "CN=blah" + i), randomKeyUse));
