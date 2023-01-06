@@ -240,13 +240,15 @@ switch (method.toUpperCase()) {
             // Verify against the software_jwks which is a JWKSet embedded within the software_statement
             // NOTE: this is only suitable for developer testing purposes
             if (!allowIgIssuedTestCerts) {
-                return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement must contain software_jwks_endpoint")
+                String errorDescription = "software_statement must contain software_jwks_endpoint"
+                return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
             }
             def apiClientOrgJwks = registrationJWTs["registrationJwks"]
             logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientOrgJwks)
             def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
             if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                String errorDescription = "tls transport cert does not match any certs registered in jwks for software statement"
+                String errorDescription = "tls transport cert does not match any certs registered in jwks for software " +
+                        "statement"
                 logger.debug("{}{}", SCRIPT_NAME, errorDescription)
                 return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
             }
@@ -374,9 +376,10 @@ private boolean tlsClientCertExistsInJwkSet(jwkSet) {
         final List<String> x509Chain = jwk.getX509Chain();
         final String jwkX5c = x509Chain.get(0);
         if ("tls".equals(jwk.getUse()) && tlsClientCertX5c.equals(jwkX5c)) {
-            logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId() + " x5t#S256: " + jwk.getX509ThumbprintS256())
+            logger.debug(SCRIPT_NAME + "Found matching tls cert for provided pem, with kid: " + jwk.getKeyId()
+                    + " x5t#S256: " + jwk.getX509ThumbprintS256())
             return true
-        } 
+        }
     }
     logger.debug(SCRIPT_NAME + "tls transport cert does not match any certs registered in jwks for software statement")
     return false
