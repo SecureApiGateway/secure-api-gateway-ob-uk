@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -33,11 +34,14 @@ import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.Context;
 import org.forgerock.services.context.RootContext;
 import org.forgerock.services.context.TransactionIdContext;
+import org.forgerock.util.Pair;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
+import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.forgerock.sapi.gateway.util.TestHandlers.TestSuccessResponseHandler;
 
 class TransportCertValidationFilterTest {
@@ -45,7 +49,18 @@ class TransportCertValidationFilterTest {
     /**
      * TEST_TLS_CERT in URL encoded form, as provided by nginx
      */
-    private static final String TEST_TLS_CERT = URLEncoder.encode(DefaultTransportCertValidatorTest.TEST_TLS_CERT, Charset.defaultCharset());
+    private static String TEST_TLS_CERT;
+    /**
+     * JWKSet containing TEST_TLS_CERT plus others
+     */
+    private static JWKSet TEST_JWKS;
+
+    @BeforeAll
+    public static void beforeAll() throws Exception {
+        final Pair<X509Certificate, JWKSet> testTransportCertAndJwks = CryptoUtils.generateTestTransportCertAndJwks("tls");
+        TEST_TLS_CERT = URLEncoder.encode(CryptoUtils.convertToPem(testTransportCertAndJwks.getFirst()), Charset.defaultCharset());
+        TEST_JWKS = testTransportCertAndJwks.getSecond();
+    }
 
     @Test
     public void testValidCert() throws ExecutionException, InterruptedException, TimeoutException {
@@ -54,7 +69,7 @@ class TransportCertValidationFilterTest {
         final DefaultTransportCertValidator certValidator = new DefaultTransportCertValidator("tls");
         final TransportCertValidationFilter transportCertValidationFilter = new TransportCertValidationFilter(clientTlsCertificateSupplier, certValidator);
 
-        final Context context = createContextWithJwksAttribute(DefaultTransportCertValidatorTest.TEST_JWKS);
+        final Context context = createContextWithJwksAttribute(TEST_JWKS);
         final Request request = createRequestWithCertHeader(certificateHeaderName, TEST_TLS_CERT);
 
         final TestSuccessResponseHandler responseHandler = new TestSuccessResponseHandler();
