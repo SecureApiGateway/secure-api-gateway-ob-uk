@@ -26,8 +26,8 @@ import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetService;
 import com.forgerock.sapi.gateway.jwks.cache.caffeine.CaffeineCachingJwkSetService;
 import com.forgerock.sapi.gateway.jws.RsaJwtSignatureValidator;
+import com.forgerock.sapi.gateway.mtls.DefaultTransportCertValidator;
 import com.forgerock.sapi.gateway.mtls.TransportCertValidationFilter;
-import com.forgerock.sapi.gateway.mtls.TransportCertValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.FetchTrustedDirectoryFilter;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
@@ -44,7 +44,7 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("FetchTrustedDirectoryFilter", FetchTrustedDirectoryFilter.class);
         ALIASES.put("FetchApiClientJwksFilter", FetchApiClientJwksFilter.class);
         ALIASES.put("TransportCertValidationFilter", TransportCertValidationFilter.class);
-        ALIASES.put("TransportCertValidator", TransportCertValidator.class);
+        ALIASES.put("DefaultTransportCertValidator", DefaultTransportCertValidator.class);
     }
 
     /**

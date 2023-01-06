@@ -451,7 +451,7 @@
     },
     {
       "name": "OBTransportCertValidator",
-      "type": "TransportCertValidator",
+      "type": "DefaultTransportCertValidator",
       "config": {
         "validKeyUse": "tls"
       }
