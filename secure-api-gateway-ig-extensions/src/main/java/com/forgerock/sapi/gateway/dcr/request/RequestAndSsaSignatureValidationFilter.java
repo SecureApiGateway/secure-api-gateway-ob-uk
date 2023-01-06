@@ -20,8 +20,11 @@ import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
@@ -44,12 +47,38 @@ import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.dcr.ValidationException;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
+import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 public class RequestAndSsaSignatureValidationFilter implements Filter {
 
-    private static final Logger log = LoggerFactory.getLogger(RequestAndSsaSignatureValidationFilter.class);
+    public static class Heaplet extends GenericHeaplet {
 
+        @Override
+        public Object create() throws HeapException {
+            final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
+            final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
+                    .as(requiredHeapObject(heap, TrustedDirectoryService.class));
+
+            final List<String> supportedSigningAlgorithms = config.get("supportedSigningAlgorithms")
+                    .as(evaluatedWithHeapProperties())
+                    .defaultTo(DEFAULT_SUPPORTED_JWS_ALGORITHMS)
+                    .asList(String.class);
+            // Validate that if custom configuration was supplied, then that it is equal to or a subset of the values supported by the spec
+            if (!DEFAULT_SUPPORTED_JWS_ALGORITHMS.containsAll(supportedSigningAlgorithms)) {
+                throw new HeapException("supportedSigningAlgorithms config must be the same as (or a subset of): "
+                        + DEFAULT_SUPPORTED_JWS_ALGORITHMS);
+            }
+
+            final RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier = new RegistrationRequestObjectFromJwtSupplier(supportedSigningAlgorithms);
+            final RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
+                    clientHandler, trustedDirectoryService,  registrationObjectSupplier);
+
+            return filter;
+        }
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(RequestAndSsaSignatureValidationFilter.class);
     private final TrustedDirectoryService directorySvc;
     private final Handler handler;
     /**
@@ -61,13 +90,22 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
      */
     private static final Set<String> VALIDATABLE_HTTP_REQUEST_METHODS = Set.of("POST", "PUT");
 
+    private static final List<String> DEFAULT_SUPPORTED_JWS_ALGORITHMS = Stream.of(JwsAlgorithm.PS256, JwsAlgorithm.ES256)
+            .map(JwsAlgorithm::getJwaAlgorithmName)
+            .collect(Collectors.toList());
+
+    private final RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier;
+
 
     private RequestAndSsaSignatureValidationFilter(Handler clientHandler,
-            TrustedDirectoryService trustedDirectoryService) {
+            TrustedDirectoryService trustedDirectoryService,
+            RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier) {
         Reject.ifNull(clientHandler, "clientHandler must be provided");
         Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
+        Reject.ifNull(registrationRequestObjectFromJwtSupplier, "RegistrationRequestObjectFromJwtSupplier must be provided");
         this.directorySvc = trustedDirectoryService;
         this.handler = clientHandler;
+        this.registrationRequestObjectFromJwtSupplier = registrationRequestObjectFromJwtSupplier;
         log.debug("RequestAndSsaSignatureValidationFilter constructed");
     }
 
@@ -80,26 +118,14 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
             return next.handle(context, request);
         }
 
-
-
-
+        JsonValue registrationRequestObject = registrationRequestObjectFromJwtSupplier.apply(context, request);
+        final String ssaJwt = registrationRequestObject.get("software_statement").asString();
+        log.debug("{}ssa from registration request jwt is {}", ssaJwt);
 
         return next.handle(context, request);
     }
 
-    public static class Heaplet extends GenericHeaplet {
 
-        @Override
-        public Object create() throws HeapException {
-            final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
-            final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
-                    .as(requiredHeapObject(heap, TrustedDirectoryService.class));
-            final RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
-                    clientHandler, trustedDirectoryService);
-
-            return filter;
-        }
-    }
 
     /**
      * Supplies the Registration Request json object from a JWT contained within the Request.entity
@@ -122,7 +148,7 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
                 final String registrationRequestJwtString = request.getEntity().getString();
                 final SignedJwt registrationRequestJwt = new JwtReconstruction().reconstructJwt(registrationRequestJwtString,
                         SignedJwt.class);
-                LOGGER.debug("({}) Registration Request JWT to validate: {}", fapiInteractionId, registrationRequestJwtString);
+                log.debug("({}) Registration Request JWT to validate: {}", fapiInteractionId, registrationRequestJwtString);
                 final JwsAlgorithm signingAlgo = registrationRequestJwt.getHeader().getAlgorithm();
                 // This validation is being done here as outside the supplier we are not aware that a JWT existed
                 if (signingAlgo == null || !supportedSigningAlgorithms.contains(signingAlgo.getJwaAlgorithmName())) {
@@ -132,11 +158,13 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
                 final JwtClaimsSet claimsSet = registrationRequestJwt.getClaimsSet();
                 return claimsSet.toJsonValue();
             } catch (InvalidJwtException | IOException e) {
-                LOGGER.warn("(" + fapiInteractionId + ") FAPI DCR failed: unable to extract registration object JWT from request", e);
+                log.warn("(" + fapiInteractionId + ") FAPI DCR failed: unable to extract registration object JWT from request", e);
                 // These are not validation errors, so do not raise a validation exception, instead allow the filter to handle the null response
                 return null;
             }
         }
     }
+
+
 
 }
