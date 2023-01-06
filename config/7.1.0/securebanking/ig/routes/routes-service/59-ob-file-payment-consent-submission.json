@@ -104,7 +104,7 @@
           "type": "TransportCertValidationFilter",
           "config": {
             "clientTlsCertHeader": "ssl-client-cert",
-            "keyUse": "tls"
+            "transportCertValidator": "OBTransportCertValidator"
           }
         },
         {

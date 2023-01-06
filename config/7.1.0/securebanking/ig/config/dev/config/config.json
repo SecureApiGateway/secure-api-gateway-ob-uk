@@ -448,6 +448,13 @@
     {
       "name": "RsaJwtSignatureValidator",
       "type": "RsaJwtSignatureValidator"
+    },
+    {
+      "name": "OBTransportCertValidator",
+      "type": "TransportCertValidator",
+      "config": {
+        "validKeyUse": "tls"
+      }
     }
   ],
   "monitor": true
