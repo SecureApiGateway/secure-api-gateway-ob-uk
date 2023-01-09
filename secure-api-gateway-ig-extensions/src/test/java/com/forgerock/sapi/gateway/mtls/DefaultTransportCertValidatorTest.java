@@ -77,6 +77,15 @@ class DefaultTransportCertValidatorTest {
     }
 
     @Test
+    void failsWhenCertNotInJwks() {
+        final X509Certificate certNotInJwks = generateX509Cert(generateRsaKeyPair(), "CN=test");
+        final CertificateException certificateException = Assertions.assertThrows(CertificateException.class,
+                () -> new DefaultTransportCertValidator(TLS_KEY_USE).validate(certNotInJwks, TEST_JWKS));
+        Assertions.assertEquals("Failed to find JWK entry in provided JWKSet which matches the X509 cert",
+                certificateException.getMessage());
+    }
+
+    @Test
     void failsWhenCertIsExpired() {
         final Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.DAY_OF_YEAR, -5);
