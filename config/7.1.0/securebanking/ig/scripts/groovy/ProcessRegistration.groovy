@@ -119,7 +119,6 @@ switch (method.toUpperCase()) {
 
         Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
         if (!ssaJwt) {
-            logger.warn(SCRIPT_NAME + "failed to decode software_statement JWT", e)
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
         }
 
