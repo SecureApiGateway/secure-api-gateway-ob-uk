@@ -45,7 +45,9 @@
           "config": {
             "supportedSigningAlgorithms": ["PS256"],
             "clientHandler": "OBClientHandler",
-            "trustedDirectoryService": "TrustedDirectoriesService"
+            "trustedDirectoryService": "TrustedDirectoriesService",
+            "jwkSetService": "OBJwkSetService",
+            "jwtSignatureValidator": "RsaJwtSignatureValidator"
           }
         },
         {

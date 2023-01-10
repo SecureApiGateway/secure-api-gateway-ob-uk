@@ -18,12 +18,9 @@ package com.forgerock.sapi.gateway.dcr.request;
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -36,7 +33,6 @@ import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
-import org.forgerock.json.JsonValue;
 import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.exceptions.InvalidJwtException;
 import org.forgerock.json.jose.jws.JwsAlgorithm;
@@ -53,11 +49,15 @@ import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.dcr.ValidationException;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
-import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter;
+import com.forgerock.sapi.gateway.jwks.JwkSetService;
+import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 public class RequestAndSsaSignatureValidationFilter implements Filter {
+
+    private final JwkSetService jwkSetService;
+    private final JwtSignatureValidator jwtSignatureValidator;
 
     public static class Heaplet extends GenericHeaplet {
 
@@ -66,6 +66,12 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
             final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
             final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
                     .as(requiredHeapObject(heap, TrustedDirectoryService.class));
+
+            final JwkSetService jwsSetService = config.get("jwkSetService")
+                    .as(requiredHeapObject(heap, JwkSetService.class));
+
+            final JwtSignatureValidator jwtSignatureValidator = config.get("jwtSignatureValidator")
+                    .as(requiredHeapObject(heap, JwtSignatureValidator.class));
 
             final List<String> supportedSigningAlgorithms = config.get("supportedSigningAlgorithms")
                     .as(evaluatedWithHeapProperties())
@@ -80,7 +86,8 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
             final RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier =
                     new RegistrationRequestObjectFromJwtSupplier();
             final RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
-                    clientHandler, trustedDirectoryService,  registrationObjectSupplier, supportedSigningAlgorithms);
+                    clientHandler, trustedDirectoryService,  registrationObjectSupplier, supportedSigningAlgorithms,
+                    jwsSetService, jwtSignatureValidator);
 
             return filter;
         }
@@ -110,15 +117,20 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
     RequestAndSsaSignatureValidationFilter(Handler clientHandler,
             TrustedDirectoryService trustedDirectoryService,
             RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier,
-            Collection<String> supportedSigningAlgorithms) {
+            Collection<String> supportedSigningAlgorithms, JwkSetService jwkSetService,
+            JwtSignatureValidator jwtSignatureValidator) {
         Reject.ifNull(clientHandler, "clientHandler must be provided");
         Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
         Reject.ifNull(registrationRequestObjectFromJwtSupplier, "RegistrationRequestObjectFromJwtSupplier must be provided");
         Reject.ifNull(supportedSigningAlgorithms, "supportedSigningAlgorithms must be provided");
+        Reject.ifNull(jwkSetService, "jwkSetService must be provided");
+        Reject.ifNull(jwtSignatureValidator, "jwtSignatureValidator must be provided");
         this.directorySvc = trustedDirectoryService;
         this.handler = clientHandler;
         this.registrationRequestObjectFromJwtSupplier = registrationRequestObjectFromJwtSupplier;
         this.supportedSigningAlgorithms = supportedSigningAlgorithms;
+        this.jwkSetService = jwkSetService;
+        this.jwtSignatureValidator = jwtSignatureValidator;
         log.debug("RequestAndSsaSignatureValidationFilter constructed");
     }
 
@@ -138,6 +150,7 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
         final String ssaJwtString = getSsaEncodedJwtString(fapiInteractionId, registrationRequestJwtClaimsSet);
         log.debug("{}ssa from registration request jwt is {}", fapiInteractionId, ssaJwtString);
         final JwtClaimsSet ssaClaimsSet = getSsaClaimsSet(fapiInteractionId, ssaJwtString, supportedSigningAlgorithms);
+
 
         String ssaIssuer = ssaClaimsSet.getIssuer();
         if(ssaIssuer == null || ssaIssuer.isBlank()){

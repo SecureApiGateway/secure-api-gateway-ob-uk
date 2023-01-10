@@ -28,6 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.dcr.ValidationException;
+import com.forgerock.sapi.gateway.jwks.JwkSetService;
+import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
+import com.forgerock.sapi.gateway.jws.RsaJwtSignatureValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryServiceStatic;
@@ -48,6 +51,10 @@ class RequestAndSsaSignatureValidationFilterTest {
     private Handler handler = mock(Handler.class);
     private static RequestAndSsaSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier;
     private static RSASSASigner RSA_SIGNER;
+
+    private static JwkSetService jwkSetService = mock(JwkSetService.class);
+
+    private static JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
 
 
 
@@ -113,7 +120,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         // When
         ValidationException exception = catchThrowableOfType(()->
@@ -128,7 +136,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         SignedJwt signedJwt = createSignedJwt(Map.of(), JWSAlgorithm.PS256);
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
@@ -146,7 +155,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         String encodedSsaJwtString = createEncodedJwtString(Map.of(), JWSAlgorithm.PS256);
         Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
@@ -166,8 +176,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
-
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
         String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "InvalidIssuer"), JWSAlgorithm.PS256);
         Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
         SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
@@ -186,7 +196,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "OpenBanking Ltd"), JWSAlgorithm.PS256);
         Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
@@ -206,7 +217,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         Map<String, Object> ssaClaimsMap = Map.of("iss", "OpenBanking Ltd",
                 TrustedDirectoryOpenBankingTest.softwareJwksUriClaimName, "not a url");
@@ -229,7 +241,8 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
-                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"));
+                trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
+                jwtSignatureValidator);
 
         Map<String, Object> ssaClaimsMap = Map.of("iss", "OpenBanking Ltd",
                 TrustedDirectoryOpenBankingTest.softwareJwksUriClaimName, "http://google.co.uk");
