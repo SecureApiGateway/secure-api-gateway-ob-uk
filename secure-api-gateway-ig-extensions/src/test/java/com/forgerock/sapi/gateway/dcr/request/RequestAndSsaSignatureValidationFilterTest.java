@@ -25,6 +25,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.KeyPair;
@@ -35,6 +36,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
@@ -176,7 +180,7 @@ class RequestAndSsaSignatureValidationFilterTest {
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenNoRegistrationRequestJwt() {
+    void filter_ResponseIsInvalidClientMetadataWhenNoRegistrationRequestJwt() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -184,16 +188,20 @@ class RequestAndSsaSignatureValidationFilterTest {
                 jwtSignatureValidator);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
 
         // Then
-        verify(handler, never()).handle(null, request);
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_CLIENT_METADATA);
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_CLIENT_METADATA.toString());
+        assertThat(responseBody.get("error_description")).contains("Requests to registration endpoint must contain a " +
+                "signed request jwt");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenNoSoftwareStatement() {
+    void filter_ResponseIsInvalidClientMetadataWhenNoSoftwareStatement() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -204,15 +212,20 @@ class RequestAndSsaSignatureValidationFilterTest {
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
 
         // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_CLIENT_METADATA);
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_CLIENT_METADATA.toString());
+        assertThat(responseBody.get("error_description")).contains("registration request jwt must contain " +
+                "'software_statement' claim");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenSoftwareStatementHasNoIssuer() {
+    void filter_ResponseIsInvalidSoftwareStatementWhenSoftwareStatementHasNoIssuer() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -226,14 +239,21 @@ class RequestAndSsaSignatureValidationFilterTest {
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+
         // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT);
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_description")).contains("registration request's 'software_statement' jwt " +
+                "must contain an issuer claim");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenSoftwareStatementInvalidIssuer() {
+    void filter_ResponseIsUnapprovedSoftwareStatementWhenSoftwareStatementHasInvalidIssuer() throws ExecutionException,
+            InterruptedException, TimeoutException, IOException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -246,14 +266,20 @@ class RequestAndSsaSignatureValidationFilterTest {
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+
         // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT);
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_description")).contains("SSA was not issued by a Trusted Directory");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenSoftwareStatementHasNoJwskUri() {
+    void filter_throwsInvalidSoftwareStatementWhenSoftwareStatementHasNoJwskUri() throws IOException, ExecutionException,
+            InterruptedException, TimeoutException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -263,18 +289,21 @@ class RequestAndSsaSignatureValidationFilterTest {
         String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "OpenBanking Ltd"), JWSAlgorithm.PS256);
         Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
         SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+
         // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT);
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).contains(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_description")).contains("must contain a claim for the JWKS URI");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenSoftwareStatementHasBadlyFormedJwskUri() throws MalformedURLException {
+    void filter_ResponseIsInvalidSoftwareStatementWhenSoftwareStatementHasBadlyFormedJwskUri() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -289,17 +318,20 @@ class RequestAndSsaSignatureValidationFilterTest {
 
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
-
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
-        // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT);
-        assertThat(exception.getErrorDescription()).contains("must be a valid URL");
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_description")).contains("must be a valid URL");
     }
 
     @Test
-    void filter_throwsInvalidClientMetadataWhenSoftwareStatementHasNonHttpsJwskUri() {
+    void filter_ResponseIsInvalidSoftwareStatementWhenSoftwareStatementHasNonHttpsJwskUri() throws IOException,
+            ExecutionException, InterruptedException, TimeoutException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
         RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
@@ -315,10 +347,14 @@ class RequestAndSsaSignatureValidationFilterTest {
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
 
         // When
-        ValidationException exception = catchThrowableOfType(() ->
-                filter.filter(null, request, handler), ValidationException.class);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+
         // Then
-        assertThat(exception.getErrorCode()).isEqualTo(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT);
-        assertThat(exception.getErrorDescription()).contains("must contain an HTTPS URI");
+        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
+        Map<String, String> responseBody = (Map)response.getEntity().getJson();
+        assertThat(responseBody.get("error_code")).isEqualTo(
+                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_description")).contains("must contain an HTTPS URI");
     }
 }
