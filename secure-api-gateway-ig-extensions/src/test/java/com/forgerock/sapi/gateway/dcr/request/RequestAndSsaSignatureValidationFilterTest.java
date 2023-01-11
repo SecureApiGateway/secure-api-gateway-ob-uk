@@ -16,10 +16,8 @@
 package com.forgerock.sapi.gateway.dcr.request;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,9 +45,6 @@ import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.services.TransactionId;
-import org.forgerock.services.context.Context;
-import org.forgerock.services.context.TransactionIdContext;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.junit.jupiter.api.AfterEach;
@@ -57,7 +52,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.ValidationException;
+import com.forgerock.sapi.gateway.dcr.request.DCRRequestValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
 import com.forgerock.sapi.gateway.jwks.mocks.MockJwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
@@ -73,27 +68,18 @@ import com.nimbusds.jwt.SignedJWT;
 
 class RequestAndSsaSignatureValidationFilterTest {
 
-    private static Map<String, Object> VALID_REG_REQUEST_CLAIMS;
 
-    private Request request = new Request().setMethod("POST");
-    private static TransactionIdContext txIdContext;
-    private Handler clientHandler = mock(Handler.class);
+    private Request request;
     private Handler handler = mock(Handler.class);
     private static RequestAndSsaSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier;
     private static RSASSASigner RSA_SIGNER;
-    private static JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
-
+    final private static JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
     private MockJwkSetService jwkSetService;
-
-    private static String DIRECTORY_JWKS_URI = "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks";
-    private static String SOFTWARE_STATEMENT_JWKS_URI = "https://directory.softwareid.jwks_uri";
-
+    final private static String DIRECTORY_JWKS_URI = "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks";
+    final private static String SOFTWARE_STATEMENT_JWKS_URI = "https://directory.softwareid.jwks_uri";
 
     @BeforeAll
     public static void beforeAll() throws NoSuchAlgorithmException {
-        TransactionId txId = new TransactionId();
-        Context context = mock(Context.class);
-        txIdContext = new TransactionIdContext(context, txId);
         RSA_SIGNER = createRSASSASigner();
     }
 
@@ -111,18 +97,17 @@ class RequestAndSsaSignatureValidationFilterTest {
     void setUp() throws MalformedURLException {
         registrationObjectSupplier = mock(RequestAndSsaSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier.class);
         handler = mock(Handler.class);
-        JWKSet jwkSet = createJwkSet();
         Map<URL, JWKSet> jwkSetByUrl = new HashMap();
         jwkSetByUrl.put(new URL(DIRECTORY_JWKS_URI), createJwkSet());
         jwkSetByUrl.put(new URL(SOFTWARE_STATEMENT_JWKS_URI), createJwkSet());
         jwkSetService = new MockJwkSetService(jwkSetByUrl);
+        this.request = new Request().setMethod("POST");
     }
 
     @AfterEach
     void tearDown() {
-        reset(handler, clientHandler, registrationObjectSupplier);
+        reset(handler,  registrationObjectSupplier);
     }
-
 
     private TrustedDirectoryService getTrustedDirectory(boolean sapigDirectoryEnabled) {
         return new TrustedDirectoryServiceStatic(sapigDirectoryEnabled, "https://uri");
@@ -157,10 +142,10 @@ class RequestAndSsaSignatureValidationFilterTest {
     }
 
     @Test
-    void filter_success() {
+    void filter_success() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -174,16 +159,21 @@ class RequestAndSsaSignatureValidationFilterTest {
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
         // When
-        filter.filter(null, request, handler).thenOnResult(res -> {
-            verify(handler, times(1)).handle(null, request);
-        });
+
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        Response response = responsePromise.get();
+
+        // Then
+        assert(response.getStatus()).isSuccessful();
+        verify(handler, times(1)).handle(null, request);
+
     }
 
     @Test
     void filter_ResponseIsInvalidClientMetadataWhenNoRegistrationRequestJwt() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -195,7 +185,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_CLIENT_METADATA.toString());
+                DCRRequestValidationException.ErrorCode.INVALID_CLIENT_METADATA.toString());
         assertThat(responseBody.get("error_description")).contains("Requests to registration endpoint must contain a " +
                 "signed request jwt");
     }
@@ -204,7 +194,7 @@ class RequestAndSsaSignatureValidationFilterTest {
     void filter_ResponseIsInvalidClientMetadataWhenNoSoftwareStatement() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -219,7 +209,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_CLIENT_METADATA.toString());
+                ErrorCode.INVALID_CLIENT_METADATA.toString());
         assertThat(responseBody.get("error_description")).contains("registration request jwt must contain " +
                 "'software_statement' claim");
     }
@@ -228,7 +218,7 @@ class RequestAndSsaSignatureValidationFilterTest {
     void filter_ResponseIsInvalidSoftwareStatementWhenSoftwareStatementHasNoIssuer() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -246,7 +236,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+                ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
         assertThat(responseBody.get("error_description")).contains("registration request's 'software_statement' jwt " +
                 "must contain an issuer claim");
     }
@@ -256,7 +246,7 @@ class RequestAndSsaSignatureValidationFilterTest {
             InterruptedException, TimeoutException, IOException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
         String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "InvalidIssuer"), JWSAlgorithm.PS256);
@@ -273,7 +263,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT.toString());
+                ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT.toString());
         assertThat(responseBody.get("error_description")).contains("SSA was not issued by a Trusted Directory");
     }
 
@@ -282,11 +272,12 @@ class RequestAndSsaSignatureValidationFilterTest {
             InterruptedException, TimeoutException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
-        String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "OpenBanking Ltd"), JWSAlgorithm.PS256);
+        String encodedSsaJwtString = createEncodedJwtString(Map.of("iss", "OpenBanking Ltd"),
+                JWSAlgorithm.PS256);
         Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
         SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
@@ -298,7 +289,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         // Then
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
-        assertThat(responseBody.get("error_code")).contains(ValidationException.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+        assertThat(responseBody.get("error_code")).contains(ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
         assertThat(responseBody.get("error_description")).contains("must contain a claim for the JWKS URI");
     }
 
@@ -306,7 +297,7 @@ class RequestAndSsaSignatureValidationFilterTest {
     void filter_ResponseIsInvalidSoftwareStatementWhenSoftwareStatementHasBadlyFormedJwskUri() throws Exception {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -325,7 +316,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+                ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
         assertThat(responseBody.get("error_description")).contains("must be a valid URL");
     }
 
@@ -334,7 +325,7 @@ class RequestAndSsaSignatureValidationFilterTest {
             ExecutionException, InterruptedException, TimeoutException {
         // Given
         TrustedDirectoryService trustedDirectoryService = getTrustedDirectory(true);
-        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(clientHandler,
+        RequestAndSsaSignatureValidationFilter filter = new RequestAndSsaSignatureValidationFilter(
                 trustedDirectoryService, registrationObjectSupplier, List.of("PS256"), jwkSetService,
                 jwtSignatureValidator);
 
@@ -354,7 +345,7 @@ class RequestAndSsaSignatureValidationFilterTest {
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
         Map<String, String> responseBody = (Map)response.getEntity().getJson();
         assertThat(responseBody.get("error_code")).isEqualTo(
-                RequestAndSsaSignatureValidationFilter.ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
+                ErrorCode.INVALID_SOFTWARE_STATEMENT.toString());
         assertThat(responseBody.get("error_description")).contains("must contain an HTTPS URI");
     }
 }
