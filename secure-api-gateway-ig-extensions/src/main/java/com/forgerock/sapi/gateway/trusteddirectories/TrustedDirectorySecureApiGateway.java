@@ -38,7 +38,7 @@ public class TrustedDirectorySecureApiGateway implements TrustedDirectory {
 
     final static boolean softwareStatementHoldsJwksUri = false;
 
-    final static String softwareStatementJwksClaimName = "software_jwks";
+    public final static String softwareStatementJwksClaimName = "software_jwks";
 
     /*
      * The name of the claim in the Open Banking Test Directory issued software statement that holds a uid for the

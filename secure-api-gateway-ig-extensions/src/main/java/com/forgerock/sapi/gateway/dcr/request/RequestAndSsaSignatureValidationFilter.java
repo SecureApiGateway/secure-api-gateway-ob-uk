@@ -36,6 +36,7 @@ import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
+import org.forgerock.json.JsonValue;
 import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.exceptions.InvalidJwtException;
@@ -136,22 +137,32 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
                         }
 
                         if (ssaIssuingDirectory.softwareStatementHoldsJwksUri()) {
-                            return validateRegistrationRequestJwtSignature(fapiInteractionId, ssaIssuingDirectory, ssaClaimsSet,
-                                    registrationRequestJwt).thenAsync(response -> {
+                            return validateRegistrationRequestJwtSignatureAgainstJwksUri(fapiInteractionId,
+                                    ssaIssuingDirectory, ssaClaimsSet, registrationRequestJwt).thenAsync(response -> {
                                 log.info("({}) Registration request and SSA signatures are valid", fapiInteractionId);
                                 return next.handle(context, request);
                             }, ex -> {
-                                log.debug("({}) Failed to validate the registration jwt signature", fapiInteractionId, ex);
+                                log.info("({}) Failed to validate the registration jwt signature", fapiInteractionId, ex);
                                 String responseBody = getJsonResponseBody(ex);
                                 return Promises.newResultPromise(new Response(Status.BAD_REQUEST).setEntity(responseBody));
                             }, rte -> {
-                                log.debug("({}) Failed to validate the registration jwt signature", fapiInteractionId, rte);
-                                return Promises.newResultPromise(new Response(Status.BAD_REQUEST));
+                                log.info("({}) Failed to validate the registration jwt signature", fapiInteractionId, rte);
+                                return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                             });
 
                         } else {
-                            // ToDo - validate if JWKS is in the software statement rather than being obtainable from a URI
-                            return next.handle(context, request);
+                            return validateRegistrationRequestJwtSignatureAgainstJwks(fapiInteractionId,
+                                    ssaIssuingDirectory, ssaClaimsSet, registrationRequestJwt).thenAsync(response -> {
+                                log.info("({}) Registration request and SSA signatures are valid", fapiInteractionId);
+                                return next.handle(context, request);
+                            }, ex -> {
+                                        log.debug("({}) Failed to validate the registration request jwt signature", ex);
+                                        String responseBody = getJsonResponseBody(ex);
+                                return Promises.newResultPromise(new Response(Status.BAD_REQUEST).setEntity(responseBody));
+                            }, rte -> {
+                                        log.debug("({}) Failed to validate the registration jwt signature", fapiInteractionId, rte);
+                                        return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+                            });
                         }
                     }, ex -> {
                         log.debug("({}) Failed to get jwks from jwks_uri {}", fapiInteractionId, ssaIssuingDirectory.getDirectoryJwksUri(), ex);
@@ -165,6 +176,27 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
             return Promises.newResultPromise(new Response(Status.BAD_REQUEST).setEntity(responseBody));
         }
 
+    }
+
+    private Promise<Response, DCRRequestValidationException> validateRegistrationRequestJwtSignatureAgainstJwks(
+            String fapiInteractionId, TrustedDirectory ssaIssuingDirectory, JwtClaimsSet ssaClaimsSet,
+            SignedJwt registrationRequestJwt) {
+        String jwksClaimName = ssaIssuingDirectory.getSoftwareStatementJwksClaimName();
+
+        if(jwksClaimName == null || jwksClaimName.isBlank()){
+            String errorDescription = "Software statement must contain a claim holding the JWKS against which keys" +
+                    "associated with the software statement must be validated";
+            log.debug("({}) {}", fapiInteractionId, errorDescription);
+            DCRRequestValidationException exception = new DCRRequestValidationException(
+                    ErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription);
+            return Promises.newExceptionPromise(exception);
+        }
+        final JsonValue jwks = ssaClaimsSet.getClaim(jwksClaimName, JsonValue.class);
+        log.debug("({}) jwks from software statement is {}", fapiInteractionId, jwks);
+
+
+
+        return Promises.newResultPromise(new Response(Status.OK));
     }
 
     private String getJsonResponseBody(DCRRequestValidationException ex) {
@@ -201,6 +233,7 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
             log.debug("({}) {}", fapiInteractionId, errorDescription);
             throw new DCRRequestValidationException(ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT, errorDescription);
         }
+        log.debug("({}) Found Trusted Directory for issuer {}", fapiInteractionId, ssaIssuer);
         return ssaIssuingDirectory;
     }
 
@@ -216,7 +249,7 @@ public class RequestAndSsaSignatureValidationFilter implements Filter {
         return ssaIssuer;
     }
 
-    private Promise<Response, DCRRequestValidationException> validateRegistrationRequestJwtSignature(
+    private Promise<Response, DCRRequestValidationException> validateRegistrationRequestJwtSignatureAgainstJwksUri(
             String fapiInteractionId, TrustedDirectory ssaIssuingDirectory, JwtClaimsSet ssaClaimsSet,
             SignedJwt registrationRequestJwt) {
         String jwksUriClaimName = ssaIssuingDirectory.getSoftwareStatementJwksUriClaimName();
