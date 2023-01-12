@@ -139,7 +139,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     private Set<String> supportedTokenEndpointAuthMethods;
 
     /**
-     * The field's within the registration request object to validate against the {@link #supportedSigningAlgorithms}
+     * The fields within the registration request object to validate against the {@link #supportedSigningAlgorithms}
      *
      * This is configurable, for the default set of fields see {@link #DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES}
      */
