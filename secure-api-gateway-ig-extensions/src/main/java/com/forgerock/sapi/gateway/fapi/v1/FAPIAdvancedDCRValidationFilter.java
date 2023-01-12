@@ -284,14 +284,17 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         }
     }
 
+    /**
+     * Validate that values for signing fields are a supported signing algorithm.
+     *
+     * Some fields may be optional for certain types of request, therefore if a field in the registrationObjectSigningFieldNames
+     * collection is not found in the registration request then it is skipped rather than throwing an error.
+     * It is the job of the filter that implements the registration logic to reject requests with missing fields.
+     */
     void validateSigningAlgorithmUsed(JsonValue registrationObject) {
         for (String signingFieldName : registrationObjectSigningFieldNames) {
             final String signingAlg = registrationObject.get(signingFieldName).asString();
-            if (signingAlg == null) {
-                throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: "
-                        + signingFieldName);
-            }
-            if (!supportedSigningAlgorithms.contains(signingAlg)) {
+            if (signingAlg != null && !supportedSigningAlgorithms.contains(signingAlg)) {
                 throw new ValidationException(ErrorCode.INVALID_CLIENT_METADATA, "request object field: " + signingFieldName
                         + ", must be one of: " + supportedSigningAlgorithms);
             }
