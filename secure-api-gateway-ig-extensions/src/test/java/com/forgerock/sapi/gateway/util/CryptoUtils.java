@@ -25,11 +25,13 @@ import java.security.Provider;
 import java.security.Security;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -48,10 +50,15 @@ import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.util.Pair;
 
 import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.RSAKey.Builder;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 
 /**
  * Collection of util methods to aid in the generation of crypto relaeted objects such as: KeyPair, X509Certificate,
@@ -157,5 +164,35 @@ public class CryptoUtils {
         jwkBuilder.keyUse(keyUse);
         final RSAKey jwk = jwkBuilder.build();
         return jwk;
+    }
+
+    /**
+     * Uses nimbusds to create a SignedJWT and returns JWS object in its compact format consisting of
+     * Base64URL-encoded parts delimited by period ('.') characters.
+     *
+     * @param claims      The claims to include in the signed jwt
+     * @param signingAlgo the algorithm to use for signing
+     * @param rsaSigner the rsaSigner used to sign the jwt
+     * @return the jws in its compact form consisting of Base64URL-encoded parts delimited by period ('.') characters.
+     */
+    public static String createEncodedJwtString(Map<String, Object> claims, JWSAlgorithm signingAlgo,
+            RSASSASigner rsaSigner) {
+        try {
+            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
+            signedJWT.sign(rsaSigner);
+            return signedJWT.serialize();
+        } catch (ParseException | JOSEException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * JWT signer which uses generated test RSA private key
+     */
+    public static RSASSASigner createRSASSASigner() throws NoSuchAlgorithmException {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        KeyPair pair = generator.generateKeyPair();
+        return new RSASSASigner(pair.getPrivate());
     }
 }

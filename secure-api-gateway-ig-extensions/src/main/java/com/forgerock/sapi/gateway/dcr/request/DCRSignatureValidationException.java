@@ -17,9 +17,7 @@ package com.forgerock.sapi.gateway.dcr.request;
 
 import org.forgerock.util.Reject;
 
-
-
-final public class DCRRequestValidationException extends Exception{
+final public class DCRSignatureValidationException extends Exception{
 
     public enum ErrorCode {
         INVALID_REDIRECT_URI("invalid_redirect_uri"),
@@ -41,11 +39,11 @@ final public class DCRRequestValidationException extends Exception{
     private final ErrorCode errorCode;
     private final String errorDescription;
 
-    public DCRRequestValidationException(ErrorCode errorCode, String errorMessage) {
+    public DCRSignatureValidationException(ErrorCode errorCode, String errorMessage) {
         this(errorCode, errorMessage, null);
     }
 
-    public DCRRequestValidationException(ErrorCode errorCode, String errorMessage, Throwable cause) {
+    public DCRSignatureValidationException(ErrorCode errorCode, String errorMessage, Throwable cause) {
         super((errorCode != null ? errorCode.code : "") + " " + errorMessage, cause);
         this.errorCode = Reject.checkNotNull(errorCode, "errorCode must be supplied");
         this.errorDescription = Reject.checkNotBlank(errorMessage, "errorMessage must be supplied");
