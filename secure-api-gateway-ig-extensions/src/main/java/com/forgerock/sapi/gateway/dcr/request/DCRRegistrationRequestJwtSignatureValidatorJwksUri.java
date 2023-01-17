@@ -66,6 +66,7 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwksUri implements DCRRe
                 log.debug("({}) JWKSet to validate against is {}", transactionId, jwkSet);
                 try {
                     this.jwtSignatureValidator.validateSignature(registrationRequestJwt, jwkSet);
+                    log.info("({}) Registration Request signature is valid", transactionId);
                     return Promises.newResultPromise(new Response(Status.OK));
                 } catch (SignatureException e) {
                     String errorDescription = "Failed to validate registration request signature against jwkSet" +
