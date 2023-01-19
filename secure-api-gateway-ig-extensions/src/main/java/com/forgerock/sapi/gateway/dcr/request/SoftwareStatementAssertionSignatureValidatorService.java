@@ -126,34 +126,13 @@ public class SoftwareStatementAssertionSignatureValidatorService {
 
         TrustedDirectory ssaIssuingDirectory = dcrUtils.getIssuingDirectory(trustedDirectoryService, ssaIssuer);
 
-        String issuingDirectoryJwksUriString = ssaIssuingDirectory.getDirectoryJwksUri();
-        if(StringUtils.isNullOrEmpty(issuingDirectoryJwksUriString)){
+        URL issuingDirectoryJwksUrl = ssaIssuingDirectory.getDirectoryJwksUri();
+        if(issuingDirectoryJwksUrl == null){
             String errorDescription = "Trusted Directory for issuer " + ssaIssuingDirectory.getIssuer() + " has no " +
                     "directoryJwksUri value";
             log.error("({}) {}", transactionId, errorDescription);
             throw new DCRSignatureValidationRuntimeException(errorDescription);
         }
-        return issuingDirectoryJwksUriFromString(transactionId, issuingDirectoryJwksUriString, ssaIssuer);
-    }
-
-    /**
-     * Create a URL from a string
-     * @param transactionId log entries will contain the transactionId
-     * @param urlString
-     * @param ssaIssuer
-     * @return a URL
-     * @throws if the urlString is not a valid URL a {@code DCRSignatureValidationRuntimeException} will be thrown as
-     * this indicates a system error as the Trusted Directory has been configured with a badly formed URL string
-     */
-    private URL issuingDirectoryJwksUriFromString(String transactionId, String urlString, String ssaIssuer) {
-        try {
-            URL jwksUrl = new URL(urlString);
-            return jwksUrl;
-        } catch (MalformedURLException e) {
-            String errorDescription = "The value of the '" + ssaIssuer + "' Trusted Directory" +
-                    " JWKS Uri must be a valid URL";
-            log.error("({}) {}", transactionId, errorDescription, e);
-            throw new DCRSignatureValidationRuntimeException(errorDescription, e);
-        }
+        return issuingDirectoryJwksUrl;
     }
 }

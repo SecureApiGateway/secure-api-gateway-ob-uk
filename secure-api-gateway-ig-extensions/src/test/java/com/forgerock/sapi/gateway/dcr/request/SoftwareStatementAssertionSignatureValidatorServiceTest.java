@@ -129,25 +129,6 @@ class SoftwareStatementAssertionSignatureValidatorServiceTest {
     }
 
     @Test
-    void failIfBadlyConfiguredTrustedDirectoryDirectoryJwksNotUrl_validateSoftwareStatementAssertionSignature() {
-        // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
-                JWSAlgorithm.PS256, ssaSigner);
-
-        // When
-        when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
-                .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn("not a url");
-        Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
-
-        // Then
-        DCRSignatureValidationRuntimeException exception = catchThrowableOfType(promise::getOrThrow,
-                DCRSignatureValidationRuntimeException.class);
-        assertThat(exception.getMessage()).contains("must be a valid URL");
-    }
-
-    @Test
     void failIfJwkSetServiceCantGetJwkSet_validateSoftwareStatementAssertionSignature() throws MalformedURLException {
         // Given
         SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
@@ -158,7 +139,7 @@ class SoftwareStatementAssertionSignatureValidatorServiceTest {
         // When
         when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
                 .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL_STR);
+        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL);
         when(jwkSetService.getJwkSet(JWK_SET_URL)).thenReturn(
                 Promises.newExceptionPromise(new FailedToLoadJWKException("No jwkset")));
         Promise<Response, DCRSignatureValidationException> promise =
@@ -181,7 +162,7 @@ class SoftwareStatementAssertionSignatureValidatorServiceTest {
         // When
         when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
                 .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL_STR);
+        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL);
         when(jwkSetService.getJwkSet(JWK_SET_URL)).thenReturn(
                 Promises.newResultPromise(JWKS_SET));
         doThrow(new SignatureException("Invalid sig")).when(jwtSignatureValidator)

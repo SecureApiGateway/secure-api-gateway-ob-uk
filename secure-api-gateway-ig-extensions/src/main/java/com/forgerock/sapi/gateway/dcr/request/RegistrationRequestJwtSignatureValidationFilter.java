@@ -275,7 +275,8 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
 
             final DCRUtils dcrUtils = new DCRUtils();
 
-            final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator = new SoftwareStatementAssertionSignatureValidatorService(trustedDirectoryService,
+            final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator
+                    = new SoftwareStatementAssertionSignatureValidatorService(trustedDirectoryService,
                     jwtSetService, jwtSignatureValidator, dcrUtils);
 
             final RegistrationRequestJwtSignatureValidatorJwks regRequestJwksValidator =
