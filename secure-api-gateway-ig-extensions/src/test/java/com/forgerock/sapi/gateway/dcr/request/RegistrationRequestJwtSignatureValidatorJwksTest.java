@@ -48,9 +48,9 @@ import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSASigner;
 
-class DCRRegistrationRequestJwtSignatureValidatorJwksTest {
+class RegistrationRequestJwtSignatureValidatorJwksTest {
 
-    private DCRRegistrationRequestJwtSignatureValidatorJwks jwksJwtSignatureValidator;
+    private RegistrationRequestJwtSignatureValidatorJwks jwksJwtSignatureValidator;
     private final JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
     private final TrustedDirectory ssaIssuingDirectory = mock(TrustedDirectory.class);
     private static RSASSASigner ssaSigner;
@@ -63,7 +63,7 @@ class DCRRegistrationRequestJwtSignatureValidatorJwksTest {
 
     @BeforeEach
     void setUp() {
-        jwksJwtSignatureValidator = new DCRRegistrationRequestJwtSignatureValidatorJwks(jwtSignatureValidator);
+        jwksJwtSignatureValidator = new RegistrationRequestJwtSignatureValidatorJwks(jwtSignatureValidator);
     }
 
     @AfterEach
@@ -83,14 +83,14 @@ class DCRRegistrationRequestJwtSignatureValidatorJwksTest {
         JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
 
         // When
-        try {
-           jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                            ssaClaimsSet, registrationRequestJwt);
+        Promise<Response, DCRSignatureValidationException> promise =
+                jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
+                ssaClaimsSet, registrationRequestJwt);
 
-            assertThat(false).isTrue();
-        } catch (DCRSignatureValidationRuntimeException e){
-            assertThat(e.getMessage()).isNotEmpty();
-        }
+        // Then
+        DCRSignatureValidationRuntimeException rte =
+                catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationRuntimeException.class);
+        assertThat(rte.getMessage()).contains("no softwareStatementJwksClaimName value");
     }
 
     @Test

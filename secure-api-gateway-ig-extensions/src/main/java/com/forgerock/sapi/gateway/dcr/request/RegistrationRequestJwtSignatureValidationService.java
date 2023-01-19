@@ -35,12 +35,12 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
  * <a href="https://github.com/SecureApiGateway/SecureApiGateway/wiki/About-Dynamic-Client-Registration">
  *     About Dynamic Client Registration</a>
  */
-public class DCRRegistrationRequestJwtSignatureValidator {
-    private static final Logger log = LoggerFactory.getLogger(DCRRegistrationRequestJwtSignatureValidator.class);
+public class RegistrationRequestJwtSignatureValidationService {
+    private static final Logger log = LoggerFactory.getLogger(RegistrationRequestJwtSignatureValidationService.class);
     private final TrustedDirectoryService trustedDirectoryService;
     private final DCRUtils dcrUtils;
-    private final DCRRegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator;
-    private final DCRRegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
+    private final RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator;
+    private final RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
 
 
     /**
@@ -51,10 +51,10 @@ public class DCRRegistrationRequestJwtSignatureValidator {
      * @param jwksSignatureValidator the service used to validate a jwk against a jwks
      * @param jwksUriSignatureValidator the service used to validate a jwk against a jwks_uri
      */
-    public DCRRegistrationRequestJwtSignatureValidator(
+    public RegistrationRequestJwtSignatureValidationService(
             TrustedDirectoryService trustedDirectoryService, DCRUtils dcrUtils,
-            DCRRegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator,
-            DCRRegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator) {
+            RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator,
+            RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator) {
         this.trustedDirectoryService = trustedDirectoryService;
         this.dcrUtils = dcrUtils;
         this.jwksSignatureValidator = jwksSignatureValidator;

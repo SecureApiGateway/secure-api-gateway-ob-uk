@@ -22,7 +22,7 @@ import org.forgerock.util.promise.Promise;
 
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 
-public interface DCRRegistrationRequestValidator {
+public interface RegistrationRequestJwtSignatureValidator {
 
     /**
      * Validate the registration request signature

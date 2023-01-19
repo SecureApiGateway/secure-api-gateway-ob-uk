@@ -38,9 +38,9 @@ import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.Er
 /**
  * Class used to validate a registration request jwt signature against a JWKS URI embedded in the Software Statement
  */
-public class DCRRegistrationRequestJwtSignatureValidatorJwksUri implements DCRRegistrationRequestValidator {
+public class RegistrationRequestJwtSignatureValidatorJwksUri implements RegistrationRequestJwtSignatureValidator {
 
-    private static final Logger log = LoggerFactory.getLogger(DCRRegistrationRequestJwtSignatureValidatorJwksUri.class);
+    private static final Logger log = LoggerFactory.getLogger(RegistrationRequestJwtSignatureValidatorJwksUri.class);
     private final JwkSetService jwkSetService;
     private final JwtSignatureValidator jwtSignatureValidator;
 
@@ -49,7 +49,7 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwksUri implements DCRRe
      * @param jwkSetService a service that gets the JWKS from a JWKS URI
      * @param jwtSignatureValidator service that is used to validate a SignedJwt against a JWKSet
      */
-    public DCRRegistrationRequestJwtSignatureValidatorJwksUri(JwkSetService jwkSetService,
+    public RegistrationRequestJwtSignatureValidatorJwksUri(JwkSetService jwkSetService,
             JwtSignatureValidator jwtSignatureValidator) {
         this.jwkSetService = jwkSetService;
         this.jwtSignatureValidator = jwtSignatureValidator;
@@ -83,6 +83,10 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwksUri implements DCRRe
             });
         } catch (DCRSignatureValidationException e) {
             return Promises.newExceptionPromise(e);
+        } catch (RuntimeException rte){
+            log.info("({}) Runtime exception occurred while validating Registration Request (ssa holds JWKS_URI): {}",
+                    transactionId, rte.getMessage(), rte);
+            return Promises.newRuntimeExceptionPromise(rte);
         }
     }
 
@@ -112,8 +116,8 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwksUri implements DCRRe
     private String getSoftwareStatementJwksUriClaimName(String transactionId, TrustedDirectory ssaIssuingDirectory){
         String jwksUriClaimName = ssaIssuingDirectory.getSoftwareStatementJwksUriClaimName();
         if (StringUtils.isNullOrEmpty(jwksUriClaimName)) {
-            String errorDescription = "Could not obtain the name of the software_statement claim that holds the jwks " +
-                    "uri for the software_statement keys";
+            String errorDescription = "Trusted Directory for " + ssaIssuingDirectory.getIssuer() + " has no " +
+                    "softwareStatementJwksUriClaimName value";
             log.error("({}) {}: TrustedDirectory.getSoftwareStatementJwksUriClaimName() returned null!",
                     transactionId, errorDescription);
             throw new DCRSignatureValidationRuntimeException(errorDescription);

@@ -17,7 +17,6 @@ package com.forgerock.sapi.gateway.dcr.request;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
@@ -51,16 +50,15 @@ import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSASigner;
 
-class DCRRegistrationRequestJwtSignatureValidatorJwksUriTest {
+class RegistrationRequestJwtSignatureValidatorJwksUriTest {
 
-    private DCRRegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
+    private RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
     private final static JwkSetService jwkSetService = mock(JwkSetService.class);
     private final static JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
     private final TrustedDirectory ssaIssuingDirectory = mock(TrustedDirectory.class);
-    private static RSASSASigner ssaSigner;
     private static final String TX_ID = "transactionId";
     private static final String SSA_JWKS_URI_CLAIM_NAME = "software_jwks_endpoint";
-
+    private static RSASSASigner ssaSigner;
 
     @BeforeAll
     static void setUpClass() throws NoSuchAlgorithmException {
@@ -69,7 +67,7 @@ class DCRRegistrationRequestJwtSignatureValidatorJwksUriTest {
 
     @BeforeEach
     void setUp() {
-        jwksUriSignatureValidator = new DCRRegistrationRequestJwtSignatureValidatorJwksUri(jwkSetService,
+        jwksUriSignatureValidator = new RegistrationRequestJwtSignatureValidatorJwksUri(jwkSetService,
                 jwtSignatureValidator);
     }
 
@@ -90,14 +88,13 @@ class DCRRegistrationRequestJwtSignatureValidatorJwksUriTest {
         JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
 
         // Then
-        try {
-            jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                    ssaClaimsSet, registrationRequestJwt);
+        Promise<Response, DCRSignatureValidationException> promise =
+                jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
+                ssaClaimsSet, registrationRequestJwt);
 
-            assertThat(false).isTrue();
-        } catch (DCRSignatureValidationRuntimeException e){
-            assertThat(e.getMessage()).isNotEmpty();
-        }
+        DCRSignatureValidationRuntimeException e =
+                catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationRuntimeException.class);
+        assertThat(e.getMessage()).contains("has no softwareStatementJwksUriClaimName value");
     }
 
     @Test

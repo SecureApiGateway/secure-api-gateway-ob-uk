@@ -30,8 +30,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import javax.net.ssl.SSLEngineResult;
-
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.common.JwtReconstruction;
@@ -47,22 +45,19 @@ import org.junit.jupiter.api.Test;
 import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryServiceStatic;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.SignedJWT;
 
-class DCRRegistrationRequestJwtSignatureValidatorTest {
+class RegistrationRequestJwtSignatureValidationServiceTest {
 
     private final TrustedDirectoryService trustedDirectoryService = mock(TrustedDirectoryService.class);
     private final DCRUtils dcrUtils = mock(DCRUtils.class);
-    private final DCRRegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator =
-            mock(DCRRegistrationRequestJwtSignatureValidatorJwks.class);
-    private final DCRRegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator =
-            mock(DCRRegistrationRequestJwtSignatureValidatorJwksUri.class);
+    private final RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator =
+            mock(RegistrationRequestJwtSignatureValidatorJwks.class);
+    private final RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator =
+            mock(RegistrationRequestJwtSignatureValidatorJwksUri.class);
 
     private final TrustedDirectory issuingDirectory = mock(TrustedDirectory.class);
 
@@ -70,7 +65,7 @@ class DCRRegistrationRequestJwtSignatureValidatorTest {
 
     private static RSASSASigner ssaSigner;
 
-    private DCRRegistrationRequestJwtSignatureValidator registrationRequestJwtSignatureValidator;
+    private RegistrationRequestJwtSignatureValidationService registrationRequestJwtSignatureValidator;
 
     @BeforeAll
     static void setUpClass() throws NoSuchAlgorithmException {
@@ -79,7 +74,7 @@ class DCRRegistrationRequestJwtSignatureValidatorTest {
 
     @BeforeEach
     void setUp() {
-        registrationRequestJwtSignatureValidator = new DCRRegistrationRequestJwtSignatureValidator(
+        registrationRequestJwtSignatureValidator = new RegistrationRequestJwtSignatureValidationService(
                 trustedDirectoryService,
                 dcrUtils,
                 jwksSignatureValidator,

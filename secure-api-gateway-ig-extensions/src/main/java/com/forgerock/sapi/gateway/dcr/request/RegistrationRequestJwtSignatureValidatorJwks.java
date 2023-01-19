@@ -38,16 +38,16 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 /**
  * Class used to validate a registration request jwt signature against a JWKS embedded in the Software Statement
  */
-public class DCRRegistrationRequestJwtSignatureValidatorJwks implements DCRRegistrationRequestValidator {
+public class RegistrationRequestJwtSignatureValidatorJwks implements RegistrationRequestJwtSignatureValidator {
 
-    private static final Logger log = LoggerFactory.getLogger(DCRRegistrationRequestJwtSignatureValidatorJwks.class);
+    private static final Logger log = LoggerFactory.getLogger(RegistrationRequestJwtSignatureValidatorJwks.class);
     private final JwtSignatureValidator jwtSignatureValidator;
 
     /**
      * Constructor
      * @param jwtSignatureValidator service that is used to validate a SignedJwt against a JWKSet
      */
-    public DCRRegistrationRequestJwtSignatureValidatorJwks(JwtSignatureValidator jwtSignatureValidator) {
+    public RegistrationRequestJwtSignatureValidatorJwks(JwtSignatureValidator jwtSignatureValidator) {
         this.jwtSignatureValidator = jwtSignatureValidator;
     }
 
@@ -68,6 +68,10 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwks implements DCRRegis
             return Promises.newExceptionPromise(exception);
         } catch (DCRSignatureValidationException e) {
             return Promises.newExceptionPromise(e);
+        } catch (RuntimeException rte){
+            log.info("({}) Runtime exception occurred while validating Registration Request (ssa holds JWKS): {}",
+                    transactionId, rte.getMessage(), rte);
+            return Promises.newRuntimeExceptionPromise(rte);
         }
 
         log.debug("({}) Registration Request JWT has a valid signature", transactionId);
@@ -77,9 +81,9 @@ public class DCRRegistrationRequestJwtSignatureValidatorJwks implements DCRRegis
     private String getSoftwareStatementJwksClaimName(String transactionId, TrustedDirectory ssaIssuingDirectory){
         String jwksClaimName = ssaIssuingDirectory.getSoftwareStatementJwksClaimName();
         if (StringUtils.isNullOrEmpty(jwksClaimName)) {
-            String errorDescription = "Software statement must contain a claim holding the JWKS against which keys" +
-                    "associated with the software statement must be validated";
-            log.debug("({}) {}", transactionId, errorDescription);
+            String errorDescription = "Trusted Directory for issuer " + ssaIssuingDirectory.getIssuer() + " has no " +
+                    "softwareStatementJwksClaimName value";
+            log.error("({}) {}", transactionId, errorDescription);
             throw new DCRSignatureValidationRuntimeException(errorDescription);
         }
         return jwksClaimName;

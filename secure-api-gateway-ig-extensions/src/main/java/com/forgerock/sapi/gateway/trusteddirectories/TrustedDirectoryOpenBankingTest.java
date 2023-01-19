@@ -39,7 +39,7 @@ public class TrustedDirectoryOpenBankingTest implements TrustedDirectory {
      * The name of the claim in the Open Banking Test Directory issued software statement that holds the jwks_uri
      * against which certificates associated with this software statement may be validated
      */
-    public final static String softwareJwksUriClaimName = "software_jwks_endpoint";
+    final static String softwareJwksUriClaimName = "software_jwks_endpoint";
     /*
      * The name of the claim in the Open Banking Test Directory issued software statement that holds a uid for the
      * organisation
