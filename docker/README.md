@@ -31,10 +31,10 @@ to trust in order to make TLS calls to it.
 
 The script can be configured using the following environment variables:
 
-| Environment Variable  | Purpose                                                                                                                                                             | Default                                                                 |
-|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| IG_PEM_TRUSTSTORE     | Path to a PEM file representing a truststore. The PEM can contain 1 or more X509 certifcates, each of which will get added to the truststore created by this script | No default, if not supplied then the script exits with an error code -1 |
-| TRUSTSTORE_PATH       | Path where the truststore created by this script is output                                                                                                          | /home/forgerock/igtruststore                                            |
-| IG_DEFAULT_TRUSTSTORE | The default truststore which we want to extend. This truststore must already exist in the image. Typically, this will be the default JVM truststore                 | $JAVA_HOME/lib/security/cacerts                                         |
-| TRUSTSTORE_PASSWORD   | Password for the IG_DEFAULT_TRUSTSTORE and for the new truststore that is output                                                                                    | changeit                                                                |
+| Environment Variable  | Purpose                                                                                                                                                              | Default                                                                 |
+|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| IG_PEM_TRUSTSTORE     | Path to a PEM file representing a truststore. The PEM can contain 1 or more X509 certificates, each of which will get added to the truststore created by this script | No default, if not supplied then the script exits with an error code -1 |
+| TRUSTSTORE_PATH       | Path where the truststore created by this script is output                                                                                                           | /home/forgerock/igtruststore                                            |
+| IG_DEFAULT_TRUSTSTORE | The default truststore which we want to extend. This truststore must already exist in the image. Typically, this will be the default JVM truststore                  | $JAVA_HOME/lib/security/cacerts                                         |
+| TRUSTSTORE_PASSWORD   | Password for the IG_DEFAULT_TRUSTSTORE and for the new truststore that is output                                                                                     | changeit                                                                |
 
