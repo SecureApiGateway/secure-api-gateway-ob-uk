@@ -9,7 +9,8 @@ COPY --chown=forgerock:root audit-schemas /var/ig/audit-schemas/
 COPY --chown=forgerock:root scripts /var/ig/scripts/
 COPY --chown=forgerock:root config /var/ig/config/
 COPY --chown=forgerock:root bin/import-pem-certs.sh /home/forgerock
-
+# Create dir in which to mount secrets
+RUN mkdir /var/ig/secrets
 
 USER root
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
