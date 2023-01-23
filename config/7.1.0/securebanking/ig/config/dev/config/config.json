@@ -426,7 +426,7 @@
       "name":"KeyStoreSecretStore-TA",
       "type": "KeyStoreSecretStore",
       "config": {
-        "file": "&{ig.instance.dir}&{test.directory.signing.key.path}",
+        "file": "&{ig.instance.dir}&{ig.test.directory.signing.key.path}",
         "storeType": "PKCS12",
         "storePassword": "ig.ca.keystore.storepass",
         "keyEntryPassword": "ig.ca.keystore.storepass",
