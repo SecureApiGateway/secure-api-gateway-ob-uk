@@ -24,13 +24,13 @@ switch(method.toUpperCase()) {
             }
 
             return http.send(rsRequest).thenAsync(rsResponse -> {
-                def RSResponseStatus = rsResponse.getStatus();
-                if (RSResponseStatus != Status.OK) {
+                def rsResponseStatus = rsResponse.getStatus();
+                if (rsResponseStatus != Status.OK) {
                     message = "Failed to find the debtor account by account identifiers"
                     logger.error(SCRIPT_NAME + message)
                     logger.error(SCRIPT_NAME + rsResponse.getEntity().getJson())
-                    def response = new Response(RSResponseStatus)
-                    response.status = RSResponseStatus
+                    def response = new Response(rsResponseStatus)
+                    response.status = rsResponseStatus
                     response.entity = rsResponse.entity.getJson()
                     return newResultPromise(response)
                 }
