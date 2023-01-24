@@ -141,6 +141,7 @@
           "config": {
             "type": "application/x-groovy",
             "file": "ValidateDebtorAccountInRS.groovy",
+            "clientHandler": "ForgeRockClientHandler",
             "args": {
               "routeArgRsBaseURI": "https://&{rs.fqdn}"
             }
@@ -153,9 +154,10 @@
           "config": {
             "type": "application/x-groovy",
             "file": "CalculateResponseElementsInRS.groovy",
+            "clientHandler": "ForgeRockClientHandler",
             "args": {
               "routeArgRsBaseURI": "https://&{rs.fqdn}",
-              "routeArgIntentIdQueryParameter": "intent",
+              "routeArgIntentQueryParameter": "intent",
               "routeArgVersionQueryParameter": "version",
               "routeArgIntentType": "PDSC_"
             }

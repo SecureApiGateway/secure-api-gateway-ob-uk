@@ -132,6 +132,7 @@
           "config": {
             "type": "application/x-groovy",
             "file": "ValidateDebtorAccountInRS.groovy",
+            "clientHandler": "ForgeRockClientHandler",
             "args": {
               "routeArgRsBaseURI": "https://&{rs.fqdn}"
             }

@@ -1,8 +1,7 @@
 import org.forgerock.http.protocol.*
 import org.forgerock.json.jose.*
 
-def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
-if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
+def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id")
 SCRIPT_NAME = "[CalculateResponseElementsInRS] (" + fapiInteractionId + ") - "
 
 logger.debug(SCRIPT_NAME + "Running...")
@@ -17,7 +16,7 @@ switch(method.toUpperCase()) {
 
         // Create the RS Calculate elements API
         def requestURI = routeArgRsBaseURI + "/backoffice/" + version + "/" + currentApi + "/calculate-elements" + "?" +
-                routeArgIntentIdQueryParameter + "=" + routeArgIntentType
+                routeArgIntentQueryParameter + "=" + routeArgIntentType
         logger.debug(SCRIPT_NAME + " The updated raw request uri: " + requestURI)
 
         Request RSRequest = new Request()
