@@ -1,4 +1,6 @@
+// Start script processing area
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
+if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[ValidateDebtorAccountInRS] (" + fapiInteractionId + ") - "
 
 logger.debug(SCRIPT_NAME + "Running...")
@@ -18,9 +20,6 @@ switch(method.toUpperCase()) {
             Request rsRequest = new Request()
             rsRequest.setUri(requestURI)
             rsRequest.setMethod('GET')
-            if (request.headers.get("x-fapi-financial-id") != null) {
-                rsRequest.putHeaders(request.headers.get("x-fapi-financial-id"))
-            }
 
             return http.send(rsRequest).thenAsync(rsResponse -> {
                 def rsResponseStatus = rsResponse.getStatus();
