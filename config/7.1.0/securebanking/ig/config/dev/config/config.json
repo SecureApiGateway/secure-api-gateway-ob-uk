@@ -433,7 +433,7 @@
         "secretsProvider": "SystemAndEnvSecretStore-IAM",
         "mappings": [{
           "secretId": "jwt.signer",
-          "aliases": [ "ig.test.directory.signing.keystore.alias" ]
+          "aliases": [ "&{ig.test.directory.signing.keystore.alias}" ]
         }]
       }
     },
