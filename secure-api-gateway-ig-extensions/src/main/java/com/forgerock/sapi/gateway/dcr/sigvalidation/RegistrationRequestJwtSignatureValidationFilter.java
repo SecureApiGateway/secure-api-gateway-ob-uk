@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
@@ -47,11 +47,13 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
-import com.forgerock.sapi.gateway.dcr.utils.JwtReconstructionException;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestBuilder;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
+import com.forgerock.sapi.gateway.jws.JwtDecoder;
+import com.forgerock.sapi.gateway.jws.JwtReconstructionException;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
@@ -75,6 +77,8 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
     private final SoftwareStatementAssertionSignatureValidatorService ssaValidator;
     private final RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator;
     private final DCRUtils dcrUtils;
+    private final JwtDecoder jwtDecoder;
+    private RegistrationRequestBuilder registrationRequestBuilder;
 
     /**
      * Constructor
@@ -89,19 +93,23 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier,
             Collection<String> supportedSigningAlgorithms,
             DCRUtils dcrUtils,
+            JwtDecoder jwtDecoder,
             SoftwareStatementAssertionSignatureValidatorService ssaValidator,
             RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator) {
         Reject.ifNull(registrationRequestObjectFromJwtSupplier, "RegistrationRequestObjectFromJwtSupplier " +
                 "must be provided");
         Reject.ifNull(supportedSigningAlgorithms, "supportedSigningAlgorithms must be provided");
         Reject.ifNull(dcrUtils, "dcrUtils must be provided");
+        Reject.ifNull(jwtDecoder, "jwtDecoder must be provided");
         Reject.ifNull(ssaValidator, "ssaValidator must be provided");
         Reject.ifNull(registrationRequestJwtValidator, "registrationRequestJwtValidator must be provided");
+
         this.registrationRequestObjectFromJwtSupplier = registrationRequestObjectFromJwtSupplier;
         this.supportedSigningAlgorithms = supportedSigningAlgorithms;
         this.ssaValidator = ssaValidator;
         this.registrationRequestJwtValidator = registrationRequestJwtValidator;
         this.dcrUtils = dcrUtils;
+        this.jwtDecoder = jwtDecoder;
         log.debug("RequestAndSsaSignatureValidationFilter constructed");
     }
 
@@ -176,7 +184,7 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             Collection<String> supportedSigningAlgorithms) throws DCRSignatureValidationException {
         final SignedJwt ssaJwt;
         try {
-            ssaJwt = dcrUtils.getSignedJwt(b64EncodedJwtString);
+            ssaJwt = jwtDecoder.getSignedJwt(b64EncodedJwtString);
             checkJwtSigningAlgorithmIsValid(fapiInteractionId, ssaJwt, supportedSigningAlgorithms);
             return ssaJwt;
         } catch (JwtReconstructionException e) {
@@ -275,6 +283,8 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
 
             final DCRUtils dcrUtils = new DCRUtils();
 
+            final JwtDecoder jwtDecoder = new JwtDecoder();
+
             final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator
                     = new SoftwareStatementAssertionSignatureValidatorService(trustedDirectoryService,
                     jwtSetService, jwtSignatureValidator, dcrUtils);
@@ -290,8 +300,8 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
                             trustedDirectoryService, dcrUtils, regRequestJwksValidator, regRequestJwksUriValidator);
 
             return new RegistrationRequestJwtSignatureValidationFilter(
-                    registrationObjectSupplier, configurationSigningAlgorithms, dcrUtils, ssaSignatureValidator,
-                    registrationRequestValidator);
+                    registrationObjectSupplier, configurationSigningAlgorithms, dcrUtils, jwtDecoder,
+                    ssaSignatureValidator, registrationRequestValidator);
         }
 
         private boolean configuredSigningAlgorithmsAreSubsetOfSupportedAlgorithms(

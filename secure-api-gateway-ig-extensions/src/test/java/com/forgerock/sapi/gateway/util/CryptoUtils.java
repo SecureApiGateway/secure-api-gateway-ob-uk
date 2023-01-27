@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -47,8 +48,10 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.util.io.pem.PemObjectGenerator;
 import org.bouncycastle.util.io.pem.PemWriter;
 import org.forgerock.json.jose.jwk.JWKSet;
+import org.forgerock.json.jose.jwk.RsaJWK;
 import org.forgerock.util.Pair;
 
+import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -194,5 +197,19 @@ public class CryptoUtils {
         generator.initialize(2048);
         KeyPair pair = generator.generateKeyPair();
         return new RSASSASigner(pair.getPrivate());
+    }
+
+    /**
+     * Create a JWK that can be used to create a JWKSet
+     * @param keyId the id of the key to create
+     * @return a JWK entry
+     */
+    public static org.forgerock.json.jose.jwk.JWK createJWK(String keyId) {
+        return RsaJWK.builder("modulusValue", "exponentValue").keyId(keyId).build();
+    }
+
+    public static JWKSet createJwkSet(){
+        return new JWKSet(List.of(RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString()),
+                RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString())));
     }
 }

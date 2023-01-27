@@ -30,9 +30,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException;
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.request.DCRTestHelpers;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRTestHelpers;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
@@ -139,24 +139,4 @@ class DCRUtilsTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT);
     }
 
-    @Test
-    void success_getSignedJwt() throws JwtReconstructionException {
-        // Given
-
-        // WHen
-        SignedJwt signedJwt = dcrUtils.getSignedJwt(DCRTestHelpers.VALID_SSA_FROM_IG);
-        // Then
-        assertThat(signedJwt).isNotNull();
-    }
-
-    @Test
-    void failsInvalidb64EncodedString_getSignedJwt() throws JwtReconstructionException {
-        // Given
-
-        // WHen
-        JwtReconstructionException jwtReconstructionException = catchThrowableOfType(
-                () ->dcrUtils.getSignedJwt("invalidjwtstring"), JwtReconstructionException.class);
-        // Then
-        assertThat(jwtReconstructionException).isNotNull();
-    }
 }

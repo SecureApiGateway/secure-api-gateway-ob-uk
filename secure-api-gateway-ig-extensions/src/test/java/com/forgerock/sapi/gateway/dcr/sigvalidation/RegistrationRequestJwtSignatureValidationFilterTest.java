@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,9 +51,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
+import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -61,7 +62,7 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import com.forgerock.sapi.gateway.dcr.request.RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier;
 
 class RegistrationRequestJwtSignatureValidationFilterTest {
 
@@ -103,10 +104,12 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         jwkSetByUrl.put(new URL(SOFTWARE_STATEMENT_JWKS_URI), createJwkSet());
         this.request = new Request().setMethod("POST");
         DCRUtils dcrUtils = new DCRUtils();
+        JwtDecoder jwtDecoder = new JwtDecoder();
         filter = new RegistrationRequestJwtSignatureValidationFilter(
                 registrationObjectSupplier,
                 List.of("PS256"),
                 dcrUtils,
+                jwtDecoder,
                 softwareStatementAssertionSignatureValidatorService,
                 dcrRegistrationRequestSignatureValidator);
     }
@@ -177,8 +180,10 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
                 = mock(RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier.class);
         when(registrationObjectSupplier.apply(any(), any())).thenReturn(null);
         DCRUtils dcrUtils = new DCRUtils();
+        JwtDecoder jwtDecoder = new JwtDecoder();
         filter = new RegistrationRequestJwtSignatureValidationFilter(
-                mockRegistrationObjectSupplier, List.of("PS256"), dcrUtils, softwareStatementAssertionSignatureValidatorService, dcrRegistrationRequestSignatureValidator);
+                mockRegistrationObjectSupplier, List.of("PS256"), dcrUtils, jwtDecoder,
+                softwareStatementAssertionSignatureValidatorService, dcrRegistrationRequestSignatureValidator);
 
         // When
         final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);

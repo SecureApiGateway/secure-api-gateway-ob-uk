@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.utils;
+package com.forgerock.sapi.gateway.jws;
 
 /**
  * Checked exception that can be thrown when reconstruction of a JWT from a b64 encoded JWT string fails

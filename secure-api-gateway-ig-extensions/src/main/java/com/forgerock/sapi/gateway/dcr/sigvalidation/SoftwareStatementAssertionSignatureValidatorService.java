@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.SignatureException;
 
-import org.apache.ivy.util.StringUtils;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.jws.SignedJwt;
@@ -29,7 +27,7 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;

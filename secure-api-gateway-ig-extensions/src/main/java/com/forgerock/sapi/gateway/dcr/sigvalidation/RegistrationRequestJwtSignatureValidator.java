@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import org.forgerock.http.protocol.Response;
 import org.forgerock.json.jose.jws.SignedJwt;

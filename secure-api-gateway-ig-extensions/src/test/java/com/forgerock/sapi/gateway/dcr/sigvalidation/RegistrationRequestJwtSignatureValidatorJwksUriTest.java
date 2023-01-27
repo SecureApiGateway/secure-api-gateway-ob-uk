@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
@@ -42,7 +42,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;

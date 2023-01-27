@@ -18,13 +18,11 @@ package com.forgerock.sapi.gateway.dcr.utils;
 import javax.validation.constraints.NotNull;
 
 import org.apache.ivy.util.StringUtils;
-import org.forgerock.json.jose.common.JwtReconstruction;
-import org.forgerock.json.jose.exceptions.JwtReconstructionException;
 import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.json.jose.jwt.JwtClaimsSet;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException;
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
@@ -89,21 +87,4 @@ public class DCRUtils {
         return ssaIssuingDirectory;
     }
 
-    /**
-     * Reconstruct a signed jwt from a b64 encoded jwt string
-     * @param b64EncodedJwtString the string from which the JWT is to be constructed
-     * @return a {@code SignedJwt}
-     * @throws com.forgerock.sapi.gateway.dcr.utils.JwtReconstructionException when the jwt can't be reconstructed from
-     * the b64EncodedJwtString
-     */
-    @NotNull
-    public SignedJwt getSignedJwt(String b64EncodedJwtString)
-            throws com.forgerock.sapi.gateway.dcr.utils.JwtReconstructionException {
-        try {
-            return new JwtReconstruction().reconstructJwt(b64EncodedJwtString, SignedJwt.class);
-        } catch ( JwtReconstructionException e){
-            throw new com.forgerock.sapi.gateway.dcr.utils.JwtReconstructionException("Failed to reconstruct jwt from "
-                    + "b64 encoded jwt string '" + b64EncodedJwtString + "'", e);
-        }
-    }
 }

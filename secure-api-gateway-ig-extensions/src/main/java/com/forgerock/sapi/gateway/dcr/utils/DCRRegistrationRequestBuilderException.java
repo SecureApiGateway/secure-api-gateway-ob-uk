@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.utils;
 
-public class DCRSignatureValidationRuntimeException extends RuntimeException{
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.common.DCRException;
 
-    public DCRSignatureValidationRuntimeException(String message){
-        super(message);
-    }
-
-    public DCRSignatureValidationRuntimeException(String message, Exception cause){
-        super(message, cause);
+/**
+ * Exception thrown when building a {@code RegistrationRequest} using a {@code RegistrationRequestBuilder}
+ */
+public class DCRRegistrationRequestBuilderException extends DCRException {
+    public DCRRegistrationRequestBuilderException(DCRErrorCode errorCode, String errorDescription) {
+        super(errorCode, errorDescription);
     }
 }

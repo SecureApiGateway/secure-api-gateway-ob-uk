@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.request;
+package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -33,7 +33,7 @@ import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 
-import com.forgerock.sapi.gateway.dcr.request.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
 
 /**
  * Class used to validate a registration request jwt signature against a JWKS URI embedded in the Software Statement
