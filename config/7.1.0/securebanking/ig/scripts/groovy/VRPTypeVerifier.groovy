@@ -12,25 +12,15 @@ def vrpTypeFromRequest = request.entity.getJson().Data.ControlParameters.VRPType
 logger.debug(SCRIPT_NAME + 'ControlParameters' + request.entity.getJson().Data.ControlParameters)
 logger.debug(SCRIPT_NAME + 'vrpTypeFromRequest: ' + vrpTypeFromRequest)
 
-def vrpAllowed = false
-
-for (String vrpType : vrpTypeFromRequest) {
-    logger.debug(SCRIPT_NAME + 'vrpType: ' + vrpType)
-    if (vrpType == 'UK.OBIE.VRPType.Sweeping') {
-        vrpAllowed = true;
-        break;
-    }
+// Only allow the request to continue if we have a single VRPType and its value is Sweeping
+if (vrpTypeFromRequest.size() == 1 && vrpTypeFromRequest.contains('UK.OBIE.VRPType.Sweeping')) {
+    return next.handle(context, request)
 }
 
-logger.debug(SCRIPT_NAME + 'vrpAllowed: ' + vrpAllowed)
+Response response = new Response(Status.BAD_REQUEST)
+String message = 'Invalid VRP type, only Sweeping payments are supported.'
+logger.error(SCRIPT_NAME + message)
+response.headers['Content-Type'] = 'application/json'
+response.entity = "{ \"error\":\"" + message + "\"}"
+return response
 
-if (!vrpAllowed) {
-    Response response = new Response(Status.BAD_REQUEST)
-    String message = 'Invalid VRP type, only Sweeping payments are supported.'
-    logger.error(SCRIPT_NAME + message)
-    response.headers['Content-Type'] = 'application/json'
-    response.entity = "{ \"error\":\"" + message + "\"}"
-    return response
-}
-
-next.handle(context, request)
