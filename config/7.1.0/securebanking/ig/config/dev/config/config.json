@@ -212,6 +212,30 @@
       }
     },
     {
+      "name": "SBATReverseProxyHandlerRsNoCapture",
+      "comment": "ReverseProxyHandler for calls to the SBAT RS",
+      "type": "Chain",
+      "config": {
+        "filters": [
+          {
+            "comment": "Add x-ob-url header (used by RS)",
+            "name": "HeaderFilter-Add-x-ob-url",
+            "type": "HeaderFilter",
+            "config": {
+              "messageType": "REQUEST",
+              "add": {
+                "x-ob-url": [
+                  "https://&{ig.fqdn}${contexts.router.remainingUri}"
+                ]
+              }
+            }
+          },
+          "TransactionIdOutboundFilter"
+        ],
+        "handler": "ReverseProxyHandlerNoCapture"
+      }
+    },
+    {
       "name" : "AmService-OBIE",
       "type" : "AmService",
       "config" : {
