@@ -17,165 +17,85 @@ package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowableOfType;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.util.promise.Promise;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.crypto.RSASSASigner;
 
 class RegistrationRequestJwtSignatureValidatorJwksTest {
 
     private RegistrationRequestJwtSignatureValidatorJwks jwksJwtSignatureValidator;
     private final JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
-    private final TrustedDirectory ssaIssuingDirectory = mock(TrustedDirectory.class);
-    private static RSASSASigner ssaSigner;
+    private final RegistrationRequest registrationRequest = mock(RegistrationRequest.class);
+    private final SoftwareStatement softwareStatement = mock(SoftwareStatement.class);
     private static final String TX_ID = "transactionId";
 
-    @BeforeAll
-    static void setUpClass() throws NoSuchAlgorithmException {
-        ssaSigner = CryptoUtils.createRSASSASigner();
-    }
 
     @BeforeEach
     void setUp() {
         jwksJwtSignatureValidator = new RegistrationRequestJwtSignatureValidatorJwks(jwtSignatureValidator);
+        when(registrationRequest.getSoftwareStatement()).thenReturn(softwareStatement);
     }
 
     @AfterEach
     void tearDown() {
-        reset(jwtSignatureValidator, ssaIssuingDirectory);
-    }
-
-    @Test
-    void fails_WithRteWhenBadlyConfiguredTrustedDirectory(){
-        // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        // When
-        Promise<Response, DCRSignatureValidationException> promise =
-                jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                ssaClaimsSet, registrationRequestJwt);
-
-        // Then
-        DCRSignatureValidationRuntimeException rte =
-                catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationRuntimeException.class);
-        assertThat(rte.getMessage()).contains("no softwareStatementJwksClaimName value");
-    }
-
-    @Test
-    void fails_CantGetJwksSetEmptySsaClaim(){
-        // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(ssaIssuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("jwks");
-
-        // When
-        Promise<Response, DCRSignatureValidationException> promise =
-                jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                        ssaClaimsSet, registrationRequestJwt);
-
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_SOFTWARE_STATEMENT);
-    }
-
-    @Test
-    void fails_CantGetJwksUnparsableSsaClaim(){
-        // Given
-        Map<String, Object> ssaClaimsMap = Map.of("jwks", "gobbledy gook");
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(ssaIssuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("jwks");
-
-        // When
-        Promise<Response, DCRSignatureValidationException> promise =
-                jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                        ssaClaimsSet, registrationRequestJwt);
-
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_SOFTWARE_STATEMENT);
+        reset(jwtSignatureValidator, registrationRequest, softwareStatement);
     }
 
     @Test
     void fails_jwtSignatureIsInvalid() throws SignatureException {
         // Given
-        String ssaJwtString = DCRTestHelpers.VALID_SSA_FROM_IG;
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(ssaIssuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("software_jwks");
-        doThrow(new SignatureException("Invalid jws signature")).when(jwtSignatureValidator)
-                .validateSignature( eq(registrationRequestJwt), any(JWKSet.class));
+        SignedJwt signedJwt = CryptoUtils.createSignedJwt(Map.of(), JWSAlgorithm.PS256);
+        JWKSet jwkSet = CryptoUtils.createJwkSet();
 
         // When
-        Promise<Response, DCRSignatureValidationException> promise =
-                jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                        ssaClaimsSet, registrationRequestJwt);
+        when(registrationRequest.getSignedJwt()).thenReturn(signedJwt);
+        when(softwareStatement.getJwksSet()).thenReturn(jwkSet);
+        doThrow(new SignatureException("invalid jwt signature")).when(jwtSignatureValidator).validateSignature(signedJwt, jwkSet);
+        Promise<Response, DCRSignatureValidationException> promise
+                = jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID,
+                registrationRequest);
 
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow, DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_CLIENT_METADATA);
+       DCRSignatureValidationException exception = catchThrowableOfType(
+               ()-> promise.getOrThrow(), DCRSignatureValidationException.class);
+
+        // Then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(DCRErrorCode.INVALID_CLIENT_METADATA);
     }
 
     @Test
     void success_validateRegistrationRequestJwtSignature() throws ExecutionException, InterruptedException {
         // Given
-        String ssaJwtString = DCRTestHelpers.VALID_SSA_FROM_IG;
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
+        SignedJwt signedJwt = CryptoUtils.createSignedJwt(Map.of(), JWSAlgorithm.PS256);
+        JWKSet jwkSet = CryptoUtils.createJwkSet();
+        when(registrationRequest.getSignedJwt()).thenReturn(signedJwt);
+        when(softwareStatement.getJwksSet()).thenReturn(jwkSet);
 
-        when(ssaIssuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("software_jwks");
-
-        // When
+        // No need to mock validateSignature - it has a void return sign
         Promise<Response, DCRSignatureValidationException> promise
-                = jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, ssaIssuingDirectory,
-                ssaClaimsSet, registrationRequestJwt);
+                = jwksJwtSignatureValidator.validateRegistrationRequestJwtSignature(TX_ID, 
+                registrationRequest);
         Response response = promise.get();
 
         // Then

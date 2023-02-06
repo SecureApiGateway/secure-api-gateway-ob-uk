@@ -22,6 +22,7 @@ import org.forgerock.json.jose.jws.SignedJwt;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.forgerock.sapi.gateway.common.jwt.JwtException;
 import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRTestHelpers;
 
 class JwtDecoderTest {
@@ -34,22 +35,27 @@ class JwtDecoderTest {
     }
 
     @Test
-    void success_getSignedJwt() throws JwtReconstructionException {
+    void success_getSignedJwt() {
         // Given
 
         // WHen
-        SignedJwt signedJwt = jwtDecoder.getSignedJwt(DCRTestHelpers.VALID_SSA_FROM_IG);
+        SignedJwt signedJwt = null;
+        try {
+            signedJwt = jwtDecoder.getSignedJwt(DCRTestHelpers.VALID_SSA_FROM_IG);
+        } catch (com.forgerock.sapi.gateway.common.jwt.JwtException e) {
+            throw new RuntimeException(e);
+        }
         // Then
         assertThat(signedJwt).isNotNull();
     }
 
     @Test
-    void failsInvalidb64EncodedString_getSignedJwt() throws JwtReconstructionException {
+    void failsInvalidb64EncodedString_getSignedJwt() {
         // Given
 
         // WHen
-        JwtReconstructionException jwtReconstructionException = catchThrowableOfType(
-                () ->jwtDecoder.getSignedJwt("invalidjwtstring"), JwtReconstructionException.class);
+        JwtException jwtReconstructionException = catchThrowableOfType(
+                () ->jwtDecoder.getSignedJwt("invalidjwtstring"),  JwtException.class);
         // Then
         assertThat(jwtReconstructionException).isNotNull();
     }

@@ -35,7 +35,11 @@ public class ContentTypeFormatterHtml implements ContentTypeFormatter{
                 "</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head><body>");
         errorForm.forEach((key, val) -> {
             logger.debug("processing entry for {}, val is {}", key, val);
-            errorMessageBuilder.append("<p><b>" + key + ":</b> " + val + "</p>");
+            errorMessageBuilder.append("<p><b>")
+                    .append(key)
+                    .append(":</b> ")
+                    .append(val)
+                    .append("</p>");
         });
         errorMessageBuilder.append("</body></html>");
         String htmlErrorMessage = errorMessageBuilder.toString();

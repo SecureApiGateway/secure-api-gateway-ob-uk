@@ -32,7 +32,7 @@ public class ContentTypeFormatterText implements ContentTypeFormatter {
         StringBuilder errorMessageBuilder = new StringBuilder();
         fields.forEach((key, val) -> {
             logger.debug("processing entry for {}, val is {}", key, val);
-            errorMessageBuilder.append(key + ": " + val + "\n");
+            errorMessageBuilder.append(key).append(": ").append(val).append("\n");
         });
         String textErrorMessage = errorMessageBuilder.toString();
         logger.debug("text error message is '{}'", textErrorMessage);

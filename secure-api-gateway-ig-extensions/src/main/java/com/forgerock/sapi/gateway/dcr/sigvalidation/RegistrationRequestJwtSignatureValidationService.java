@@ -16,16 +16,12 @@
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import org.forgerock.http.protocol.Response;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.util.promise.Promise;
-import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 
 /**
  * Class that provides validation of registration request JWTs. It handles both those that need to be validated
@@ -37,26 +33,18 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
  */
 public class RegistrationRequestJwtSignatureValidationService {
     private static final Logger log = LoggerFactory.getLogger(RegistrationRequestJwtSignatureValidationService.class);
-    private final TrustedDirectoryService trustedDirectoryService;
-    private final DCRUtils dcrUtils;
     private final RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator;
     private final RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
 
 
     /**
      * Constructor
-     * @param trustedDirectoryService used to obtain the correct {@code TrustedDirectory} for the Software Statement
-     *                               Issuer
-     * @param dcrUtils a utility class
      * @param jwksSignatureValidator the service used to validate a jwk against a jwks
      * @param jwksUriSignatureValidator the service used to validate a jwk against a jwks_uri
      */
     public RegistrationRequestJwtSignatureValidationService(
-            TrustedDirectoryService trustedDirectoryService, DCRUtils dcrUtils,
             RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator,
             RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator) {
-        this.trustedDirectoryService = trustedDirectoryService;
-        this.dcrUtils = dcrUtils;
         this.jwksSignatureValidator = jwksSignatureValidator;
         this.jwksUriSignatureValidator = jwksUriSignatureValidator;
     }
@@ -64,27 +52,21 @@ public class RegistrationRequestJwtSignatureValidationService {
     /**
      * Validate a registration request signature
      * @param fapiInteractionId used for log entries so log messages can be traced for a specific API request
-     * @param ssaClaimsSet the claim set of the ssa from the registration request
-     * @param registrationRequestJwt the registration request jwt
+     * @param registrationRequest the registration request to be validated
      * @return A Promise containing a Response (OK), or a DCRSignatureValidationException explaining why the
      * registration request signature validation failed
      */
-    public Promise<Response, DCRSignatureValidationException> validateRegistrationRequestJwtSignature(
-            String fapiInteractionId, JwtClaimsSet ssaClaimsSet, SignedJwt registrationRequestJwt) {
-        try {
-            String ssaIssuer = dcrUtils.getJwtIssuer("software statement assertion", ssaClaimsSet);
-            TrustedDirectory ssaIssuingDirectory = dcrUtils.getIssuingDirectory(trustedDirectoryService, ssaIssuer);
-            if (ssaIssuingDirectory.softwareStatementHoldsJwksUri()) {
-                log.debug("({}) SSA contains JwksUri - using the JwksUri Validator", fapiInteractionId);
-                return jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
-                        ssaIssuingDirectory, ssaClaimsSet, registrationRequestJwt);
-            } else {
-                log.debug("({}) SSA contains an inline JWKS - using the Jwks Validator", fapiInteractionId);
-                return jwksSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
-                        ssaIssuingDirectory,ssaClaimsSet, registrationRequestJwt);
-            }
-        } catch (DCRSignatureValidationException dsve) {
-            return Promises.newExceptionPromise(dsve);
+    public Promise<Response, DCRSignatureValidationException> validateJwtSignature(
+            String fapiInteractionId, RegistrationRequest registrationRequest) {
+        SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement();
+        if (softwareStatement.hasJwksUri()) {
+            log.debug("({}) SSA contains JwksUri - using the JwksUri Validator", fapiInteractionId);
+            return jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
+                    registrationRequest);
+        } else {
+            log.debug("({}) SSA contains an inline JWKS - using the Jwks Validator", fapiInteractionId);
+            return jwksSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
+                    registrationRequest);
         }
     }
 }

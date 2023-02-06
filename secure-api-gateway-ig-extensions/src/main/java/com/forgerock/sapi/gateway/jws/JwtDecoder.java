@@ -21,22 +21,24 @@ import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.exceptions.JwtReconstructionException;
 import org.forgerock.json.jose.jws.SignedJwt;
 
+import com.forgerock.sapi.gateway.common.jwt.JwtException;
+
 public class JwtDecoder {
 
     /**
      * Reconstruct a signed jwt from a b64 encoded jwt string
      * @param b64EncodedJwtString the string from which the JWT is to be constructed
      * @return a {@code SignedJwt}
-     * @throws com.forgerock.sapi.gateway.jws.JwtReconstructionException when the jwt can't be reconstructed from
+     * @throws JwtException when the jwt can't be reconstructed from
      * the b64EncodedJwtString
      */
     @NotNull
     public SignedJwt getSignedJwt(String b64EncodedJwtString)
-            throws com.forgerock.sapi.gateway.jws.JwtReconstructionException {
+            throws JwtException {
         try {
             return new JwtReconstruction().reconstructJwt(b64EncodedJwtString, SignedJwt.class);
         } catch ( JwtReconstructionException e){
-            throw new com.forgerock.sapi.gateway.jws.JwtReconstructionException("Failed to reconstruct jwt from "
+            throw new JwtException("Failed to reconstruct jwt from "
                     + "b64 encoded jwt string '" + b64EncodedJwtString + "'", e);
         }
     }

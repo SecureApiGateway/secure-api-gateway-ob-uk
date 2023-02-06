@@ -15,23 +15,13 @@
  */
 package com.forgerock.sapi.gateway.dcr.common;
 
-/**
- * Dynamic Client Registration /register endpoint error codes, as specified by
- * OAuth 2.0 Dynamic Client Registration Protocol spec: https://www.rfc-editor.org/rfc/rfc7591#section-3.2.2
- */
-public enum DCRErrorCode {
-    INVALID_REDIRECT_URI("invalid_redirect_uri"),
-    INVALID_CLIENT_METADATA("invalid_client_metadata"),
-    INVALID_SOFTWARE_STATEMENT("invalid_software_statement"),
-    UNAPPROVED_SOFTWARE_STATEMENT("unapproved_software_statement");
+public class ApiGatewayRuntimeException extends RuntimeException {
 
-    private final String code;
-
-    DCRErrorCode(String code) {
-        this.code = code;
+    public ApiGatewayRuntimeException(String message) {
+        this(message, null);
     }
 
-    public String getCode() {
-        return code;
+    public ApiGatewayRuntimeException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

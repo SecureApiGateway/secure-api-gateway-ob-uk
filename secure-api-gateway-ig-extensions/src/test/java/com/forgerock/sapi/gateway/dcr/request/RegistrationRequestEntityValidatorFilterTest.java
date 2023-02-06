@@ -35,7 +35,6 @@ import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.Context;
 import org.forgerock.services.context.RootContext;
@@ -50,11 +49,8 @@ import org.junit.jupiter.api.Test;
 import com.forgerock.sapi.gateway.dcr.common.AcceptHeaderSupplier;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
-import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestBuilder;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
-import com.forgerock.sapi.gateway.dcr.models.SoftwareStatementBuilder;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
-import com.forgerock.sapi.gateway.jws.JwtReconstructionException;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryServiceStatic;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
@@ -67,17 +63,17 @@ class RegistrationRequestEntityValidatorFilterTest {
     private final RegistrationRequestEntitySupplier reqRequestSupplier = mock(RegistrationRequestEntitySupplier.class);
     private final AcceptHeaderSupplier acceptHeaderSupplier = mock(AcceptHeaderSupplier.class);
     private static TrustedDirectoryService trustedDirectoryService;
-    private static SoftwareStatementBuilder softwareStatementBuilder;
-    private static RegistrationRequestBuilder registrationRequestBuilder ;
+    private static SoftwareStatement.Builder softwareStatementBuilder;
+    private static RegistrationRequest.Builder registrationRequestBuilder ;
     private static final JwtDecoder jwtDecoder = new JwtDecoder();
     private final ResponseFactory responseFactory = mock(ResponseFactory.class);
     private final Handler handler = mock(Handler.class);
 
     @BeforeAll
-    static void setupClass() throws HeapException, MalformedURLException {
+    static void setupClass() throws MalformedURLException {
         trustedDirectoryService =  new TrustedDirectoryServiceStatic(true, new URL("https://jwks.com"));
-        softwareStatementBuilder = new SoftwareStatementBuilder(trustedDirectoryService, jwtDecoder);
-        registrationRequestBuilder = new RegistrationRequestBuilder(softwareStatementBuilder, jwtDecoder);
+        softwareStatementBuilder = new SoftwareStatement.Builder(trustedDirectoryService, jwtDecoder);
+        registrationRequestBuilder = new RegistrationRequest.Builder(softwareStatementBuilder, jwtDecoder);
     }
 
     @BeforeEach
@@ -93,7 +89,7 @@ class RegistrationRequestEntityValidatorFilterTest {
     }
 
     @Test
-    void successWithIGDirectoryRequest() throws InterruptedException, NoSuchAlgorithmException, JwtReconstructionException {
+    void successWithIGDirectoryRequest() throws InterruptedException, NoSuchAlgorithmException {
         // Given
         final AttributesContext context = new AttributesContext(new RootContext());
         Request request = new Request();
@@ -114,7 +110,7 @@ class RegistrationRequestEntityValidatorFilterTest {
     }
 
     @Test
-    void errorWhenUnrecognisedSSAIssuer_filter() throws InterruptedException, NoSuchAlgorithmException, JwtReconstructionException {
+    void errorWhenUnrecognisedSSAIssuer_filter() throws InterruptedException, NoSuchAlgorithmException {
         // Given
         final AttributesContext context = new AttributesContext(new RootContext());
         Request request = new Request();
@@ -133,12 +129,12 @@ class RegistrationRequestEntityValidatorFilterTest {
         verify(handler, never()).handle(context, request);
     }
 
-    private String createRegistrationRequestWithJwksBasedSSA(Map<String, Object> ssaClaims) throws NoSuchAlgorithmException, JwtReconstructionException {
+    private String createRegistrationRequestWithJwksBasedSSA(Map<String, Object> ssaClaims) throws NoSuchAlgorithmException {
         RSASSASigner signer = CryptoUtils.createRSASSASigner();
         // Can make valid JWKS entry!! Grrr
-        String ssa = CryptoUtils.createEncodedJwtString(ssaClaims, JWSAlgorithm.PS256, signer);
-        Map<String, Object> regRequestClaims = Map.of("software_statement", ssa);
-        return CryptoUtils.createEncodedJwtString(regRequestClaims, JWSAlgorithm.PS256, signer);
+        String ssa = CryptoUtils.createEncodedJwtString(ssaClaims, JWSAlgorithm.PS256);
+        Map<String, Object> regRequestClaims = Map.of("iss", "Acme App", "software_statement", ssa);
+        return CryptoUtils.createEncodedJwtString(regRequestClaims, JWSAlgorithm.PS256);
     }
 
     @Test
@@ -165,9 +161,9 @@ class RegistrationRequestEntityValidatorFilterTest {
 
     private String createRegistrationRequestWithJwksUriBasedSSA(Map<String, Object> ssaClaims) throws NoSuchAlgorithmException {
         RSASSASigner signer = CryptoUtils.createRSASSASigner();
-        String ssa = CryptoUtils.createEncodedJwtString(ssaClaims, JWSAlgorithm.PS256, signer);
-        Map<String, Object> regRequestClaims = Map.of("software_statement", ssa);
-        String registrationRequest = CryptoUtils.createEncodedJwtString(regRequestClaims, JWSAlgorithm.PS256, signer);
+        String ssa = CryptoUtils.createEncodedJwtString(ssaClaims, JWSAlgorithm.PS256);
+        Map<String, Object> regRequestClaims = Map.of("iss", "Acme App", "software_statement", ssa);
+        String registrationRequest = CryptoUtils.createEncodedJwtString(regRequestClaims, JWSAlgorithm.PS256);
         return registrationRequest;
     }
 

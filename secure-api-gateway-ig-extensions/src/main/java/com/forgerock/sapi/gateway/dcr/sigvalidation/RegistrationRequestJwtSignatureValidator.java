@@ -16,24 +16,19 @@
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import org.forgerock.http.protocol.Response;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.util.promise.Promise;
 
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 
 public interface RegistrationRequestJwtSignatureValidator {
 
     /**
      * Validate the registration request signature
      * @param transactionId used for logging
-     * @param ssaIssuingDirectory the {@code TrustedDirectory} for the issuer of the software statement provided in the
-     *                            registration request
-     * @param ssaClaimsSet the JWT claims of software statement supplied in the registration request
-     * @param registrationRequestJwt the registration request jwt that is to be validated
+     * @param registrationRequest the registration request jwt that is to be validated
      * @return a promise that provides either a response with Status of OK, or a DCRSignatureValidationException
      * containing details of why the validation of the registration request failed
      */
     Promise<Response, DCRSignatureValidationException> validateRegistrationRequestJwtSignature(String transactionId,
-            TrustedDirectory ssaIssuingDirectory, JwtClaimsSet ssaClaimsSet,SignedJwt registrationRequestJwt);
+            RegistrationRequest registrationRequest);
 }

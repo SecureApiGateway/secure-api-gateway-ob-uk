@@ -19,7 +19,7 @@ import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.dcr.common.DCRException;
 
 /**
- * Exception thrown when building a {@code RegistrationRequest} using a {@code RegistrationRequestBuilder}
+ * Exception thrown when building a {@code RegistrationRequest} using a {@code Builder}
  */
 public class DCRRegistrationRequestBuilderException extends DCRException {
     public DCRRegistrationRequestBuilderException(DCRErrorCode errorCode, String errorDescription) {

@@ -18,15 +18,14 @@ package com.forgerock.sapi.gateway.dcr.sigvalidation;
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.ivy.util.StringUtils;
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
@@ -36,9 +35,9 @@ import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.exceptions.InvalidJwtException;
 import org.forgerock.json.jose.jws.JwsAlgorithm;
 import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
+import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.Context;
 import org.forgerock.util.Reject;
 import org.forgerock.util.promise.NeverThrowsException;
@@ -47,15 +46,11 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
-import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestBuilder;
+import com.forgerock.sapi.gateway.dcr.common.ApiGatewayRuntimeException;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
-import com.forgerock.sapi.gateway.jws.JwtDecoder;
-import com.forgerock.sapi.gateway.jws.JwtReconstructionException;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
 
@@ -72,44 +67,23 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
                     JwsAlgorithm.ES256)
             .map(JwsAlgorithm::getJwaAlgorithmName)
             .collect(Collectors.toList());
-    private final RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier;
-    private final Collection<String> supportedSigningAlgorithms;
     private final SoftwareStatementAssertionSignatureValidatorService ssaValidator;
     private final RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator;
-    private final DCRUtils dcrUtils;
-    private final JwtDecoder jwtDecoder;
-    private RegistrationRequestBuilder registrationRequestBuilder;
+
 
     /**
      * Constructor
-     * @param registrationRequestObjectFromJwtSupplier obtains the registration request object from the request
-     * @param supportedSigningAlgorithms a {@code Collection} containing the valid signing algorithms that jwts may be
-     *                                   signed with
-     * @param dcrUtils utility class containing common methods
      * @param ssaValidator a service used to validate the SSA signature
      * @param registrationRequestJwtValidator used to validate the registration request jwt signature
      */
     RegistrationRequestJwtSignatureValidationFilter(
-            RegistrationRequestObjectFromJwtSupplier registrationRequestObjectFromJwtSupplier,
-            Collection<String> supportedSigningAlgorithms,
-            DCRUtils dcrUtils,
-            JwtDecoder jwtDecoder,
             SoftwareStatementAssertionSignatureValidatorService ssaValidator,
             RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator) {
-        Reject.ifNull(registrationRequestObjectFromJwtSupplier, "RegistrationRequestObjectFromJwtSupplier " +
-                "must be provided");
-        Reject.ifNull(supportedSigningAlgorithms, "supportedSigningAlgorithms must be provided");
-        Reject.ifNull(dcrUtils, "dcrUtils must be provided");
-        Reject.ifNull(jwtDecoder, "jwtDecoder must be provided");
         Reject.ifNull(ssaValidator, "ssaValidator must be provided");
         Reject.ifNull(registrationRequestJwtValidator, "registrationRequestJwtValidator must be provided");
 
-        this.registrationRequestObjectFromJwtSupplier = registrationRequestObjectFromJwtSupplier;
-        this.supportedSigningAlgorithms = supportedSigningAlgorithms;
         this.ssaValidator = ssaValidator;
         this.registrationRequestJwtValidator = registrationRequestJwtValidator;
-        this.dcrUtils = dcrUtils;
-        this.jwtDecoder = jwtDecoder;
         log.debug("RequestAndSsaSignatureValidationFilter constructed");
     }
 
@@ -123,22 +97,20 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
         }
 
         try {
-            SignedJwt registrationRequestJwt = getRegistrationRequestObjectOrThrow(fapiInteractionId, context, request);
-            checkJwtSigningAlgorithmIsValid(fapiInteractionId, registrationRequestJwt, supportedSigningAlgorithms);
-            final JwtClaimsSet registrationRequestJwtClaimsSet = registrationRequestJwt.getClaimsSet();
-
-            final String ssaJwtString = getSsaB64EncodedJwtString(fapiInteractionId, registrationRequestJwtClaimsSet);
-            log.debug("({}) ssa from registration request jwt is {}", fapiInteractionId, ssaJwtString);
-            SignedJwt ssaSignedJwt = getSoftwareStatementAssertionSignedJwt(fapiInteractionId, ssaJwtString,
-                    supportedSigningAlgorithms);
-            final JwtClaimsSet ssaClaimsSet = ssaSignedJwt.getClaimsSet();
+            Map<String, Object> attributes = context.asContext(AttributesContext.class).getAttributes();
+            RegistrationRequest registrationRequest = (RegistrationRequest) attributes.get("registrationRequest");
+            if(registrationRequest == null){
+                throw new ApiGatewayRuntimeException("RegistrationRequestEntityValidatorFilter must appear in " +
+                        "the route before the RequestAndSsaSignatureValidationFilter can be used");
+            }
+            log.debug("({}) Performing JWT signature validation on registration request '{}'", fapiInteractionId,
+                    registrationRequest.toString());
 
             Promise<Response, DCRSignatureValidationException> ssaValidationPromise =
-                    ssaValidator.validateSoftwareStatementAssertionSignature(fapiInteractionId, ssaSignedJwt);
+                    ssaValidator.validateJwtSignature(fapiInteractionId, registrationRequest.getSoftwareStatement());
 
             return ssaValidationPromise.thenAsync( response ->
-                registrationRequestJwtValidator.validateRegistrationRequestJwtSignature(fapiInteractionId, ssaClaimsSet,
-                                registrationRequestJwt).thenAsync(
+                registrationRequestJwtValidator.validateJwtSignature(fapiInteractionId, registrationRequest).thenAsync(
                     regRequestValidationResponse -> {
                         if (regRequestValidationResponse.getStatus() != Status.OK) {
                             log.info("({}) Response from validation is not OK as expected. Resposne: {}",
@@ -168,87 +140,16 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
                             "error: " + rte.getMessage(), rte);
                     return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                 });
-        } catch (DCRSignatureValidationException e) {
-            String responseBody = getJsonResponseBody(e);
-            return Promises.newResultPromise(new Response(Status.BAD_REQUEST).setEntity(responseBody));
+        } catch (RuntimeException rte){
+            log.error("({}) Runtime Error occurred in RequestAndSsaSignatureValidationFilter: {}", fapiInteractionId,
+                    rte.getMessage(), rte);
+            return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
         }
     }
 
     private String getJsonResponseBody(DCRSignatureValidationException ex) {
-        return "{\"error_code\":\"" + ex.getErrorCode() + "\"," +
+        return "{\"error_code\":\"" + ex.getErrorCode().getCode() + "\"," +
                 "\"error_description\":\"" + ex.getErrorDescription() + "\"}";
-    }
-
-
-    private SignedJwt getSoftwareStatementAssertionSignedJwt(String fapiInteractionId, String b64EncodedJwtString,
-            Collection<String> supportedSigningAlgorithms) throws DCRSignatureValidationException {
-        final SignedJwt ssaJwt;
-        try {
-            ssaJwt = jwtDecoder.getSignedJwt(b64EncodedJwtString);
-            checkJwtSigningAlgorithmIsValid(fapiInteractionId, ssaJwt, supportedSigningAlgorithms);
-            return ssaJwt;
-        } catch (JwtReconstructionException e) {
-            String errorDescription = "Badly formed b64 encoded software statement in registration request";
-            log.debug("({}) {}", fapiInteractionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_CLIENT_METADATA, errorDescription);
-        }
-    }
-
-    /**
-     * get the b64 encoded jwt string from the 'software_statement' claim of the registration request jwt
-     * @param transactionId used for logging purposes
-     * @param registrationRequestJwtClaimsSet the registration request jwt claims set
-     * @return the software statement assertion claim value b64 Encoded Jwt String
-     * @throws DCRSignatureValidationException
-     */
-    private String getSsaB64EncodedJwtString(String transactionId, JwtClaimsSet registrationRequestJwtClaimsSet)
-            throws DCRSignatureValidationException {
-        final String ssaJwtString = registrationRequestJwtClaimsSet.getClaim("software_statement", String.class);
-        if (StringUtils.isNullOrEmpty(ssaJwtString)) {
-            String errorDescription = "registration request jwt must contain 'software_statement' claim";
-            log.debug("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_CLIENT_METADATA, errorDescription);
-        }
-        return ssaJwtString;
-    }
-
-    /**
-     * Check that the signing algorithm specified in the signed jwt is one of the allowed algorithms
-     * @param transactionId used for logging purposes
-     * @param signedJwt
-     * @param supportedSigningAlgorithms
-     * @throws DCRSignatureValidationException
-     */
-    private void checkJwtSigningAlgorithmIsValid(String transactionId, SignedJwt signedJwt,
-            Collection<String> supportedSigningAlgorithms) throws DCRSignatureValidationException {
-        final JwsAlgorithm jwtSigningAlgorithm = signedJwt.getHeader().getAlgorithm();
-        if (jwtSigningAlgorithm == null ||
-                !supportedSigningAlgorithms.contains(jwtSigningAlgorithm.getJwaAlgorithmName())) {
-            String errorDescription = "DCR request JWT must be signed with one of: " +
-                    supportedSigningAlgorithms;
-            log.debug("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_CLIENT_METADATA, errorDescription);
-        }
-    }
-
-    /**
-     * Get the Registration Request jwt from the {@code Request}
-     *
-     * @param fapiInteractionId the value of the x-fapi-interaction-id from the context
-     * @param context           the request context
-     * @param request           the request
-     * @return a String containing the encoded jwt string or if no request
-     */
-    private SignedJwt getRegistrationRequestObjectOrThrow(String fapiInteractionId, Context context, Request request)
-            throws DCRSignatureValidationException {
-        SignedJwt registrationRequestJwt = registrationRequestObjectFromJwtSupplier.apply(context, request);
-        if (registrationRequestJwt == null) {
-            String errorDescription = "Requests to registration endpoint must contain a signed request jwt";
-            log.debug("({}) {}", fapiInteractionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_CLIENT_METADATA,
-                    errorDescription);
-        }
-        return registrationRequestJwt;
     }
 
 
@@ -259,35 +160,15 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-            final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
-                    .as(requiredHeapObject(heap, TrustedDirectoryService.class));
-
             final JwkSetService jwtSetService = config.get("jwkSetService")
                     .as(requiredHeapObject(heap, JwkSetService.class));
 
             final JwtSignatureValidator jwtSignatureValidator = config.get("jwtSignatureValidator")
                     .as(requiredHeapObject(heap, JwtSignatureValidator.class));
 
-            final List<String> configurationSigningAlgorithms = config.get("configurationSigningAlgorithms")
-                    .as(evaluatedWithHeapProperties())
-                    .defaultTo(DEFAULT_SUPPORTED_JWS_ALGORITHMS)
-                    .asList(String.class);
-
-            if (!configuredSigningAlgorithmsAreSubsetOfSupportedAlgorithms(configurationSigningAlgorithms)) {
-                throw new HeapException("configurationSigningAlgorithms config must be the same as (or a subset of): "
-                        + DEFAULT_SUPPORTED_JWS_ALGORITHMS);
-            }
-
-            final RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier =
-                    new RegistrationRequestObjectFromJwtSupplier();
-
-            final DCRUtils dcrUtils = new DCRUtils();
-
-            final JwtDecoder jwtDecoder = new JwtDecoder();
 
             final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator
-                    = new SoftwareStatementAssertionSignatureValidatorService(trustedDirectoryService,
-                    jwtSetService, jwtSignatureValidator, dcrUtils);
+                    = new SoftwareStatementAssertionSignatureValidatorService(jwtSetService, jwtSignatureValidator);
 
             final RegistrationRequestJwtSignatureValidatorJwks regRequestJwksValidator =
                     new RegistrationRequestJwtSignatureValidatorJwks(jwtSignatureValidator);
@@ -297,10 +178,9 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
 
             final RegistrationRequestJwtSignatureValidationService registrationRequestValidator =
                     new RegistrationRequestJwtSignatureValidationService(
-                            trustedDirectoryService, dcrUtils, regRequestJwksValidator, regRequestJwksUriValidator);
+                            regRequestJwksValidator, regRequestJwksUriValidator);
 
             return new RegistrationRequestJwtSignatureValidationFilter(
-                    registrationObjectSupplier, configurationSigningAlgorithms, dcrUtils, jwtDecoder,
                     ssaSignatureValidator, registrationRequestValidator);
         }
 

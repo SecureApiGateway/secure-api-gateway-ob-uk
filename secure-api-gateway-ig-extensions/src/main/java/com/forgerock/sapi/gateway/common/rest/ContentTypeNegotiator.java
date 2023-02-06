@@ -29,9 +29,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ContentTypeNegotiator {
     private final Logger logger = LoggerFactory.getLogger(ContentTypeNegotiator.class);
-
-    private final TreeMap<Float, List<String>> mediaTypesMap;
-    
     private final List<String> supportedContentTypes;
 
     public ContentTypeNegotiator(List<String> supportedContentTypes) {
@@ -39,12 +36,11 @@ public class ContentTypeNegotiator {
         if(supportedContentTypes.isEmpty()){
             throw new IllegalArgumentException("supportedContentTypes must not be empty");
         }
-        mediaTypesMap = new TreeMap<>();
         this.supportedContentTypes = supportedContentTypes;
     }
 
     /**
-     * Process the accepte header against a list of media types supported for the response
+     * Process the accepts header against a list of media types supported for the response
      * returns a string representing the supported media type that best meets the media 
      * types accepted by the client
      */
@@ -53,13 +49,14 @@ public class ContentTypeNegotiator {
             acceptHeaderValues = List.of();
         }
         logger.debug("({}) accept header contains {}", logPrefix, acceptHeaderValues);
-        buildMapOfAcceptableMediaTypes(logPrefix, acceptHeaderValues);
-        String bestContentType = findHighestWeightedSupportedMediaType(logPrefix);
+        TreeMap<Float, List<String>> mediaTypesMap = buildMapOfAcceptableMediaTypes(logPrefix, acceptHeaderValues);
+        String bestContentType = findHighestWeightedSupportedMediaType(logPrefix, mediaTypesMap);
         logger.debug("({}) Best Content Type is {}", logPrefix, bestContentType);
         return bestContentType;
     }
 
-    private void buildMapOfAcceptableMediaTypes(String logPrefix, List<String> acceptHeaderValues) {
+    private TreeMap<Float, List<String>> buildMapOfAcceptableMediaTypes(String logPrefix, List<String> acceptHeaderValues) {
+        final TreeMap<Float, List<String>> mediaTypesMap = new TreeMap<>();
         MultiValueMap<Float, String> multiMediaTypesMap = new MultiValueMap<>(mediaTypesMap);
         for (String acceptValue : acceptHeaderValues) {
             String[] contentTypes = acceptValue.split(",");
@@ -78,9 +75,10 @@ public class ContentTypeNegotiator {
                 }
             }
         }
+        return mediaTypesMap;
     }
 
-    private String findHighestWeightedSupportedMediaType(String logPrefix) {
+    private String findHighestWeightedSupportedMediaType(String logPrefix, TreeMap<Float, List<String>> mediaTypesMap) {
        SortedMap<Float, List<String>> reverseSortedContentTypes = mediaTypesMap.descendingMap();
        for(Float key: reverseSortedContentTypes.keySet()){
            List<String> values = reverseSortedContentTypes.get(key);

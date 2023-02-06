@@ -15,22 +15,12 @@
  */
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
-import java.text.ParseException;
-import java.util.Map;
-
 import org.forgerock.json.JsonValue;
-import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.json.jose.jwt.JwtClaimsSet;
 
+import com.forgerock.sapi.gateway.common.jwt.JwtException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
-import com.forgerock.sapi.gateway.jws.JwtReconstructionException;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 
 public class DCRTestHelpers {
 
@@ -185,38 +175,15 @@ public class DCRTestHelpers {
     /**
      * Gets a jwks value from the valid IG SSA
      * @return a JsonValue jwks set
-     * @throws JwtReconstructionException when the jwt can't be decoded
+     * @throws JwtException when the jwt can't be decoded
      */
-    public static JsonValue getJwksJsonValue() throws JwtReconstructionException {
+    public static JsonValue getJwksJsonValue() throws JwtException {
         String b64EncodedSSA = DCRTestHelpers.VALID_SSA_FROM_IG;
         JwtDecoder jwtDecoder = new JwtDecoder();
-        SignedJwt ssa = jwtDecoder.getSignedJwt(b64EncodedSSA);
+        SignedJwt ssa = null;
+        ssa = jwtDecoder.getSignedJwt(b64EncodedSSA);
         JwtClaimsSet ssaClaims = ssa.getClaimsSet();
         JsonValue jwks = ssaClaims.get("software_jwks");
         return jwks;
-    }
-
-    /**
-     * Uses nimbusds to create a SignedJWT and returns JWS object in its compact format consisting of
-     * Base64URL-encoded parts delimited by period ('.') characters.
-     *
-     * @param claims      The claims to include in the signed jwt
-     * @param signingAlgo the algorithm to use for signing
-     * @param jwsSigner   used to signe the jwt
-     * @return the jws in its compact form consisting of Base64URL-encoded parts delimited by period ('.') characters.
-     */
-    public static String createEncodedJwtString(Map<String, Object> claims, JWSAlgorithm signingAlgo, JWSSigner jwsSigner) {
-        try {
-            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
-            signedJWT.sign(jwsSigner);
-            return signedJWT.serialize();
-        } catch (ParseException | JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static SignedJwt createSignedJwt(Map<String, Object> claims, JWSAlgorithm signingAlgo, JWSSigner jwsSigner) {
-        String encodedJwsString = createEncodedJwtString(claims, signingAlgo, jwsSigner);
-        return new JwtReconstruction().reconstructJwt(encodedJwsString, SignedJwt.class);
     }
 }

@@ -20,19 +20,16 @@ import java.security.SignatureException;
 
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.util.Reject;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 /**
  * Validates the Signature of the software statement jwt.
@@ -42,28 +39,19 @@ public class SoftwareStatementAssertionSignatureValidatorService {
     private static final Logger log = LoggerFactory.getLogger(SoftwareStatementAssertionSignatureValidatorService.class);
     private final JwkSetService jwkSetService;
     private final JwtSignatureValidator jwtSignatureValidator;
-    private final TrustedDirectoryService trustedDirectoryService;
-    private final DCRUtils dcrUtils;
 
 
     /**
      * Constructs a DCRSsaValidator
-     * @param trustedDirectoryService provides configuration relating to the directory that issued the Software
-     *                                Statement Assertion.
      * @param jwkSetService obtains a JWK Set from a url (may provide caching)
      * @param jwtSignatureValidator validates the Software Statement Assertion's signature against a JWK Set
-     * @param dcrUtils provides utility functions common to DCR related work
      */
-    public SoftwareStatementAssertionSignatureValidatorService(TrustedDirectoryService trustedDirectoryService,
-            JwkSetService jwkSetService, JwtSignatureValidator jwtSignatureValidator, DCRUtils dcrUtils) {
+    public SoftwareStatementAssertionSignatureValidatorService(JwkSetService jwkSetService,
+            JwtSignatureValidator jwtSignatureValidator) {
         Reject.ifNull(jwkSetService, "jwkSetService must be provided");
         Reject.ifNull(jwtSignatureValidator, "jwtSignatureValidator must be provided");
-        Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
-        Reject.ifNull(dcrUtils, "dcrUtils must be provided");
         this.jwkSetService = jwkSetService;
         this.jwtSignatureValidator = jwtSignatureValidator;
-        this.trustedDirectoryService = trustedDirectoryService;
-        this.dcrUtils = dcrUtils;
     }
 
     /**
@@ -72,20 +60,20 @@ public class SoftwareStatementAssertionSignatureValidatorService {
      * directory
      * @param transactionId used for logging purposes. This should generally be the transaction id from the IG route's
      *                      context
-     * @param ssaSignedJwt the Software Statement Assertion to be validated
+     * @param softwareStatement the Software Statement Assertion to be validated
      * @return a Promise containing a Response with status 200 (Status.OK) or a DCRSignatureValidationException
      * containing information regarding the reason that the Software Statement Assertion could not be validated
      */
-    public Promise<Response, DCRSignatureValidationException> validateSoftwareStatementAssertionSignature(
-            String transactionId, SignedJwt ssaSignedJwt) {
+    public Promise<Response, DCRSignatureValidationException> validateJwtSignature(
+            String transactionId, SoftwareStatement softwareStatement) {
         Reject.ifNull(transactionId, "transactionId must be provided");
-        Reject.ifNull(ssaSignedJwt, "ssaSignedJwt must be provided");
+        Reject.ifNull(softwareStatement, "softwareStatement must be provided");
         try {
 
-            URL issuingDirectoryJwksUrl = getIssuingDirectoryJwksUrl(transactionId, ssaSignedJwt);
+            URL issuingDirectoryJwksUrl = softwareStatement.getTrustedDirectoryJwksUrl();
             return this.jwkSetService.getJwkSet(issuingDirectoryJwksUrl).thenAsync(directoryJwkSet -> {
                 try {
-                    this.jwtSignatureValidator.validateSignature(ssaSignedJwt, directoryJwkSet);
+                    this.jwtSignatureValidator.validateSignature(softwareStatement.getSignedJwt(), directoryJwkSet);
                     log.debug("({}) SSA has a valid signature", transactionId);
                     return Promises.newResultPromise(new Response(Status.OK));
                 } catch (SignatureException e) {
@@ -93,44 +81,17 @@ public class SoftwareStatementAssertionSignatureValidatorService {
                             "'";
                     log.debug("({}) {}", transactionId, errorDescription);
                     return Promises.newExceptionPromise(
-                        new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription));
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription));
                 }
             }, ex -> {
                 String errorDescription = "Failed to obtain jwk set from trusted directory uri " +
                         issuingDirectoryJwksUrl;
                 log.debug("({}) {}}", transactionId, errorDescription, ex);
                 return Promises.newExceptionPromise(
-                        new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription));
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription));
             });
-        } catch (DCRSignatureValidationException dcre) {
-            return Promises.newExceptionPromise(dcre);
-        } catch (RuntimeException rte){
+        }  catch (RuntimeException rte){
             return Promises.newRuntimeExceptionPromise(rte);
         }
-
-    }
-
-    /**
-     * get the URL at which the JWKS for the SSA can be found
-     * @param transactionId log entries will contain the transactionId
-     * @param ssa the Software Statement Assertion from which to obtain the JWKS URL
-     * @return the URL at which the Software Statement Assertion's signature may be validated
-     * @throws DCRSignatureValidationException when the URL can't be obtained from the Software Statement
-     */
-    private URL getIssuingDirectoryJwksUrl(String transactionId, SignedJwt ssa) throws DCRSignatureValidationException {
-        final String JWT_NAME = "software statement assertion";
-        String ssaIssuer = dcrUtils.getJwtIssuer(JWT_NAME, ssa);
-        log.debug("({}) {} issuer is {}", transactionId, JWT_NAME, ssaIssuer);
-
-        TrustedDirectory ssaIssuingDirectory = dcrUtils.getIssuingDirectory(trustedDirectoryService, ssaIssuer);
-
-        URL issuingDirectoryJwksUrl = ssaIssuingDirectory.getDirectoryJwksUri();
-        if(issuingDirectoryJwksUrl == null){
-            String errorDescription = "Trusted Directory for issuer " + ssaIssuingDirectory.getIssuer() + " has no " +
-                    "directoryJwksUri value";
-            log.error("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationRuntimeException(errorDescription);
-        }
-        return issuingDirectoryJwksUrl;
     }
 }

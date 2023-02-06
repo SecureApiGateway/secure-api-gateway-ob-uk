@@ -17,23 +17,18 @@ package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import java.security.SignatureException;
 
-import org.apache.ivy.util.StringUtils;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.JsonException;
-import org.forgerock.json.JsonValue;
 import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 
 /**
  * Class used to validate a registration request jwt signature against a JWKS embedded in the Software Statement
@@ -53,21 +48,18 @@ public class RegistrationRequestJwtSignatureValidatorJwks implements Registratio
 
     @Override
     public Promise<Response, DCRSignatureValidationException> validateRegistrationRequestJwtSignature(
-            String transactionId, TrustedDirectory ssaIssuingDirectory, JwtClaimsSet ssaClaimsSet,
-            SignedJwt registrationRequestJwt) {
+            String transactionId, RegistrationRequest registrationRequest) {
         try {
-            String jwksClaimName = getSoftwareStatementJwksClaimName(transactionId, ssaIssuingDirectory);
-            JWKSet jwkSet = getJwkSet(transactionId, jwksClaimName, ssaClaimsSet);
-            this.jwtSignatureValidator.validateSignature(registrationRequestJwt, jwkSet);
+            SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement();
+            JWKSet jwkSet = softwareStatement.getJwksSet();
+            this.jwtSignatureValidator.validateSignature(registrationRequest.getSignedJwt(), jwkSet);
         } catch (SignatureException e) {
             String errorDescription = "Registration request jwt could not be validated against JWKS found in the " +
                     "software statement";
             log.info("({}) {}: {}", transactionId, errorDescription, e.getMessage());
             DCRSignatureValidationException exception = new DCRSignatureValidationException(
-                    ErrorCode.INVALID_CLIENT_METADATA, errorDescription);
+                    DCRErrorCode.INVALID_CLIENT_METADATA, errorDescription);
             return Promises.newExceptionPromise(exception);
-        } catch (DCRSignatureValidationException e) {
-            return Promises.newExceptionPromise(e);
         } catch (RuntimeException rte){
             log.info("({}) Runtime exception occurred while validating Registration Request (ssa holds JWKS): {}",
                     transactionId, rte.getMessage(), rte);
@@ -77,39 +69,4 @@ public class RegistrationRequestJwtSignatureValidatorJwks implements Registratio
         log.debug("({}) Registration Request JWT has a valid signature", transactionId);
         return Promises.newResultPromise(new Response(Status.OK));
     }
-
-    private String getSoftwareStatementJwksClaimName(String transactionId, TrustedDirectory ssaIssuingDirectory){
-        String jwksClaimName = ssaIssuingDirectory.getSoftwareStatementJwksClaimName();
-        if (StringUtils.isNullOrEmpty(jwksClaimName)) {
-            String errorDescription = "Trusted Directory for issuer " + ssaIssuingDirectory.getIssuer() + " has no " +
-                    "softwareStatementJwksClaimName value";
-            log.error("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationRuntimeException(errorDescription);
-        }
-        return jwksClaimName;
-    }
-
-    private JWKSet getJwkSet(String transactionId, String claimName, JwtClaimsSet ssaClaimsSet)
-            throws DCRSignatureValidationException {
-        final JsonValue jwks = ssaClaimsSet.get(claimName);
-        if(jwks.getObject() == null){
-            String errorDescription = "The software_statement must contain the claim '" + claimName + "'";
-            log.debug("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription);
-        }
-        log.debug("({}) jwks from software statement is {}", transactionId, jwks);
-        try {
-            // Note, if the jwks can't be parsed (does not have a "keys" entry) it will return a non-null empty JWKSet
-            JWKSet result =  JWKSet.parse(jwks);
-            if(result.getJWKsAsJsonValue().size() == 0){
-                throw new JsonException("JsonValues does not contain valid JWKS data");
-            }
-            return result;
-        } catch (JsonException je){
-            String errorDescription = "The software statement claim " + claimName + "' does not contain a valid JWKSet";
-            log.debug("({}) {}", transactionId, errorDescription);
-            throw new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, errorDescription);
-        }
-    }
-
 }

@@ -47,8 +47,10 @@ import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.util.io.pem.PemObjectGenerator;
 import org.bouncycastle.util.io.pem.PemWriter;
+import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jwk.RsaJWK;
+import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.util.Pair;
 
 import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
@@ -68,6 +70,20 @@ import com.nimbusds.jwt.SignedJWT;
  * JWK and JWKSet objects
  */
 public class CryptoUtils {
+
+    private static final RSASSASigner ssaSigner;
+
+    static {
+        KeyPairGenerator generator = null;
+        try {
+            generator = KeyPairGenerator.getInstance("RSA");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        generator.initialize(2048);
+        KeyPair pair = generator.generateKeyPair();
+        ssaSigner =  new RSASSASigner(pair.getPrivate());
+    }
 
     /**
      * Generate a random RSA KeyPair
@@ -175,14 +191,16 @@ public class CryptoUtils {
      *
      * @param claims      The claims to include in the signed jwt
      * @param signingAlgo the algorithm to use for signing
-     * @param rsaSigner the rsaSigner used to sign the jwt
      * @return the jws in its compact form consisting of Base64URL-encoded parts delimited by period ('.') characters.
      */
-    public static String createEncodedJwtString(Map<String, Object> claims, JWSAlgorithm signingAlgo,
-            RSASSASigner rsaSigner) {
+    public static String createEncodedJwtString(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
         try {
-            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
-            signedJWT.sign(rsaSigner);
+            JWSHeader.Builder builder = new JWSHeader.Builder(signingAlgo);
+            builder.keyID(UUID.randomUUID().toString());
+            JWSHeader jwsHeader = builder.build();
+
+            final SignedJWT signedJWT = new SignedJWT(jwsHeader, JWTClaimsSet.parse(claims));
+            signedJWT.sign(ssaSigner);
             return signedJWT.serialize();
         } catch (ParseException | JOSEException e) {
             throw new RuntimeException(e);
@@ -211,5 +229,10 @@ public class CryptoUtils {
     public static JWKSet createJwkSet(){
         return new JWKSet(List.of(RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString()),
                 RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString())));
+    }
+
+    public static SignedJwt createSignedJwt(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
+        String encodedJwsString = createEncodedJwtString(claims, signingAlgo);
+        return new JwtReconstruction().reconstructJwt(encodedJwsString, SignedJwt.class);
     }
 }

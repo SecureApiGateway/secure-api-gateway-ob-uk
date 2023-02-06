@@ -26,7 +26,8 @@ import org.forgerock.services.context.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.ValidationException.ErrorCode;
+
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 
@@ -45,7 +46,7 @@ public class ErrorResponseFactory {
         return errorResponse(context, validationException.getErrorCode(), validationException.getErrorDescription());
     }
 
-    public Response errorResponse(Context context, ErrorCode errorCode, String errorDescription) {
+    public Response errorResponse(Context context, DCRErrorCode errorCode, String errorDescription) {
         final Response response = new Response(Status.BAD_REQUEST);
         final JsonValue errorResponseBody = json(object(field("error", errorCode.getCode()),
                                                         field("error_description", errorDescription)));

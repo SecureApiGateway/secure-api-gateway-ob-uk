@@ -44,8 +44,7 @@ import com.forgerock.sapi.gateway.dcr.common.AcceptHeaderSupplier;
 import com.forgerock.sapi.gateway.dcr.common.DCRException;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
-import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestBuilder;
-import com.forgerock.sapi.gateway.dcr.models.SoftwareStatementBuilder;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
@@ -57,18 +56,17 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 public class RegistrationRequestEntityValidatorFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(RegistrationRequestEntityValidatorFilter.class);
-    private static final String REGISTRATION_REQUEST_KEY = "registrationRequest";
 
     private final RegistrationRequestEntitySupplier registrationEntitySupplier;
     private final TrustedDirectoryService trustedDirectoryService;
-    private final RegistrationRequestBuilder registrationRequestBuilder;
+    private final RegistrationRequest.Builder registrationRequestBuilder;
     private final JwtDecoder jwtDecoder;
     private final AcceptHeaderSupplier acceptHeaderSupplier;
     private final ResponseFactory responseFactory;
 
     public RegistrationRequestEntityValidatorFilter(RegistrationRequestEntitySupplier registrationEntitySupplier,
             AcceptHeaderSupplier acceptHeaderSupplier, TrustedDirectoryService trustedDirectoryService, 
-            RegistrationRequestBuilder registrationRequestBuilder, JwtDecoder jwtDecoder,
+            RegistrationRequest.Builder registrationRequestBuilder, JwtDecoder jwtDecoder,
             ResponseFactory responseFactory) {
         Reject.ifNull(registrationEntitySupplier, "registrationEntitySupplier must be provided");
         Reject.ifNull(acceptHeaderSupplier, "acceptHeaderSupplier must be provided");
@@ -92,9 +90,9 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
             String b64EncodedRegistrationRequestEntity = this.registrationEntitySupplier.apply(context, request);
             RegistrationRequest registrationRequest = this.registrationRequestBuilder.build(transactionId,
                     b64EncodedRegistrationRequestEntity);
-            context.asContext(AttributesContext.class).getAttributes().put(REGISTRATION_REQUEST_KEY,
+            context.asContext(AttributesContext.class).getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY,
                     registrationRequest);
-            log.info("({}) created context attribute " + REGISTRATION_REQUEST_KEY, transactionId);
+            log.info("({}) created context attribute " + RegistrationRequest.REGISTRATION_REQUEST_KEY, transactionId);
             return next.handle(context, request);
         } catch (DCRException exception){
             List<String> acceptHeader = acceptHeaderSupplier.apply(context, request);
@@ -131,9 +129,9 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
 
             final AcceptHeaderSupplier acceptHeaderSupplier = new AcceptHeaderSupplier();
             final JwtDecoder jwtDecoder = new JwtDecoder();
-            final SoftwareStatementBuilder softwareStatementBuilder = new SoftwareStatementBuilder(
+            final SoftwareStatement.Builder softwareStatementBuilder = new SoftwareStatement.Builder(
                     trustedDirectoryService, jwtDecoder);
-            final RegistrationRequestBuilder registrationRequestBuilder = new RegistrationRequestBuilder(
+            final RegistrationRequest.Builder registrationRequestBuilder = new RegistrationRequest.Builder(
                     softwareStatementBuilder, jwtDecoder);
 
             final ContentTypeFormatterFactory contentTypeFormatterFactory = new ContentTypeFormatterFactory();

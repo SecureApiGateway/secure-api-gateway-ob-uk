@@ -24,156 +24,96 @@ import static org.mockito.Mockito.when;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.Map;
 
 import org.forgerock.http.protocol.Response;
-import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
+import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.crypto.RSASSASigner;
 
 class SoftwareStatementAssertionSignatureValidatorServiceTest {
 
     private SoftwareStatementAssertionSignatureValidatorService ssaSigValidator;
-    private static final TrustedDirectoryService trustedDirectoryService = mock(TrustedDirectoryService.class);
-    private static final TrustedDirectory ssaIssuingTrustedDirectory = mock(TrustedDirectory.class);
     private static final JwkSetService jwkSetService = mock(JwkSetService.class);
     private static final JwtSignatureValidator jwtSignatureValidator = mock(JwtSignatureValidator.class);
-    private static final DCRUtils dcrUtils = new DCRUtils();
+    private static final SoftwareStatement softwareStatement = mock(SoftwareStatement.class);
     private static final String TX_ID = "transactionId";
     private static final String SSA_ISSUER = "Acme Trusted Directory";
-    private static RSASSASigner ssaSigner;
 
-    @BeforeAll
-    static void setUpClass() throws NoSuchAlgorithmException {
-        ssaSigner = CryptoUtils.createRSASSASigner();
-    }
 
     @BeforeEach
     void setUp() {
-        ssaSigValidator = new SoftwareStatementAssertionSignatureValidatorService(trustedDirectoryService, jwkSetService,
-                jwtSignatureValidator, dcrUtils);
+        ssaSigValidator = new SoftwareStatementAssertionSignatureValidatorService(jwkSetService,
+                jwtSignatureValidator);
     }
 
     @AfterEach
     void tearDown() {
-        reset(trustedDirectoryService, ssaIssuingTrustedDirectory, jwkSetService, jwtSignatureValidator);
-    }
-
-    @Test
-    void failIfNotValidIssuer_validateSoftwareStatementAssertionSignature() {
-        // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of(), JWSAlgorithm.PS256, ssaSigner);
-
-        // When
-        Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
-
-        // Then
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow,
-                DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_SOFTWARE_STATEMENT);
-    }
-
-    @Test
-    void failIfNoTrustedDirectoryForIssuer_validateSoftwareStatementAssertionSignature() {
-        // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
-                JWSAlgorithm.PS256, ssaSigner);
-
-        // When
-        when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER)).thenReturn(null);
-        Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
-
-        // Then
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow,
-                DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAPPROVED_SOFTWARE_STATEMENT);
-    }
-
-    @Test
-    void failIfBadlyConfiguredTrustedDirectoryNoDirectoryJwks_validateSoftwareStatementAssertionSignature() {
-        // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
-                JWSAlgorithm.PS256, ssaSigner);
-
-        // When
-        when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
-                .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(null);
-        Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
-
-        // Then
-        DCRSignatureValidationRuntimeException exception = catchThrowableOfType(promise::getOrThrow,
-                DCRSignatureValidationRuntimeException.class);
-        assertThat(exception.getMessage()).contains("directoryJwksUri");
-    }
-
-    @Test
-    void failIfJwkSetServiceCantGetJwkSet_validateSoftwareStatementAssertionSignature() throws MalformedURLException {
-        // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
-                JWSAlgorithm.PS256, ssaSigner);
-        final String JWK_SET_URL_STR = "https://jwkset.com";
-        final URL JWK_SET_URL = new URL(JWK_SET_URL_STR);
-
-        // When
-        when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
-                .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL);
-        when(jwkSetService.getJwkSet(JWK_SET_URL)).thenReturn(
-                Promises.newExceptionPromise(new FailedToLoadJWKException("No jwkset")));
-        Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
-
-        // Then
-        DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow,
-                DCRSignatureValidationException.class);
-        assertThat(exception.getMessage()).contains(JWK_SET_URL_STR);
+        reset(jwkSetService, jwtSignatureValidator, softwareStatement);
     }
 
     @Test
     void failIfSignatureInvalid_validateSoftwareStatementAssertionSignature() throws Exception {
         // Given
-        SignedJwt ssaSignedJwt = DCRTestHelpers.createSignedJwt(Map.of("iss", SSA_ISSUER),
-                JWSAlgorithm.PS256, ssaSigner);
+        SignedJwt ssaSignedJwt = CryptoUtils.createSignedJwt(Map.of("iss", SSA_ISSUER),
+                JWSAlgorithm.PS256);
         final String JWK_SET_URL_STR = "https://jwkset.com";
         final URL JWK_SET_URL = new URL(JWK_SET_URL_STR);
         final JWKSet JWKS_SET = new JWKSet();
+
+
         // When
-        when(trustedDirectoryService.getTrustedDirectoryConfiguration(SSA_ISSUER))
-                .thenReturn(ssaIssuingTrustedDirectory);
-        when(ssaIssuingTrustedDirectory.getDirectoryJwksUri()).thenReturn(JWK_SET_URL);
+        when(softwareStatement.getTrustedDirectoryJwksUrl()).thenReturn(JWK_SET_URL);
+        when(softwareStatement.getSignedJwt()).thenReturn(ssaSignedJwt);
+        when(softwareStatement.getJwksSet()).thenReturn(JWKS_SET);
         when(jwkSetService.getJwkSet(JWK_SET_URL)).thenReturn(
                 Promises.newResultPromise(JWKS_SET));
         doThrow(new SignatureException("Invalid sig")).when(jwtSignatureValidator)
                 .validateSignature(ssaSignedJwt, JWKS_SET);
 
         Promise<Response, DCRSignatureValidationException> promise =
-                ssaSigValidator.validateSoftwareStatementAssertionSignature(TX_ID, ssaSignedJwt);
+                ssaSigValidator.validateJwtSignature(TX_ID, softwareStatement);
 
         // Then
         DCRSignatureValidationException exception = catchThrowableOfType(promise::getOrThrow,
                 DCRSignatureValidationException.class);
         assertThat(exception.getMessage()).contains("Failed to validate SSA");
+    }
+
+    @Test
+    void success_validateSoftwareStatementAssertionSignature()
+            throws MalformedURLException, InterruptedException, DCRSignatureValidationException {
+        // Given
+        SignedJwt ssaSignedJwt = CryptoUtils.createSignedJwt(Map.of("iss", SSA_ISSUER),
+                JWSAlgorithm.PS256);
+        final String JWK_SET_URL_STR = "https://jwkset.com";
+        final URL JWK_SET_URL = new URL(JWK_SET_URL_STR);
+        final JWKSet JWKS_SET = new JWKSet();
+
+        // When
+        when(softwareStatement.getTrustedDirectoryJwksUrl()).thenReturn(JWK_SET_URL);
+        when(softwareStatement.getSignedJwt()).thenReturn(ssaSignedJwt);
+        when(jwkSetService.getJwkSet(JWK_SET_URL)).thenReturn(
+                Promises.newResultPromise(JWKS_SET));
+
+        Promise<Response, DCRSignatureValidationException> promise =
+                ssaSigValidator.validateJwtSignature(TX_ID, softwareStatement);
+
+        // Then
+        Response response = promise.getOrThrow();
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(Status.OK);
     }
 }

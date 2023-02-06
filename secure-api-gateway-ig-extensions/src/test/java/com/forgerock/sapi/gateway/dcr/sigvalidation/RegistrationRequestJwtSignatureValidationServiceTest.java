@@ -23,190 +23,128 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.security.NoSuchAlgorithmException;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.common.JwtReconstruction;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
-import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
-import com.forgerock.sapi.gateway.util.CryptoUtils;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.crypto.RSASSASigner;
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 
 class RegistrationRequestJwtSignatureValidationServiceTest {
 
-    private final TrustedDirectoryService trustedDirectoryService = mock(TrustedDirectoryService.class);
-    private final DCRUtils dcrUtils = mock(DCRUtils.class);
     private final RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator =
             mock(RegistrationRequestJwtSignatureValidatorJwks.class);
     private final RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator =
             mock(RegistrationRequestJwtSignatureValidatorJwksUri.class);
 
-    private final TrustedDirectory issuingDirectory = mock(TrustedDirectory.class);
-
     private final String X_FAPI_INTERACTION_ID = "34324-3432432-3432432";
-
-    private static RSASSASigner ssaSigner;
-
+    private final RegistrationRequest registrationRequest = mock(RegistrationRequest.class);
+    private final SoftwareStatement softwareStatement = mock(SoftwareStatement.class);
     private RegistrationRequestJwtSignatureValidationService registrationRequestJwtSignatureValidator;
-
-    @BeforeAll
-    static void setUpClass() throws NoSuchAlgorithmException {
-        ssaSigner = CryptoUtils.createRSASSASigner();
-    }
 
     @BeforeEach
     void setUp() {
         registrationRequestJwtSignatureValidator = new RegistrationRequestJwtSignatureValidationService(
-                trustedDirectoryService,
-                dcrUtils,
                 jwksSignatureValidator,
                 jwksUriSignatureValidator);
+        when(registrationRequest.getSoftwareStatement()).thenReturn(softwareStatement);
     }
 
     @AfterEach
     void tearDown() {
-        reset(jwksSignatureValidator, jwksUriSignatureValidator, trustedDirectoryService, issuingDirectory, dcrUtils);
+        reset(jwksSignatureValidator, jwksUriSignatureValidator, registrationRequest, softwareStatement);
     }
 
     @Test
-    void success_validateRegistrationRequestJwtSignatureWithJwksUri() throws ExecutionException, InterruptedException, DCRSignatureValidationException {
+    void success_validateRegistrationRequestJwtSignatureWithJwksUri() throws ExecutionException, InterruptedException {
         // Given
-        String SSA_ISSUER = "anIssuer";
-        Map<String, Object> ssaClaimsMap = Map.of("iss", SSA_ISSUER);
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(issuingDirectory.softwareStatementHoldsJwksUri()).thenReturn(true);
-        when(issuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("claim_name");
-        when(dcrUtils.getJwtIssuer("software statement assertion", ssaClaimsSet)).thenReturn(SSA_ISSUER);
-        when(dcrUtils.getIssuingDirectory(trustedDirectoryService, SSA_ISSUER)).thenReturn(issuingDirectory);
-        when(jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(anyString(), eq(issuingDirectory),
-                eq(ssaClaimsSet), eq(registrationRequestJwt))).thenReturn(Promises.newResultPromise(new Response(Status.OK)));
+        when(softwareStatement.hasJwksUri()).thenReturn(true);
+        when(jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(anyString(),
+                eq(registrationRequest))).thenReturn(Promises.newResultPromise(new Response(Status.OK)));
 
         // When
         Promise<Response, DCRSignatureValidationException> validationResponsePromise =
-                registrationRequestJwtSignatureValidator.validateRegistrationRequestJwtSignature(X_FAPI_INTERACTION_ID,
-                ssaClaimsSet, registrationRequestJwt);
+                registrationRequestJwtSignatureValidator.validateJwtSignature(X_FAPI_INTERACTION_ID,
+                registrationRequest);
 
         // Then
         Response validationResponse = validationResponsePromise.get();
         assertThat(validationResponse.getStatus()).isEqualTo(Status.OK);
-        verify(jwksSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any(), any(), any());
+        verify(jwksUriSignatureValidator, times(1)).validateRegistrationRequestJwtSignature(any(), any());
+        verify(jwksSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any());
     }
 
     @Test
-    void validateFails_JwksUri() throws InterruptedException, DCRSignatureValidationException {
+    void validateFails_JwksUri(){
         // Given
-        String SSA_ISSUER = "anIssuer";
-        Map<String, Object> ssaClaimsMap = Map.of("iss", SSA_ISSUER);
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(issuingDirectory.softwareStatementHoldsJwksUri()).thenReturn(true);
-        when(issuingDirectory.getSoftwareStatementJwksClaimName()).thenReturn("claim_name");
-        when(dcrUtils.getJwtIssuer("software statement assertion", ssaClaimsSet)).thenReturn(SSA_ISSUER);
-        when(dcrUtils.getIssuingDirectory(trustedDirectoryService, SSA_ISSUER)).thenReturn(issuingDirectory);
-        when(jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(anyString(), eq(issuingDirectory),
-                eq(ssaClaimsSet), eq(registrationRequestJwt))).thenReturn(Promises.newExceptionPromise(
-                        new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid sig")));
+        when(softwareStatement.hasJwksUri()).thenReturn(true);
+        when(jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(anyString(),
+                eq(registrationRequest))).thenReturn(Promises.newExceptionPromise(
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid sig")));
 
         // When
         Promise<Response, DCRSignatureValidationException> validationResponsePromise =
-                registrationRequestJwtSignatureValidator.validateRegistrationRequestJwtSignature(X_FAPI_INTERACTION_ID,
-                        ssaClaimsSet, registrationRequestJwt);
+                registrationRequestJwtSignatureValidator.validateJwtSignature(X_FAPI_INTERACTION_ID,
+                        registrationRequest);
 
         // Then
         DCRSignatureValidationException exception = catchThrowableOfType(validationResponsePromise::getOrThrow,
                 DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_SOFTWARE_STATEMENT);
-        verify(jwksSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any(), any(), any());
+        assertThat(exception.getErrorCode()).isEqualTo(DCRErrorCode.INVALID_SOFTWARE_STATEMENT);
+        verify(jwksSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any());
     }
 
 
     @Test
-    void success_validateRegistrationRequestJwtSignatureWithJwks() throws ExecutionException, InterruptedException, DCRSignatureValidationException {
+    void success_validateRegistrationRequestJwtSignatureWithJwks() throws ExecutionException, InterruptedException {
         // Given
-        String SSA_ISSUER = "anIssuer";
-        Map<String, Object> ssaClaimsMap = Map.of("iss", SSA_ISSUER);
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
+        when(jwksSignatureValidator.validateRegistrationRequestJwtSignature(anyString(),
+                eq(registrationRequest))).thenReturn(Promises.newResultPromise(new Response(Status.OK)));
 
-        when(issuingDirectory.softwareStatementHoldsJwksUri()).thenReturn(false);
-        when(dcrUtils.getJwtIssuer("software statement assertion", ssaClaimsSet)).thenReturn(SSA_ISSUER);
-        when(dcrUtils.getIssuingDirectory(trustedDirectoryService, SSA_ISSUER)).thenReturn(issuingDirectory);
-        when(jwksSignatureValidator.validateRegistrationRequestJwtSignature(anyString(), eq(issuingDirectory),
-                eq(ssaClaimsSet), eq(registrationRequestJwt))).thenReturn(Promises.newResultPromise(new Response(Status.OK)));
+        when(softwareStatement.hasJwksUri()).thenReturn(false);
 
         // When
         Promise<Response, DCRSignatureValidationException> validationResponsePromise =
-                registrationRequestJwtSignatureValidator.validateRegistrationRequestJwtSignature(X_FAPI_INTERACTION_ID,
-                        ssaClaimsSet, registrationRequestJwt);
+                registrationRequestJwtSignatureValidator.validateJwtSignature(X_FAPI_INTERACTION_ID,
+                        registrationRequest);
 
         // Then
         Response validationResponse = validationResponsePromise.get();
         assertThat(validationResponse.getStatus()).isEqualTo(Status.OK);
-        verify(jwksUriSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any(), any(), any());
+        verify(jwksSignatureValidator, times(1)).validateRegistrationRequestJwtSignature(any(), any());
+        verify(jwksUriSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any());
     }
 
     @Test
-    void validateFails_Jwks() throws ExecutionException, InterruptedException, DCRSignatureValidationException {
+    void validateFails_Jwks() {
         // Given
-        String SSA_ISSUER = "anIssuer";
-        Map<String, Object> ssaClaimsMap = Map.of("iss", SSA_ISSUER);
-        String ssaJwtString = CryptoUtils.createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256, ssaSigner);
-        Map<String, Object> registrationRequestClaimsMap = Map.of("software_statement", ssaJwtString);
-        SignedJwt registrationRequestJwt = DCRTestHelpers.createSignedJwt(registrationRequestClaimsMap,
-                JWSAlgorithm.PS256, ssaSigner);
-        SignedJwt ssaJWt = new JwtReconstruction().reconstructJwt(ssaJwtString, SignedJwt.class);
-        JwtClaimsSet ssaClaimsSet = ssaJWt.getClaimsSet();
-
-        when(issuingDirectory.softwareStatementHoldsJwksUri()).thenReturn(false);
-        when(dcrUtils.getJwtIssuer("software statement assertion", ssaClaimsSet)).thenReturn(SSA_ISSUER);
-        when(dcrUtils.getIssuingDirectory(trustedDirectoryService, SSA_ISSUER)).thenReturn(issuingDirectory);
-        when(jwksSignatureValidator.validateRegistrationRequestJwtSignature(anyString(), eq(issuingDirectory),
-                eq(ssaClaimsSet), eq(registrationRequestJwt))).thenReturn(Promises.newExceptionPromise(
-                new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid sig")));
+        when(softwareStatement.hasJwksUri()).thenReturn(false);
+        when(jwksSignatureValidator.validateRegistrationRequestJwtSignature(anyString(),
+                eq(registrationRequest))).thenReturn(Promises.newExceptionPromise(
+                new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid sig")));
 
         // When
         Promise<Response, DCRSignatureValidationException> validationResponsePromise =
-                registrationRequestJwtSignatureValidator.validateRegistrationRequestJwtSignature(X_FAPI_INTERACTION_ID,
-                        ssaClaimsSet, registrationRequestJwt);
+                registrationRequestJwtSignatureValidator.validateJwtSignature(X_FAPI_INTERACTION_ID,
+                        registrationRequest);
 
         // Then
         DCRSignatureValidationException exception = catchThrowableOfType(validationResponsePromise::getOrThrow,
                 DCRSignatureValidationException.class);
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_SOFTWARE_STATEMENT);
-        verify(jwksUriSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any(), any(), any());
+        assertThat(exception.getErrorCode()).isEqualTo(DCRErrorCode.INVALID_SOFTWARE_STATEMENT);
+        verify(jwksSignatureValidator, times(1)).validateRegistrationRequestJwtSignature(any(), any());
+        verify(jwksUriSignatureValidator, never()).validateRegistrationRequestJwtSignature(any(), any());
     }
 
 }

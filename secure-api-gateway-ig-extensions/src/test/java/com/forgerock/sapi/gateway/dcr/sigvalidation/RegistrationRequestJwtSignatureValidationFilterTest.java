@@ -26,15 +26,12 @@ import static org.mockito.Mockito.when;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
@@ -43,6 +40,8 @@ import org.forgerock.http.protocol.Status;
 import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jws.SignedJwt;
+import org.forgerock.services.context.AttributesContext;
+import org.forgerock.services.context.RootContext;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
@@ -51,10 +50,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRSignatureValidationException.ErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRUtils;
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestFactory;
+import com.forgerock.sapi.gateway.dcr.sigvalidation.RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
-import com.forgerock.sapi.gateway.jws.JwtDecoder;
+import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -62,14 +63,14 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import com.forgerock.sapi.gateway.dcr.sigvalidation.RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier;
-
 class RegistrationRequestJwtSignatureValidationFilterTest {
 
 
     private static final String ERROR_DESCRIPTION = "Error Description";
     private Request request;
     private Handler handler = mock(Handler.class);
+
+    private AttributesContext context;
     private static RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier;
     private static RSASSASigner RSA_SIGNER;
     final private static String DIRECTORY_JWKS_URI = "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks";
@@ -82,41 +83,27 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
 
     @BeforeAll
     public static void beforeAll() throws NoSuchAlgorithmException {
-        RSA_SIGNER = createRSASSASigner();
+        RSA_SIGNER = CryptoUtils.createRSASSASigner();
     }
 
-    /**
-     * JWT signer which uses generated test RSA private key
-     */
-    private static RSASSASigner createRSASSASigner() throws NoSuchAlgorithmException {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048);
-        KeyPair pair = generator.generateKeyPair();
-        return new RSASSASigner(pair.getPrivate());
-    }
 
     @BeforeEach
     void setUp() throws MalformedURLException {
-        registrationObjectSupplier = mock(RegistrationRequestObjectFromJwtSupplier.class);
         handler = mock(Handler.class);
         Map<URL, JWKSet> jwkSetByUrl = new HashMap();
         jwkSetByUrl.put(new URL(DIRECTORY_JWKS_URI), createJwkSet());
         jwkSetByUrl.put(new URL(SOFTWARE_STATEMENT_JWKS_URI), createJwkSet());
         this.request = new Request().setMethod("POST");
-        DCRUtils dcrUtils = new DCRUtils();
-        JwtDecoder jwtDecoder = new JwtDecoder();
         filter = new RegistrationRequestJwtSignatureValidationFilter(
-                registrationObjectSupplier,
-                List.of("PS256"),
-                dcrUtils,
-                jwtDecoder,
                 softwareStatementAssertionSignatureValidatorService,
                 dcrRegistrationRequestSignatureValidator);
+        context = new AttributesContext(new RootContext());
     }
 
     @AfterEach
     void tearDown() {
-        reset(handler,  registrationObjectSupplier, dcrRegistrationRequestSignatureValidator, softwareStatementAssertionSignatureValidatorService);
+        reset(handler, dcrRegistrationRequestSignatureValidator,
+                softwareStatementAssertionSignatureValidatorService);
     }
 
       private JWKSet createJwkSet() {
@@ -150,178 +137,80 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
     @Test
     void filter_successSoftwareStatementWithJwskUri() throws Exception {
         // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        RegistrationRequest registrationRequest = RegistrationRequestFactory.getRegRequestWithJwksUriSoftwareStatement();
+        context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-
-        when(softwareStatementAssertionSignatureValidatorService.validateSoftwareStatementAssertionSignature(any(), any()))
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
-        when(dcrRegistrationRequestSignatureValidator.validateRegistrationRequestJwtSignature(any(), any(), any()))
+        when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
 
         // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, handler);
         Response response = responsePromise.get();
 
         // Then
         assert(response.getStatus()).isSuccessful();
-        verify(handler, times(1)).handle(null, request);
+        verify(handler, times(1)).handle(context, request);
     }
 
     @Test
-    void filter_ResultContainsInvalidClientMetadataWhenNoRequestObject() throws Exception {
+    void filter_ResultContainsInvalidClientMetadataWhenNoContextAttribute() throws Exception {
         // Given
-        RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier mockRegistrationObjectSupplier
-                = mock(RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier.class);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(null);
-        DCRUtils dcrUtils = new DCRUtils();
-        JwtDecoder jwtDecoder = new JwtDecoder();
-        filter = new RegistrationRequestJwtSignatureValidationFilter(
-                mockRegistrationObjectSupplier, List.of("PS256"), dcrUtils, jwtDecoder,
-                softwareStatementAssertionSignatureValidatorService, dcrRegistrationRequestSignatureValidator);
-
-        // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
-        Response response = responsePromise.get();
-
-        // Then
-        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        assertThat(response.getEntity().getString()).contains("must contain a signed request jwt");
-        verify(handler, never()).handle(null, request);
-    }
-
-    @Test
-    void filter_ResultContainsInvalidClientMetadataWhenEmptyRegistrationRequest() throws Exception {
-        // Given
-        Map<String, Object> registrationRequestJwtClaims = Map.of();
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
-        Response response = responsePromise.get(1, TimeUnit.SECONDS);
-
-        // Then
-        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        Map<String, String> responseBody = (Map)response.getEntity().getJson();
-        assertThat(responseBody.get("error_code")).isEqualTo(
-                DCRSignatureValidationException.ErrorCode.INVALID_CLIENT_METADATA.toString());
-        assertThat(responseBody.get("error_description")).contains("registration request jwt must contain 'software_statement' claim");
-    }
-
-    @Test
-    void filter_ResultContainsInvalidClientMetadataWhenInvalidSSAInRegistrationRequest() throws Exception {
-        // Given
-        String invalidEncodedSsaJwtString = "324FA.324BC.AAAAAA";
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", invalidEncodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
-        Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
-        when(handler.handle(any(), any())).thenReturn(resultPromise);
-        // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
-        Response response = responsePromise.get(1, TimeUnit.SECONDS);
-
-        // Then
-        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        Map<String, String> responseBody = (Map)response.getEntity().getJson();
-        assertThat(responseBody.get("error_code")).isEqualTo(
-                DCRSignatureValidationException.ErrorCode.INVALID_CLIENT_METADATA.toString());
-        assertThat(responseBody.get("error_description")).contains("Badly formed b64 encoded software statement");
-    }
-
-    @Test
-    void filter_ResultContainsInvalidClientMetadataWhenInvalidSigningAlgorithmInRegistrationRequest() throws Exception {
-        // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.RS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
-        Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
-        when(handler.handle(any(), any())).thenReturn(resultPromise);
-        // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
-        Response response = responsePromise.get(1, TimeUnit.SECONDS);
-
-        // Then
-        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        Map<String, String> responseBody = (Map)response.getEntity().getJson();
-        assertThat(responseBody.get("error_code")).isEqualTo(
-                DCRSignatureValidationException.ErrorCode.INVALID_CLIENT_METADATA.toString());
-        assertThat(responseBody.get("error_description")).contains("DCR request JWT must be signed with one of");
-    }
-
-    @Test
-    void filter_ResponseIsInvalidClientMetadataWhenNoSoftwareStatement() throws Exception {
-        // Given
-        SignedJwt signedJwt = createSignedJwt(Map.of(), JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+                .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
+        when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
+                .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
 
         // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
-        Response response = responsePromise.get(1, TimeUnit.SECONDS);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, handler);
+        Response response = responsePromise.getOrThrow();
 
         // Then
-        assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        Map<String, String> responseBody = (Map)response.getEntity().getJson();
-        assertThat(responseBody.get("error_code")).isEqualTo(
-                ErrorCode.INVALID_CLIENT_METADATA.toString());
-        assertThat(responseBody.get("error_description")).contains("registration request jwt must contain " +
-                "'software_statement' claim");
+        assertThat(response.getStatus()).isEqualTo(Status.INTERNAL_SERVER_ERROR);
+        verify(handler, never()).handle(context, request);
     }
 
     @Test
     void filter_ResponseIsInvalidSoftwareStatementWhenSignatureIsInvalid() throws Exception{
         // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        RegistrationRequest registrationRequest = RegistrationRequestFactory.getRegRequestWithJwksUriSoftwareStatement();
+        context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        final String ERROR_DESCRIPTION = "description";
-        when(softwareStatementAssertionSignatureValidatorService.validateSoftwareStatementAssertionSignature(any(), any()))
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newExceptionPromise(
-                        new DCRSignatureValidationException(ErrorCode.INVALID_SOFTWARE_STATEMENT, ERROR_DESCRIPTION)));
-
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid jwt signature")));
+        when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
+                .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
 
         // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, handler);
         Response response = responsePromise.get();
 
         // Then
+        assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(Status.BAD_REQUEST);
-        assertThat(response.getEntity().getString()).contains(ERROR_DESCRIPTION);
-        verify(handler, never()).handle(null, request);
+        assertThat(response.getEntity().getString()).contains(DCRErrorCode.INVALID_SOFTWARE_STATEMENT.getCode());
+        verify(handler, never()).handle(context, request);
     }
 
     @Test
     void filter_ResponseIsInvalidSoftwareStatementWhenRTEValidatingSSA() throws Exception{
         // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        RegistrationRequest registrationRequest = RegistrationRequestFactory.getRegRequestWithJwksUriSoftwareStatement();
+        context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        final String ERROR_DESCRIPTION = "description";
-        when(softwareStatementAssertionSignatureValidatorService.validateSoftwareStatementAssertionSignature(any(), any()))
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newRuntimeExceptionPromise(
-                    new DCRSignatureValidationRuntimeException("Badly configured TrustedDirectory")));
+                    new DCRSignatureValidationRuntimeException("Runtime exception validating SSA")));
 
         // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, handler);
         Response response = responsePromise.get();
 
         // Then
@@ -332,23 +221,18 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
     @Test
     void filter_ResponseIsInvalidClientMetadataWhenRegRequestSigInvalid() throws Exception {
         // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        RegistrationRequest registrationRequest = RegistrationRequestFactory.getRegRequestWithJwksUriSoftwareStatement();
+        context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-
-        when(softwareStatementAssertionSignatureValidatorService.validateSoftwareStatementAssertionSignature(any(), any()))
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
-        when(dcrRegistrationRequestSignatureValidator.validateRegistrationRequestJwtSignature(any(), any(), any()))
+        when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newExceptionPromise(
-                        new DCRSignatureValidationException(ErrorCode.INVALID_CLIENT_METADATA, ERROR_DESCRIPTION)));
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, ERROR_DESCRIPTION)));
 
         // When
-        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(null, request, handler);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, handler);
         Response response = responsePromise.get();
 
         // Then
@@ -360,18 +244,13 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
     @Test
     void filter_ResponseIsInvalidClientMetadataWhenRTEValidatingRegRequestSig() throws Exception {
         // Given
-        Map<String, Object> ssaClaimsMap = Map.of();
-        String encodedSsaJwtString = createEncodedJwtString(ssaClaimsMap, JWSAlgorithm.PS256);
-
-        Map<String, Object> registrationRequestJwtClaims = Map.of("software_statement", encodedSsaJwtString);
-        SignedJwt signedJwt = createSignedJwt(registrationRequestJwtClaims, JWSAlgorithm.PS256);
-        when(registrationObjectSupplier.apply(any(), any())).thenReturn(signedJwt);
+        RegistrationRequest registrationRequest = RegistrationRequestFactory.getRegRequestWithJwksUriSoftwareStatement();
+        context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-
-        when(softwareStatementAssertionSignatureValidatorService.validateSoftwareStatementAssertionSignature(any(), any()))
+        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
-        when(dcrRegistrationRequestSignatureValidator.validateRegistrationRequestJwtSignature(any(), any(), any()))
+        when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newRuntimeExceptionPromise(
                         new DCRSignatureValidationRuntimeException(ERROR_DESCRIPTION)));
 

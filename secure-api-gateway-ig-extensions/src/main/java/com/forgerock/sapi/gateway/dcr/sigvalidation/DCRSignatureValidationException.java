@@ -17,39 +17,24 @@ package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import org.forgerock.util.Reject;
 
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+
 final public class DCRSignatureValidationException extends Exception{
 
-    public enum ErrorCode {
-        INVALID_REDIRECT_URI("invalid_redirect_uri"),
-        INVALID_CLIENT_METADATA("invalid_client_metadata"),
-        INVALID_SOFTWARE_STATEMENT("invalid_software_statement"),
-        UNAPPROVED_SOFTWARE_STATEMENT("unapproved_software_statement");
-
-        private final String code;
-
-        ErrorCode(String code) {
-            this.code = code;
-        }
-
-        public String getCode() {
-            return code;
-        }
-    }
-
-    private final ErrorCode errorCode;
+    private final DCRErrorCode errorCode;
     private final String errorDescription;
 
-    public DCRSignatureValidationException(ErrorCode errorCode, String errorMessage) {
+    public DCRSignatureValidationException(DCRErrorCode errorCode, String errorMessage) {
         this(errorCode, errorMessage, null);
     }
 
-    public DCRSignatureValidationException(ErrorCode errorCode, String errorMessage, Throwable cause) {
-        super((errorCode != null ? errorCode.code : "") + " " + errorMessage, cause);
+    public DCRSignatureValidationException(DCRErrorCode errorCode, String errorMessage, Throwable cause) {
+        super((errorCode != null ? errorCode.getCode() : "") + " " + errorMessage, cause);
         this.errorCode = Reject.checkNotNull(errorCode, "errorCode must be supplied");
         this.errorDescription = Reject.checkNotBlank(errorMessage, "errorMessage must be supplied");
     }
 
-    public ErrorCode getErrorCode() {
+    public DCRErrorCode getErrorCode() {
         return errorCode;
     }
 

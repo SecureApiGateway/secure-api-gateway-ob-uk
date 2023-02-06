@@ -41,6 +41,12 @@ public class ClaimsSetFacade {
         this.claimsSet = claimsSet;
     }
 
+    /**
+     * Get a String type claim from the JWT
+     * @param claimName the name of the claim
+     * @return a valid (i.e. not null or empty) {@code String} containing the value associated with the claim
+     * @throws JwtException if either the claim does not exist or it's value is either empty or not a String value
+     */
     public String getStringClaim(String claimName) throws JwtException {
         checkClaimName(claimName);
         try {
@@ -53,6 +59,7 @@ public class ClaimsSetFacade {
             throw new JwtException("Jwt must contain String claim '" + claimName + "'");
         }
     }
+
 
     public URL getStringClaimAsURL(String claimName) throws JwtException {
         checkClaimName(claimName);

@@ -21,42 +21,32 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
 import org.forgerock.json.jose.jws.SignedJwt;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.common.jwt.ClaimsSetFacade;
+import com.forgerock.sapi.gateway.common.jwt.JwtException;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
-import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRTestHelpers;
 import com.forgerock.sapi.gateway.dcr.utils.DCRRegistrationRequestBuilderException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
-import com.forgerock.sapi.gateway.jws.JwtReconstructionException;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.crypto.RSASSASigner;
 
 class RegistrationRequestBuilderTest {
 
-    private RegistrationRequestBuilder builder;
-    private final SoftwareStatementBuilder softwareStatementBuilder = mock(SoftwareStatementBuilder.class);
+    private RegistrationRequest.Builder builder;
+    private final SoftwareStatement.Builder softwareStatementBuilder = mock(SoftwareStatement.Builder.class);
     private final JwtDecoder jwtDecoder = mock(JwtDecoder.class);
     private final static String B64_ENCODED_REG_REQUEST_JWT = "header.payload.sig";
     private final static String TX_ID = "tx_id";
-    private static RSASSASigner ssaSigner;
 
-    @BeforeAll
-    static void setUpClass() throws NoSuchAlgorithmException {
-        ssaSigner = CryptoUtils.createRSASSASigner();
-    }
 
     @BeforeEach
     void setUp() {
-        builder = new RegistrationRequestBuilder(softwareStatementBuilder, jwtDecoder);
+        builder = new RegistrationRequest.Builder(softwareStatementBuilder, jwtDecoder);
     }
 
     @AfterEach
@@ -65,16 +55,16 @@ class RegistrationRequestBuilderTest {
     }
 
     @Test
-    void success_build() throws JwtReconstructionException, DCRRegistrationRequestBuilderException {
+    void success_build() throws JwtException, DCRRegistrationRequestBuilderException {
         // Given
         String softwareStatementb64EncodedString = "header.payload.sig";
-        Map<String, Object> claims = Map.of("software_statement", softwareStatementb64EncodedString);
-        SignedJwt regRequestSignedJwt = DCRTestHelpers.createSignedJwt(claims, JWSAlgorithm.PS256, ssaSigner);
+        Map<String, Object> claims = Map.of("iss", "Acme App", "software_statement", softwareStatementb64EncodedString);
+        SignedJwt regRequestSignedJwt = CryptoUtils.createSignedJwt(claims, JWSAlgorithm.PS256);
         // When
         when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenReturn(regRequestSignedJwt);
-        when(softwareStatementBuilder.buildSoftwareStatement(TX_ID, softwareStatementb64EncodedString)).thenReturn(
-                new SoftwareStatement(regRequestSignedJwt, new ClaimsSetFacade(regRequestSignedJwt.getClaimsSet()))
-        );
+        SoftwareStatement softwareStatement = mock(SoftwareStatement.class);
+        when(softwareStatementBuilder.build(TX_ID, softwareStatementb64EncodedString)).thenReturn(
+                softwareStatement);
         RegistrationRequest registrationReqeuest = builder.build(TX_ID, B64_ENCODED_REG_REQUEST_JWT);
 
         // Then
@@ -84,11 +74,12 @@ class RegistrationRequestBuilderTest {
     }
 
     @Test
-    void throwsExceptionWhenInvalidEncodedJwtString() throws JwtReconstructionException {
+    void throwsExceptionWhenInvalidEncodedJwtString() throws JwtException {
         // Given
 
         // When
-        when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenThrow(new JwtReconstructionException("invalid"));
+        when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenThrow(new JwtException("invalid jwt"));
+
         DCRRegistrationRequestBuilderException exception = catchThrowableOfType(
                 ()->builder.build(TX_ID, B64_ENCODED_REG_REQUEST_JWT), DCRRegistrationRequestBuilderException.class);
 
@@ -98,10 +89,27 @@ class RegistrationRequestBuilderTest {
     }
 
     @Test
-    void throwsExceptionWhenNoSoftwareStatementClaimInRequestJwt() throws JwtReconstructionException {
+    void throwsExceptionWhenNoIssuerClaimInRequestJwt() throws JwtException {
         // Given
-        Map<String, Object> claims = Map.of();
-        SignedJwt regRequestSignedJwt = DCRTestHelpers.createSignedJwt(claims, JWSAlgorithm.PS256, ssaSigner);
+        String softwareStatementb64EncodedString = "header.payload.sig";
+        Map<String, Object> claims = Map.of("software_statement", softwareStatementb64EncodedString);
+        SignedJwt regRequestSignedJwt = CryptoUtils.createSignedJwt(claims, JWSAlgorithm.PS256);
+        // When
+        when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenReturn(regRequestSignedJwt);
+
+        DCRRegistrationRequestBuilderException exception = catchThrowableOfType(
+                ()->builder.build(TX_ID, B64_ENCODED_REG_REQUEST_JWT), DCRRegistrationRequestBuilderException.class);
+
+        // Then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(DCRErrorCode.INVALID_CLIENT_METADATA);
+    }
+
+    @Test
+    void throwsExceptionWhenNoSoftwareStatementClaimInRequestJwt() throws JwtException {
+        // Given
+        Map<String, Object> claims = Map.of("iss", "Acme App");
+        SignedJwt regRequestSignedJwt = CryptoUtils.createSignedJwt(claims, JWSAlgorithm.PS256);
         // When
         when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenReturn(regRequestSignedJwt);
         DCRRegistrationRequestBuilderException exception = catchThrowableOfType(
@@ -114,14 +122,14 @@ class RegistrationRequestBuilderTest {
 
     @Test
     void throwsExceptionWhenSoftwareStatementBuilderFails()
-            throws JwtReconstructionException, DCRRegistrationRequestBuilderException {
+            throws JwtException, DCRRegistrationRequestBuilderException {
         // Given
         String softwareStatementb64EncodedString = "header.payload.sig";
-        Map<String, Object> claims = Map.of("software_statement", softwareStatementb64EncodedString);
-        SignedJwt regRequestSignedJwt = DCRTestHelpers.createSignedJwt(claims, JWSAlgorithm.PS256, ssaSigner);
+        Map<String, Object> claims = Map.of("iss", "Acme App", "software_statement", softwareStatementb64EncodedString);
+        SignedJwt regRequestSignedJwt = CryptoUtils.createSignedJwt(claims, JWSAlgorithm.PS256);
         // When
         when(jwtDecoder.getSignedJwt(B64_ENCODED_REG_REQUEST_JWT)).thenReturn(regRequestSignedJwt);
-        when(softwareStatementBuilder.buildSoftwareStatement(TX_ID, softwareStatementb64EncodedString)).thenThrow(
+        when(softwareStatementBuilder.build(TX_ID, softwareStatementb64EncodedString)).thenThrow(
                 new DCRRegistrationRequestBuilderException(DCRErrorCode.INVALID_CLIENT_METADATA, "error"));
 
         DCRRegistrationRequestBuilderException exception = catchThrowableOfType(
