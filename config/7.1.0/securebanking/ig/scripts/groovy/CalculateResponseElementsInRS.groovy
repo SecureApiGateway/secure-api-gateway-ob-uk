@@ -5,6 +5,7 @@ SCRIPT_NAME = "[CalculateResponseElementsInRS] (" + fapiInteractionId + ") - "
 
 logger.debug(SCRIPT_NAME + "Running...")
 def method = request.method
+String X_FAPI_FINANCIAL_ID_HEADER = "x-fapi-financial-id"
 
 switch(method.toUpperCase()) {
 
@@ -22,8 +23,8 @@ switch(method.toUpperCase()) {
         RSRequest.setUri(requestURI)
         RSRequest.setMethod('POST')
         RSRequest.setEntity(request.entity.getJson())
-        if (request.headers.get("x-fapi-financial-id") == null) {
-            RSRequest.getHeaders().add("x-fapi-financial-id", java.util.UUID.randomUUID().toString());
+        if (request.headers.get(X_FAPI_FINANCIAL_ID_HEADER) == null) {
+            RSRequest.getHeaders().add(X_FAPI_FINANCIAL_ID_HEADER, UUID.randomUUID().toString());
         }
         logger.debug(SCRIPT_NAME + "Entity to be send to RS Calculate endpoint " + request.entity.getJson())
 
