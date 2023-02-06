@@ -38,11 +38,6 @@ public class RegistrationRequestFactory {
         }
     }
     public static RegistrationRequest getRegRequestWithJwksUriSoftwareStatement() {
-//        TrustedDirectoryService trustedDirectoryService = mock(TrustedDirectoryService.class);
-//        TrustedDirectory trustedDirectory = mock(TrustedDirectory.class);
-//        JwtDecoder jwtDecoder = new JwtDecoder();
-//        SoftwareStatement.Builder ssaBuilder = new SoftwareStatement.Builder(trustedDirectoryService, jwtDecoder);
-//        RegistrationRequest.Builder rrBuilder = new RegistrationRequest.Builder(ssaBuilder, jwtDecoder);
         Map<String, Object> ssaClaims = Map.of();
         SoftwareStatement softwareStatement = mock(SoftwareStatement.class);
         when(softwareStatement.hasJwksUri()).thenReturn(true);

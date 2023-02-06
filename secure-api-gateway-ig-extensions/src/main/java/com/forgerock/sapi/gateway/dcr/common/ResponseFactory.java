@@ -28,18 +28,19 @@ import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
 
 public class ResponseFactory {
-
     private final ContentTypeNegotiator contentTypeNegotiator;
     private final ContentTypeFormatterFactory contentTypeFormatterFactory;
 
-    public ResponseFactory(ContentTypeNegotiator contentTypeNegotiator, ContentTypeFormatterFactory contentTypeFormatterFactory){
+    public ResponseFactory(ContentTypeNegotiator contentTypeNegotiator,
+            ContentTypeFormatterFactory contentTypeFormatterFactory) {
         Reject.ifNull(contentTypeNegotiator, "contentTypeNegotiator must not be null");
         Reject.ifNull(contentTypeFormatterFactory, "contentTypeFormatter must not be null");
         this.contentTypeNegotiator = contentTypeNegotiator;
         this.contentTypeFormatterFactory = contentTypeFormatterFactory;
     }
-    
-    public Response getResponse(String txId, List<String> acceptValues, Status status,  Map<String, String> errorFields){
+
+    public Response getResponse(String txId, List<String> acceptValues, Status status,
+            Map<String, String> errorFields) {
         String bestContentType = contentTypeNegotiator.getBestContentType(txId, acceptValues);
         ContentTypeFormatter formatter = this.contentTypeFormatterFactory.getFormatter(bestContentType);
         String entityBody = formatter.getFormattedResponse(errorFields);

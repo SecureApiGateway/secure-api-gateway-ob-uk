@@ -49,7 +49,8 @@ public class RegistrationRequestTest {
         requestBuilder = new RegistrationRequest.Builder(softwareStatementBuilder, jwtDecoder);
     }
 
-    public static RegistrationRequest getJwksUriBasedRegistrationrRequest() throws DCRRegistrationRequestBuilderException {
+    private static RegistrationRequest getJwksUriBasedRegistrationrRequest()
+            throws DCRRegistrationRequestBuilderException {
         Map<String, Object> ssaClaims = Map.of("iss", trustedDirectory.getIssuer(),
                 trustedDirectory.getSoftwareStatementJwksUriClaimName(), "https://jwks_uri.com",
                 trustedDirectory.getSoftwareStatementOrgIdClaimName(), "Acme Ltd",
@@ -62,7 +63,8 @@ public class RegistrationRequestTest {
 
     @BeforeEach
     void setup() {
-        when(directoryService.getTrustedDirectoryConfiguration(trustedDirectory.getIssuer())).thenReturn(trustedDirectory);
+        when(directoryService.getTrustedDirectoryConfiguration(trustedDirectory.getIssuer()))
+                .thenReturn(trustedDirectory);
     }
 
     @Test

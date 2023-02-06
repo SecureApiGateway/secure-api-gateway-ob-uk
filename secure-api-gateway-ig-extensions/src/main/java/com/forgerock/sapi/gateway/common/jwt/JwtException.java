@@ -20,9 +20,6 @@ package com.forgerock.sapi.gateway.common.jwt;
  */
 public class JwtException extends Exception {
 
-    public JwtException() {
-        super();
-    }
 
     public JwtException(String message) {
         super(message);
@@ -34,9 +31,5 @@ public class JwtException extends Exception {
 
     public JwtException(Throwable cause) {
         super(cause);
-    }
-
-    protected JwtException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
     }
 }
