@@ -21,6 +21,22 @@
           }
         },
         {
+          "name": "ConsentRequestJwtValidationFilter",
+          "type": "IdTokenValidationFilter",
+          "comment": "IdTokenValidationFilter is an extension of JwtValidationFilter which, in addition to signature validation, validates to the following claims: aud, iss, exp, iat",
+          "config": {
+            "idToken": "${request.queryParams.getFirst('consent_request')}",
+            "verificationSecretId": "any.value.in.regex.format",
+            "secretsProvider": "SecretsProvider-AmJWK",
+            "issuer": "https://&{ig.fqdn}/am/oauth2/realms/root/realms/&{am.realm}",
+            "audience": "&{rcs.consent.response.jwt.issuer}"
+          }
+        },
+        {
+          "name": "ConsentRequestAccessAuthorisationFilter",
+          "type": "ConsentRequestAccessAuthorisationFilter"
+        },
+        {
           "comment": "Adjust URL for downstream resource server",
           "type": "UriPathRewriteFilter",
           "config": {

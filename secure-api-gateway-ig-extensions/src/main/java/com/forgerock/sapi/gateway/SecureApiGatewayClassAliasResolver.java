@@ -20,9 +20,11 @@ import java.util.Map;
 
 import org.forgerock.openig.alias.ClassAliasResolver;
 
+import com.forgerock.sapi.gateway.consent.ConsentRequestAccessAuthorisationFilter;
 import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.dcr.request.RegistrationRequestEntityValidatorFilter;
 import com.forgerock.sapi.gateway.dcr.sigvalidation.RegistrationRequestJwtSignatureValidationFilter;
+import com.forgerock.sapi.gateway.dcr.FetchApiClientFilter;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter;
 import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
 import com.forgerock.sapi.gateway.jwks.RestJwkSetService;
@@ -49,6 +51,7 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("DefaultTransportCertValidator", DefaultTransportCertValidator.class);
         ALIASES.put("RegistrationRequestJwtSignatureValidationFilter", RegistrationRequestJwtSignatureValidationFilter.class);
         ALIASES.put("RegistrationRequestEntityValidatorFilter", RegistrationRequestEntityValidatorFilter.class);
+        ALIASES.put("ConsentRequestAccessAuthorisationFilter", ConsentRequestAccessAuthorisationFilter.class);
     }
 
     /**
