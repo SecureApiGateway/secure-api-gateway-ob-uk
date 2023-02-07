@@ -18,7 +18,8 @@
             "remove": [
               "host",
               "X-Forwarded-Host",
-              "origin"
+              "origin",
+              "referer"
             ],
             "add": {
               "X-Forwarded-Host": [
