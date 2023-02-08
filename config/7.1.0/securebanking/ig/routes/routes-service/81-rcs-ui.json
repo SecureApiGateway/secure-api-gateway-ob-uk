@@ -3,7 +3,7 @@
   "name": "81 - RCS UI Access",
   "auditService": "AuditService-OB-Route",
   "condition": "${matches(request.uri.path, '^/rcs/consent')}",
-  "baseURI": "http://securebanking-ui-rcs-ui:8080",
+  "baseURI": "http://&{rcs.ui.internal.svc}:8080",
   "capture": [
     "response",
     "request"
@@ -76,7 +76,7 @@
           }
         }
       ],
-      "handler": "SBATReverseProxyHandlerRs"
+      "handler": "RcsReverseProxyHandler"
     }
   }
 }
