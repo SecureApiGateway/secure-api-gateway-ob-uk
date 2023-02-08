@@ -15,13 +15,19 @@
  */
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
+import java.security.SignatureException;
+
 import org.forgerock.http.protocol.Response;
+import org.forgerock.http.protocol.Status;
 import org.forgerock.util.promise.Promise;
+import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
+import com.forgerock.sapi.gateway.jws.JwtSignatureValidator;
 
 /**
  * Class that provides validation of registration request JWTs. It handles both those that need to be validated
@@ -33,9 +39,9 @@ import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
  */
 public class RegistrationRequestJwtSignatureValidationService {
     private static final Logger log = LoggerFactory.getLogger(RegistrationRequestJwtSignatureValidationService.class);
-    private final RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator;
-    private final RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator;
-
+    private final JwksSupplierEmbeddedJwks jwksSignatureValidator;
+    private final JwksSupplierJwksUri jwksUriSignatureValidator;
+    private final JwtSignatureValidator jwtSignatureValidator;
 
     /**
      * Constructor
@@ -43,10 +49,12 @@ public class RegistrationRequestJwtSignatureValidationService {
      * @param jwksUriSignatureValidator the service used to validate a jwk against a jwks_uri
      */
     public RegistrationRequestJwtSignatureValidationService(
-            RegistrationRequestJwtSignatureValidatorJwks jwksSignatureValidator,
-            RegistrationRequestJwtSignatureValidatorJwksUri jwksUriSignatureValidator) {
+            JwksSupplierEmbeddedJwks jwksSignatureValidator,
+            JwksSupplierJwksUri jwksUriSignatureValidator,
+            JwtSignatureValidator jwtSignatureValidator) {
         this.jwksSignatureValidator = jwksSignatureValidator;
         this.jwksUriSignatureValidator = jwksUriSignatureValidator;
+        this.jwtSignatureValidator = jwtSignatureValidator;
     }
 
     /**
@@ -59,14 +67,30 @@ public class RegistrationRequestJwtSignatureValidationService {
     public Promise<Response, DCRSignatureValidationException> validateJwtSignature(
             String fapiInteractionId, RegistrationRequest registrationRequest) {
         SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement();
+
+        JwksSupplier supplier;
         if (softwareStatement.hasJwksUri()) {
             log.debug("({}) SSA contains JwksUri - using the JwksUri Validator", fapiInteractionId);
-            return jwksUriSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
-                    registrationRequest);
+            supplier = jwksUriSignatureValidator;
         } else {
             log.debug("({}) SSA contains an inline JWKS - using the Jwks Validator", fapiInteractionId);
-            return jwksSignatureValidator.validateRegistrationRequestJwtSignature(fapiInteractionId,
-                    registrationRequest);
+            supplier = jwksSignatureValidator;
         }
+
+        return supplier.getJWKSet(fapiInteractionId, registrationRequest).thenAsync((jwks)->{
+            try {
+                jwtSignatureValidator.validateSignature(registrationRequest.getSignedJwt(), jwks);
+                return Promises.newResultPromise(new Response(Status.OK));
+            } catch (SignatureException e) {
+                String errorDescription = "Registration Request signature is invalid";
+                log.info("({}) {}", fapiInteractionId, errorDescription, e);
+                return Promises.newExceptionPromise(
+                        new DCRSignatureValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, errorDescription));
+            }
+        }, failedToLoadJwksException -> {
+            String errorDescription = "Failed to get JWKSet from '" + softwareStatement.getJwksUri().toString() + "'";
+            return Promises.newExceptionPromise(
+                    new DCRSignatureValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, errorDescription));
+        });
     }
 }

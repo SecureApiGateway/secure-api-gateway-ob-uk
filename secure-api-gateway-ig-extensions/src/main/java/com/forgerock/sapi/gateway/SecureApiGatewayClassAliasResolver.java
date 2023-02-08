@@ -47,7 +47,7 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("FetchApiClientJwksFilter", FetchApiClientJwksFilter.class);
         ALIASES.put("TransportCertValidationFilter", TransportCertValidationFilter.class);
         ALIASES.put("DefaultTransportCertValidator", DefaultTransportCertValidator.class);
-        ALIASES.put("RequestAndSsaSignatureValidationFilter", RegistrationRequestJwtSignatureValidationFilter.class);
+        ALIASES.put("RegistrationRequestJwtSignatureValidationFilter", RegistrationRequestJwtSignatureValidationFilter.class);
         ALIASES.put("RegistrationRequestEntityValidatorFilter", RegistrationRequestEntityValidatorFilter.class);
     }
 

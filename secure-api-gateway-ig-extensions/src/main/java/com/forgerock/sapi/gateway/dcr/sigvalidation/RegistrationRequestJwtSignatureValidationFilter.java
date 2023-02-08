@@ -192,15 +192,13 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator
                     = new SoftwareStatementAssertionSignatureValidatorService(jwtSetService, jwtSignatureValidator);
 
-            final RegistrationRequestJwtSignatureValidatorJwks regRequestJwksValidator =
-                    new RegistrationRequestJwtSignatureValidatorJwks(jwtSignatureValidator);
+            final JwksSupplierEmbeddedJwks regRequestJwksValidator = new JwksSupplierEmbeddedJwks();
 
-            final RegistrationRequestJwtSignatureValidatorJwksUri regRequestJwksUriValidator =
-                    new RegistrationRequestJwtSignatureValidatorJwksUri(jwtSetService, jwtSignatureValidator);
+            final JwksSupplierJwksUri regRequestJwksUriValidator = new JwksSupplierJwksUri(jwtSetService);
 
             final RegistrationRequestJwtSignatureValidationService registrationRequestValidator =
                     new RegistrationRequestJwtSignatureValidationService(
-                            regRequestJwksValidator, regRequestJwksUriValidator);
+                            regRequestJwksValidator, regRequestJwksUriValidator, jwtSignatureValidator);
             final ContentTypeFormatterFactory contentTypeFormatterFactory = new ContentTypeFormatterFactory();
             final ContentTypeNegotiator contentTypeNegotiator =
                     new ContentTypeNegotiator(contentTypeFormatterFactory.getSupportedContentTypes());

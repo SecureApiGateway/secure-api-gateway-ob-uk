@@ -15,20 +15,20 @@
  */
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
-import org.forgerock.http.protocol.Response;
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
+import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.util.promise.Promise;
 
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 
-public interface RegistrationRequestJwtSignatureValidator {
-
+public interface JwksSupplier {
     /**
-     * Validate the registration request signature
+     * Privides a JWKSet that may be used to validate a JWT signature
      * @param transactionId used for logging
-     * @param registrationRequest the registration request jwt that is to be validated
-     * @return a promise that provides either a response with Status of OK, or a DCRSignatureValidationException
-     * containing details of why the validation of the registration request failed
+     * @param registrationRequest the registration request that requires validating
+     * @return a promise that provides either a JWKSet, or a FailedToLoadJWKException
+     * containing details of why the JWKSet could not be loaded
      */
-    Promise<Response, DCRSignatureValidationException> validateRegistrationRequestJwtSignature(String transactionId,
+    Promise<JWKSet, FailedToLoadJWKException> getJWKSet(String transactionId,
             RegistrationRequest registrationRequest);
 }

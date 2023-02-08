@@ -47,9 +47,9 @@
           }
         },
         {
-          "comment": "Validate the signature of the SSA and the request Jwt",
-          "name": "RequestAndSsaSignatureValidationFilter",
-          "type": "RequestAndSsaSignatureValidationFilter",
+          "comment": "Validate the signature of the request Jwt and it's embedded SSA",
+          "name": "RegistrationRequestJwtSignatureValidationFilter",
+          "type": "RegistrationRequestJwtSignatureValidationFilter",
           "config": {
             "clientHandler": "OBClientHandler",
             "jwkSetService": "OBJwkSetService",
