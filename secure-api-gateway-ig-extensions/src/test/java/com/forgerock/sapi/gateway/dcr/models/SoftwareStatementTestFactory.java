@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
-import com.forgerock.sapi.gateway.dcr.utils.DCRRegistrationRequestBuilderException;
+import com.forgerock.sapi.gateway.dcr.request.DCRRegistrationRequestBuilderException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.forgerock.sapi.gateway.util.CryptoUtils;

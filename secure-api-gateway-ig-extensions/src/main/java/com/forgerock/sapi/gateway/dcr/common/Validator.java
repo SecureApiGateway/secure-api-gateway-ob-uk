@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr;
+package com.forgerock.sapi.gateway.dcr.common;
+
+import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
 
 /**
  * Validator used to validate objects as part of Dynamic Client Registration.

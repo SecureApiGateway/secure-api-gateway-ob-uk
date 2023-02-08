@@ -21,10 +21,15 @@ import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.common.jwt.JwtException;
 import com.forgerock.sapi.gateway.common.jwt.SapiJwt;
+import com.forgerock.sapi.gateway.common.jwt.SapiJwtBuilder;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
-import com.forgerock.sapi.gateway.dcr.utils.DCRRegistrationRequestBuilderException;
+import com.forgerock.sapi.gateway.dcr.request.DCRRegistrationRequestBuilderException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
 
+/**
+ * The RegistrationRequest model that holds fields obtained from the b64 url encoded registration request jwt passed
+ * to the /register endpoint as a part of a Dynamic Client Registration Request
+ */
 public class RegistrationRequest extends SapiJwt {
 
     /**
@@ -32,26 +37,23 @@ public class RegistrationRequest extends SapiJwt {
      */
     public static final String REGISTRATION_REQUEST_KEY = "registrationRequest";
 
-    private static final Logger log = LoggerFactory.getLogger(RegistrationRequest.class);
     private final SoftwareStatement softwareStatement;
 
     public RegistrationRequest(Builder builder){
-        super(builder.issuer, builder.kid, builder.b64EncodedJwtString, builder.signedJwt, builder.claimsSet);
+        super(builder);
         this.softwareStatement = builder.softwareStatement;
     }
 
     /**
-     * Get the {@code SoftwareStatement} representation of the Software Statement Assertion that was provided in the
-     * registration request
-     * @return
+     * @return the {@code SoftwareStatement} representation of the Software Statement Assertion that was provided in the
+     *         registration request
      */
     public SoftwareStatement getSoftwareStatement() {
         return softwareStatement;
     }
 
-
     /**
-     * Class to build a {@code RegistrationRequest} from the b64 encoded registration request jwt string
+     * Class to build a {@code RegistrationRequest} from the b64 url encoded registration request jwt string.
      */
     public static class Builder extends SapiJwtBuilder {
 
@@ -61,8 +63,8 @@ public class RegistrationRequest extends SapiJwt {
 
         /**
          * Construct a {@code Builder)
-         * @param softwareStatementBuilder a builder used to construct a {@code SoftwareStatement} from the b64 encoded jwt
-         * string found in the 'software_statement' claim of the registration request as specified in
+         * @param softwareStatementBuilder a builder used to construct a {@code SoftwareStatement} from the b64 encoded
+         * jwt string found in the 'software_statement' claim of the registration request as specified in
          * <a href="https://datatracker.ietf.org/doc/html/rfc7591#section-3.1.1"> rfc7591, section 3.1.1</a>
          * @param jwtDecoder a class used to decode the b64 encoded 'short representation' of the registration request
          * into a SignedJwt representation
@@ -74,22 +76,23 @@ public class RegistrationRequest extends SapiJwt {
         }
 
         /**
-         * Build a {@code RegistrationRequest} from a the b64 encoded string representation of the regisration request jwt
-         * @param txId used for logging context and log tracing
+         * Build a {@code RegistrationRequest} from a the b64 encoded string representation of the registration request
+         * jwt
+         * @param transactionId used for logging context and log tracing
          * @param b64EncodedJwtString the b64 encoded jwt string from the registration request body
          * @return a {@code RegistrationRequest} object
-         * @throws DCRRegistrationRequestBuilderException when the {@code RegistrationRequest} can't be build because it is
-         * malformed in some way.
+         * @throws DCRRegistrationRequestBuilderException when the {@code RegistrationRequest} can't be build because
+         * the b64EncodedJwtString is malformed in some way or doesn't contain the expected claims
          */
-        public RegistrationRequest build(String txId, String b64EncodedJwtString)
+        public RegistrationRequest build(String transactionId, String b64EncodedJwtString)
                 throws DCRRegistrationRequestBuilderException {
             try {
                 super.buildBaseJwt(b64EncodedJwtString);
-                populateRegistrationRequest(txId);
+                populateRegistrationRequest(transactionId);
                 return new RegistrationRequest(this);
             } catch (JwtException e) {
                 String errorDescription = "Registration Request Jwt error: " + e.getMessage();
-                log.debug("({}) {}", txId, errorDescription);
+                log.debug("({}) {}", transactionId, errorDescription);
                 throw new DCRRegistrationRequestBuilderException(DCRErrorCode.INVALID_CLIENT_METADATA, errorDescription);
             }
         }

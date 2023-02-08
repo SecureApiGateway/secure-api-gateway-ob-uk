@@ -51,9 +51,9 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.ErrorResponseFactory;
-import com.forgerock.sapi.gateway.dcr.ValidationException;
-import com.forgerock.sapi.gateway.dcr.Validator;
+import com.forgerock.sapi.gateway.dcr.common.ErrorResponseFactory;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
+import com.forgerock.sapi.gateway.dcr.common.Validator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.mtls.CertificateFromHeaderSupplier;

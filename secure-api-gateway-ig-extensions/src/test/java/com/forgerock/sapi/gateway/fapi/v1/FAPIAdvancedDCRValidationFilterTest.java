@@ -58,8 +58,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.ValidationException;
-import com.forgerock.sapi.gateway.dcr.Validator;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
+import com.forgerock.sapi.gateway.dcr.common.Validator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter.Heaplet;
 import com.forgerock.sapi.gateway.util.TestHandlers.TestSuccessResponseHandler;

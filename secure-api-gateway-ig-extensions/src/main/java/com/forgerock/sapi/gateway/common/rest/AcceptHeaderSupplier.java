@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.common;
+package com.forgerock.sapi.gateway.common.rest;
 
 import java.util.List;
 import java.util.function.BiFunction;

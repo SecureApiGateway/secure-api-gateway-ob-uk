@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
 import com.forgerock.sapi.gateway.common.jwt.JwtException;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.dcr.sigvalidation.DCRTestHelpers;
-import com.forgerock.sapi.gateway.dcr.utils.DCRRegistrationRequestBuilderException;
+import com.forgerock.sapi.gateway.dcr.request.DCRRegistrationRequestBuilderException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;

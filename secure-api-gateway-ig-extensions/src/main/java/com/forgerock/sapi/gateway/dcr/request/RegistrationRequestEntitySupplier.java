@@ -22,7 +22,6 @@ import java.util.function.BiFunction;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.services.context.Context;
 
-import com.forgerock.sapi.gateway.dcr.common.DCRException;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**

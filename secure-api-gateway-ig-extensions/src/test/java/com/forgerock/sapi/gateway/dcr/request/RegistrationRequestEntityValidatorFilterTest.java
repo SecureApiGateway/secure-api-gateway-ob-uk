@@ -46,7 +46,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.common.AcceptHeaderSupplier;
+import com.forgerock.sapi.gateway.common.rest.AcceptHeaderSupplier;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;

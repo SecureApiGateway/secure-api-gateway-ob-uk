@@ -24,7 +24,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.utils.DCRRegistrationRequestBuilderException;
+import com.forgerock.sapi.gateway.dcr.request.DCRRegistrationRequestBuilderException;
 import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;

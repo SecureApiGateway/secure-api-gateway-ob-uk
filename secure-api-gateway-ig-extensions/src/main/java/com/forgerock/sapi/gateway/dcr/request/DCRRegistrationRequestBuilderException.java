@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.dcr.utils;
+package com.forgerock.sapi.gateway.dcr.request;
 
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
-import com.forgerock.sapi.gateway.dcr.common.DCRException;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 
 /**
  * Exception thrown when building a {@code RegistrationRequest} using a {@code Builder}

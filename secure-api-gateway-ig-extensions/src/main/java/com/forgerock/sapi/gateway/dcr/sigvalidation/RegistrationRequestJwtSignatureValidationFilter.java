@@ -46,7 +46,7 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.dcr.common.ApiGatewayRuntimeException;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.ApiGatewayRuntimeException;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;

@@ -51,9 +51,7 @@
           "name": "RequestAndSsaSignatureValidationFilter",
           "type": "RequestAndSsaSignatureValidationFilter",
           "config": {
-            "supportedSigningAlgorithms": ["PS256"],
             "clientHandler": "OBClientHandler",
-            "trustedDirectoryService": "TrustedDirectoriesService",
             "jwkSetService": "OBJwkSetService",
             "jwtSignatureValidator": "RsaJwtSignatureValidator"
           }

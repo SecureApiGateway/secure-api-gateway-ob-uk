@@ -40,8 +40,8 @@ import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
-import com.forgerock.sapi.gateway.dcr.common.AcceptHeaderSupplier;
-import com.forgerock.sapi.gateway.dcr.common.DCRException;
+import com.forgerock.sapi.gateway.common.rest.AcceptHeaderSupplier;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
@@ -50,8 +50,9 @@ import com.forgerock.sapi.gateway.jws.JwtDecoder;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 /**
- * A filter class that builds a {@code RegistrationRequest} object that contains a {@code SoftwareStatement} and
- * places the {@code RegistrationRequest} on the attributes context
+ * A filter class that builds a {@code RegistrationRequest} object that contains a {@code SoftwareStatement} from
+ * the body of a request to the /registration endpoint. If the {@code RegistationRequest} can successfully be built
+ * then it is placed on the attributes context for use by subsequent filters
  */
 public class RegistrationRequestEntityValidatorFilter implements Filter {
 
@@ -64,6 +65,19 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
     private final AcceptHeaderSupplier acceptHeaderSupplier;
     private final ResponseFactory responseFactory;
 
+    /**
+     * Constructor
+     * @param registrationEntitySupplier - used by the filter to obtain the b64 url encoded registration request string
+     *                                   from the request entity
+     * @param acceptHeaderSupplier - used to obtain the accept header values from the request
+     * @param trustedDirectoryService - used to obtain information about the trusted directory that issued the software
+     *                                statement provided in the registration request
+     * @param registrationRequestBuilder - A builder that can be used to create a RegistrationRequest model from the b64
+     *                                   url encoded jwt string provided in the request
+     * @param jwtDecoder - a utility class that decodes the b64 url encoded jwt string into a {@code SignedJwt} form
+     * @param responseFactory used to create a suitably formatted response should an error occur while processing the
+     *                        registration request
+     */
     public RegistrationRequestEntityValidatorFilter(RegistrationRequestEntitySupplier registrationEntitySupplier,
             AcceptHeaderSupplier acceptHeaderSupplier, TrustedDirectoryService trustedDirectoryService, 
             RegistrationRequest.Builder registrationRequestBuilder, JwtDecoder jwtDecoder,

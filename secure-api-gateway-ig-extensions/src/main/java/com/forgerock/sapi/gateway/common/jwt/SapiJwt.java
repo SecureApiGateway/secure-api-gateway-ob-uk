@@ -18,6 +18,15 @@ package com.forgerock.sapi.gateway.common.jwt;
 import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.util.Reject;
 
+/**
+ * Base class that can be used to access common data held within a Json Web Token (JWT). This base class expects a
+ * Jwt to have the following:
+ * - a b64 url encoded string representation
+ * - a SignedJwt representation
+ * - a ClaimSetFacade allowing access to the Jwt's underlying Claims
+ * - a kid claim (key Id) in the header
+ * - an issuer claim
+ */
 public class SapiJwt {
 
     private final String b64EncodedJwtString;
@@ -25,69 +34,87 @@ public class SapiJwt {
     private final ClaimsSetFacade claimsSet;
     private final String keyId;
     private final String issuer;
+    private boolean signatureHasBeenValidated;
 
-    public SapiJwt(String issuer, String kid, String b64EncodedJwtString, SignedJwt signedJwt, ClaimsSetFacade claimsSet) {
+    public SapiJwt(SapiJwtBuilder builder) {
+        this.b64EncodedJwtString = builder.getB64EncodedJwtString();
+        this.signedJwt = builder.getSignedJwt();
+        this.claimsSet = builder.getClaimsSet();
+        this.keyId = builder.getKid();
+        this.issuer = builder.getIssuer();
+        this.signatureHasBeenValidated = false;
         Reject.ifNull(issuer, "issuer must not be null");
-        Reject.ifNull(kid, "kid must not be null");
+        Reject.ifNull(keyId, "kid must not be null");
         Reject.ifNull(b64EncodedJwtString, "b64EncodedJwtString must not be null");
         Reject.ifNull(signedJwt, "signedJwt must not be null");
         Reject.ifNull(claimsSet, "claimsSet must not be null");
-        this.b64EncodedJwtString = b64EncodedJwtString;
-        this.signedJwt = signedJwt;
-        this.claimsSet = claimsSet;
-        this.keyId = kid;
-        this.issuer = issuer;
+    }
+
+    /**
+     * Indicates if the data in the Software Statement can be trusted, i.e. if the signature has been
+     * validated against the relevant JWKS.
+     * @return true if the software statement signature has been validated, false if it has not. Note that if this
+     * method returns false it does not mean that the signature is invalid, mearly that it has not been validated. It
+     * may be valid, but not have been validated.
+     */
+    public boolean signatureHasBeenValidated() {
+        return signatureHasBeenValidated;
+    }
+
+    /**
+     * Set a flag that indicates if the data in the Software Statement can be trusted, i.e. if the signature has been
+     * validated against the relevant JWKS
+     * @param signatureHasBeenValidated true if the signature has been validated, false if it has not.
+     */
+    public void setSignatureHasBeenValidated(boolean signatureHasBeenValidated) {
+        this.signatureHasBeenValidated = signatureHasBeenValidated;
     }
 
 
+    /**
+     * @return the b64 url encoded string representation of the JWT
+     */
     public String getB64EncodedJwtString() {
         return b64EncodedJwtString;
     }
 
     /**
-     * Get the signed jwt representation of the registration request
-     *
-     * @return a {@code SignedJwt} representation of the registration request
+     * @return the {@code SignedJwt} representation of the registration request
      */
     public SignedJwt getSignedJwt() {
         return signedJwt;
     }
 
-
-    public ClaimsSetFacade getClaimsSet() {
-        return claimsSet;
-    }
-
+    /**
+     * @return the keyId, as found in the 'kid' claim in the jwt header
+     */
     public String getKeyId() {
         return keyId;
     }
 
+    /**
+     * @return The the issuer of the jwt as found in the 'iss' claim
+     */
     public String getIssuer() {
         return issuer;
     }
 
 
-
     /**
-     * Produce a string representation of the Jwt that includes the kid and an abbreviated b64 encoded jwt string
-     *
-     * @return a string representation
+     * @return a string representation of the Jwt that includes the kid and an abbreviated b64 encoded jwt string
      */
     @Override
     public String toString() {
-        String builder = "kid: '" + keyId + "'" + ", jwtString: '" +
-                b64EncodedJwtString.substring(0, 6) +
-                "..." +
+        String builder = "kid: '" + keyId + "'" + ", b64UrlEncoded JWT: '" +
+                b64EncodedJwtString.substring(0, 6) + "..." +
                 b64EncodedJwtString.substring((b64EncodedJwtString.length() - 7));
         return builder;
     }
 
     /**
-     * Produce a detailed output of the Registration Request Jwt that includes the whole b64 encoded jwt string
-     *
-     * @return
+     * @return the underlying ClaimsSetFacade that can be used to access the JwtClaims
      */
-    public String toDetailedString() {
-        return "kid: '" + keyId + "'" + ", jwtString: '" + b64EncodedJwtString;
+    protected ClaimsSetFacade getClaimsSet() {
+        return claimsSet;
     }
 }

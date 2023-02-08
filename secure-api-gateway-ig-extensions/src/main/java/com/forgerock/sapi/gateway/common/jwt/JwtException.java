@@ -16,10 +16,9 @@
 package com.forgerock.sapi.gateway.common.jwt;
 
 /**
- * Exception thrown when issues occur processing jwts
+ * Exception thrown when issues occur processing Jwts
  */
 public class JwtException extends Exception {
-
 
     public JwtException(String message) {
         super(message);
