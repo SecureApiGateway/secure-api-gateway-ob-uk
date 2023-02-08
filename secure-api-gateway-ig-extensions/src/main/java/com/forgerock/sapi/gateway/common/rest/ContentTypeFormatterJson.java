@@ -24,15 +24,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Formats a Map of String key value pairs into a json string
  */
 public class ContentTypeFormatterJson implements ContentTypeFormatter{
+
+    private static final ObjectMapper objectMapper;
+
+    static{
+        objectMapper = new ObjectMapper();
+    }
+
     @Override
     public String getFormattedResponse(Map<String, String> fields) {
         if(fields == null){
             return "{}";
         }
-        ObjectMapper objectMapper = new ObjectMapper();
         try {
-            String jsonRepresentation = objectMapper.writeValueAsString(fields);
-            return jsonRepresentation;
+            return objectMapper.writeValueAsString(fields);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
