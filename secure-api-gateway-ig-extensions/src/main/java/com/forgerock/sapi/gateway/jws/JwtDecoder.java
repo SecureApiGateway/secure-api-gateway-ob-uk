@@ -15,8 +15,6 @@
  */
 package com.forgerock.sapi.gateway.jws;
 
-import javax.validation.constraints.NotNull;
-
 import org.forgerock.json.jose.common.JwtReconstruction;
 import org.forgerock.json.jose.exceptions.JwtReconstructionException;
 import org.forgerock.json.jose.jws.SignedJwt;
@@ -32,7 +30,6 @@ public class JwtDecoder {
      * @throws JwtException when the jwt can't be reconstructed from
      * the b64EncodedJwtString
      */
-    @NotNull
     public SignedJwt getSignedJwt(String b64EncodedJwtString)
             throws JwtException {
         try {
