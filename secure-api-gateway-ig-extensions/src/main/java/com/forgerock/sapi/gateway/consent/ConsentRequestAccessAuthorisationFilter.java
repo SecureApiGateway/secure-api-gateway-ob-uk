@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**
- * Filter that protects access to a consent request by validating that an end user browser session is belongs to the
+ * Filter that protects access to a consent request by validating that an end user browser session belongs to the
  * same user that is specified in the signed consent request JWT (sent from AM). This can be used in filter chains
  * which protect Remote Consent flows.
  *
@@ -45,26 +45,56 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  * after filters which add these contexts.
  *
  * The {@link SsoTokenContext} is used to determine the user that is logged in, by inspecting the session "uid".
- * The {@link JwtValidationContext} is used to determine the user that owns the consent request, by inspecting the
- * "username" claim.
  *
- * It is assumed that consent request JWT has been fully validated, that the signature has been verified and that
+ * The {@link JwtValidationContext} is used to determine the user that owns the consent request, by inspecting the
+ * "username" claim. It is assumed that consent request JWT has been fully validated, that the signature has been verified and that
  * the "exp", "iat", "iss" and "aud" claims have all been validated.
+ *
+ * If the SSO user matches the consent user then this filter passes the request on to the next handler in the chain.
+ * Otherwise, this filter responds with HTTP 401.
+ *
+ * If any exceptions are raised when extracting the user data from the contexts then this filter responds with HTTP 500.
+ * This is because an exception indicates either an error in the IG configuration or AM configuration; there is no action
+ * that an end user can take to resolve the issue.
  */
 public class ConsentRequestAccessAuthorisationFilter implements Filter {
 
-    private static final String DEFAULT_CONSENT_REQUEST_USER_ID_CLAIM = "username";
-    private static final String DEFAULT_SSO_TOKEN_USER_ID_KEY = "uid";
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConsentRequestAccessAuthorisationFilter.class);
+    static final String DEFAULT_CONSENT_REQUEST_USER_ID_CLAIM = "username";
+    static final String DEFAULT_SSO_TOKEN_USER_ID_KEY = "uid";
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final String consentRequestUserIdClaim;
     private final String ssoTokenUserIdKey;
 
-    public ConsentRequestAccessAuthorisationFilter(String consentRequestUserIdClaim, String ssoTokenUserIdKey) {
+    /**
+     * Handles exceptions raised by the business logic of this filter and converts them into HTTP Response objects
+     */
+    @FunctionalInterface
+    interface ExceptionHandler {
+        Response onException(Context context, Exception ex);
+    }
+
+    /**
+     * @return ExceptionHandler instance which logs the exception and returns a HTTP 500 response. All exceptions in
+     * this filter are unexpected, there is no action that the end user can take to resolve issues. If an exception
+     * occurs then it indicates a misconfiguration in a ForgeRock application.
+     */
+    static ExceptionHandler createDefaultExceptionHandler() {
+        return (ctxt, ex) -> {
+            LOGGER.warn("(" + FAPIUtils.getFapiInteractionIdForDisplay(ctxt) + ") Failed to get userId data required to do authorisation check", ex);
+            return new Response(Status.INTERNAL_SERVER_ERROR);
+        };
+    }
+
+    private final ExceptionHandler exceptionHandler;
+
+    public ConsentRequestAccessAuthorisationFilter(String consentRequestUserIdClaim, String ssoTokenUserIdKey, ExceptionHandler exceptionHandler) {
         Reject.ifBlank(consentRequestUserIdClaim, "consentRequestUserIdClaim must be supplied");
         Reject.ifBlank(ssoTokenUserIdKey, "ssoTokenUserIdKey must be supplied");
+        Reject.ifNull(exceptionHandler, "exceptionHandler must be supplied");
         this.consentRequestUserIdClaim = consentRequestUserIdClaim;
         this.ssoTokenUserIdKey = ssoTokenUserIdKey;
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
@@ -76,18 +106,16 @@ public class ConsentRequestAccessAuthorisationFilter implements Filter {
             ssoTokenUserId = getUserIdFromSsoToken(context);
             consentRequestUser = getUserIdFromConsentRequestJwt(context);
         } catch (RuntimeException ex) {
-            logger.error("(" + fapiInteractionId + ") Failed to get userId data required to do authorisation check", ex);
-            return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+            return Promises.newResultPromise(exceptionHandler.onException(context, ex));
         }
 
-        logger.info("({}) Verifying ssoTokenUserId: {} matches consent request JWT username: {}",
+        LOGGER.info("({}) Verifying ssoTokenUserId: {} matches consent request JWT username: {}",
                 fapiInteractionId, ssoTokenUserId, consentRequestUser);
         if (!ssoTokenUserId.equals(consentRequestUser)) {
-            logger.warn("({}) User: {} not authorised to access consent", fapiInteractionId);
-            // TODO review error response
+            LOGGER.warn("({}) User: {} not authorised to access consent", fapiInteractionId, ssoTokenUserId);
             return Promises.newResultPromise(new Response(Status.UNAUTHORIZED));
         }
-        logger.debug("({}) User authorised to access consent");
+        LOGGER.debug("({}) User authorised to access consent", fapiInteractionId);
         return next.handle(context, request);
     }
 
@@ -101,7 +129,7 @@ public class ConsentRequestAccessAuthorisationFilter implements Filter {
     private String getUserIdFromConsentRequestJwt(Context context) {
         final JwtValidationContext consentRequestJwtValidationCtxt = context.asContext(JwtValidationContext.class);
         final Object usernameObj = consentRequestJwtValidationCtxt.getClaims().getClaim(consentRequestUserIdClaim);
-        if (usernameObj == null || !(usernameObj instanceof String)) {
+        if (!(usernameObj instanceof String)) {
             throw new IllegalStateException("consent_request JWT username claim is missing or not a string");
         }
         return (String) usernameObj;
@@ -138,7 +166,8 @@ public class ConsentRequestAccessAuthorisationFilter implements Filter {
                                                                    .asString(),
                                                                getConfig().get("ssoTokenUserIdKey")
                                                                    .defaultTo(DEFAULT_SSO_TOKEN_USER_ID_KEY)
-                                                                   .asString());
+                                                                   .asString(),
+                                                               createDefaultExceptionHandler());
         }
     }
 }
