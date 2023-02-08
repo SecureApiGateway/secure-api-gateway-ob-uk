@@ -15,6 +15,7 @@
  */
 package com.forgerock.sapi.gateway.dcr.common;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,5 +48,12 @@ public class ResponseFactory {
         ContentTypeHeader contentTypeHeader = ContentTypeHeader.valueOf(bestContentType);
 
         return new Response(status).setEntity(entityBody).addHeaders(contentTypeHeader);
+    }
+
+    public Response getInternalServerErrorResponse(String txId, List<String> acceptValues) {
+        Map<String, String> errorFields = new LinkedHashMap<>();
+        errorFields.put("error", "Server unable to process request");
+        errorFields.put("trace_id", txId);
+        return getResponse(txId, acceptValues, Status.INTERNAL_SERVER_ERROR, errorFields);
     }
 }

@@ -15,34 +15,17 @@
  */
 package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
-import org.forgerock.util.Reject;
-
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 
-final public class DCRSignatureValidationException extends Exception{
+final public class DCRSignatureValidationException extends DCRException {
 
-    private final DCRErrorCode errorCode;
-    private final String errorDescription;
 
     public DCRSignatureValidationException(DCRErrorCode errorCode, String errorMessage) {
         this(errorCode, errorMessage, null);
     }
 
     public DCRSignatureValidationException(DCRErrorCode errorCode, String errorMessage, Throwable cause) {
-        super((errorCode != null ? errorCode.getCode() : "") + " " + errorMessage, cause);
-        this.errorCode = Reject.checkNotNull(errorCode, "errorCode must be supplied");
-        this.errorDescription = Reject.checkNotBlank(errorMessage, "errorMessage must be supplied");
-    }
-
-    public DCRErrorCode getErrorCode() {
-        return errorCode;
-    }
-
-    public String getErrorDescription() {
-        return errorDescription;
-    }
-
-    public String toString(){
-        return "error_code: '" + errorCode + "', error_description: '" + errorDescription +"'";
+        super(errorCode, errorMessage, cause);
     }
 }

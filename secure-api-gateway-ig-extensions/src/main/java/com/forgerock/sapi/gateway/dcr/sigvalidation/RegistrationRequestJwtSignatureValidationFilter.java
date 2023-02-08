@@ -46,6 +46,10 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
+import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
+import com.forgerock.sapi.gateway.common.rest.HttpMediaTypes;
+import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.common.exceptions.ApiGatewayRuntimeException;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
@@ -69,21 +73,29 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             .collect(Collectors.toList());
     private final SoftwareStatementAssertionSignatureValidatorService ssaValidator;
     private final RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator;
+    private final ResponseFactory responseFactory;
+    
+    private final List<String> RESPONSE_MEDIA_TYPES = List.of(HttpMediaTypes.APPLICATION_JSON);
 
 
     /**
      * Constructor
      * @param ssaValidator a service used to validate the SSA signature
      * @param registrationRequestJwtValidator used to validate the registration request jwt signature
+     * @param responseFactory used to obtain an error {@code Response} from a DCRException
      */
     RegistrationRequestJwtSignatureValidationFilter(
             SoftwareStatementAssertionSignatureValidatorService ssaValidator,
-            RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator) {
+            RegistrationRequestJwtSignatureValidationService registrationRequestJwtValidator,
+            ResponseFactory responseFactory) {
         Reject.ifNull(ssaValidator, "ssaValidator must be provided");
         Reject.ifNull(registrationRequestJwtValidator, "registrationRequestJwtValidator must be provided");
+        Reject.ifNull(responseFactory, "responseFactory must be supplied");
 
         this.ssaValidator = ssaValidator;
         this.registrationRequestJwtValidator = registrationRequestJwtValidator;
+        this.responseFactory = responseFactory;
+
         log.debug("RequestAndSsaSignatureValidationFilter constructed");
     }
 
@@ -104,7 +116,7 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
                         "the route before the RequestAndSsaSignatureValidationFilter can be used");
             }
             log.debug("({}) Performing JWT signature validation on registration request '{}'", fapiInteractionId,
-                    registrationRequest.toString());
+                    registrationRequest);
 
             Promise<Response, DCRSignatureValidationException> ssaValidationPromise =
                     ssaValidator.validateJwtSignature(fapiInteractionId, registrationRequest.getSoftwareStatement());
@@ -117,28 +129,35 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
                                     fapiInteractionId, regRequestValidationResponse);
                             return Promises.newResultPromise(response);
                         }
+                        registrationRequest.setSignatureHasBeenValidated(true);
                         log.debug("({}) Registration Request and embedded SSA both have valid signatures",
                                 fapiInteractionId);
                         return next.handle(context, request);
                     }, ex -> {
                         log.info("({}) Registration Request validation failed: {}", fapiInteractionId,
                                 ex.getMessage(), ex);
-                        Response badRequest = new Response(Status.BAD_REQUEST).setEntity(getJsonResponseBody(ex));
+                        Response badRequest = responseFactory.getResponse(fapiInteractionId,
+                                RESPONSE_MEDIA_TYPES, 
+                                Status.BAD_REQUEST, ex.getErrorFields()); 
                         return Promises.newResultPromise(badRequest);
                     }, rte -> {
                         log.info("({}) A Runtime Exception occurred while validating the Registration Response Jwt " +
                                 "signature: {}", fapiInteractionId, "error: " + rte.getMessage(), rte);
-                        return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+                        Response internServerError = responseFactory.getInternalServerErrorResponse(fapiInteractionId,
+                                RESPONSE_MEDIA_TYPES);
+                        return Promises.newResultPromise(internServerError);
                     }
                 ), ex -> {
                     log.info("({}) Software Statement validation failed:  {}", fapiInteractionId, ex.getMessage(),
                             ex);
-                    Response badRequest = new Response(Status.BAD_REQUEST).setEntity(getJsonResponseBody(ex));
+                    Response badRequest = responseFactory.getResponse(fapiInteractionId, RESPONSE_MEDIA_TYPES, 
+                            Status.BAD_REQUEST, ex.getErrorFields());
                     return Promises.newResultPromise(badRequest);
                 }, rte -> {
                     log.error("({}) Runtime Error while validating Registration Request: {}", fapiInteractionId,
                             "error: " + rte.getMessage(), rte);
-                    return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+                    return Promises.newResultPromise(responseFactory.getInternalServerErrorResponse(fapiInteractionId,
+                            RESPONSE_MEDIA_TYPES));
                 });
         } catch (RuntimeException rte){
             log.error("({}) Runtime Error occurred in RequestAndSsaSignatureValidationFilter: {}", fapiInteractionId,
@@ -146,12 +165,6 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
         }
     }
-
-    private String getJsonResponseBody(DCRSignatureValidationException ex) {
-        return "{\"error_code\":\"" + ex.getErrorCode().getCode() + "\"," +
-                "\"error_description\":\"" + ex.getErrorDescription() + "\"}";
-    }
-
 
     /**
      * Heaplet is used to get arguments from the IG config and create a RequestAndSsaSignatureValidationFilter
@@ -166,7 +179,6 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             final JwtSignatureValidator jwtSignatureValidator = config.get("jwtSignatureValidator")
                     .as(requiredHeapObject(heap, JwtSignatureValidator.class));
 
-
             final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidator
                     = new SoftwareStatementAssertionSignatureValidatorService(jwtSetService, jwtSignatureValidator);
 
@@ -179,9 +191,15 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
             final RegistrationRequestJwtSignatureValidationService registrationRequestValidator =
                     new RegistrationRequestJwtSignatureValidationService(
                             regRequestJwksValidator, regRequestJwksUriValidator);
+            final ContentTypeFormatterFactory contentTypeFormatterFactory = new ContentTypeFormatterFactory();
+            final ContentTypeNegotiator contentTypeNegotiator =
+                    new ContentTypeNegotiator(contentTypeFormatterFactory.getSupportedContentTypes());
+
+            final ResponseFactory responseFactory = new ResponseFactory(contentTypeNegotiator,
+                    contentTypeFormatterFactory);
 
             return new RegistrationRequestJwtSignatureValidationFilter(
-                    ssaSignatureValidator, registrationRequestValidator);
+                    ssaSignatureValidator, registrationRequestValidator, responseFactory);
         }
 
         private boolean configuredSigningAlgorithmsAreSubsetOfSupportedAlgorithms(

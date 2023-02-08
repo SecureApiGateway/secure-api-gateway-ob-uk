@@ -24,22 +24,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.common.JwtReconstruction;
-import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.RootContext;
 import org.forgerock.util.promise.NeverThrowsException;
@@ -50,88 +38,50 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
+import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequestFactory;
-import com.forgerock.sapi.gateway.dcr.sigvalidation.RegistrationRequestJwtSignatureValidationFilter.RegistrationRequestObjectFromJwtSupplier;
-import com.forgerock.sapi.gateway.jwks.RestJwkSetServiceTest;
-import com.forgerock.sapi.gateway.util.CryptoUtils;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 
 class RegistrationRequestJwtSignatureValidationFilterTest {
-
 
     private static final String ERROR_DESCRIPTION = "Error Description";
     private Request request;
     private Handler handler = mock(Handler.class);
-
     private AttributesContext context;
-    private static RegistrationRequestObjectFromJwtSupplier registrationObjectSupplier;
-    private static RSASSASigner RSA_SIGNER;
-    final private static String DIRECTORY_JWKS_URI = "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks";
-    final private static String SOFTWARE_STATEMENT_JWKS_URI = "https://directory.softwareid.jwks_uri";
     private RegistrationRequestJwtSignatureValidationFilter filter;
-
     private final RegistrationRequestJwtSignatureValidationService dcrRegistrationRequestSignatureValidator
             = mock(RegistrationRequestJwtSignatureValidationService.class);
-    private final SoftwareStatementAssertionSignatureValidatorService softwareStatementAssertionSignatureValidatorService = mock(SoftwareStatementAssertionSignatureValidatorService.class);
+    private final SoftwareStatementAssertionSignatureValidatorService ssaSignatureValidatorService
+            = mock(SoftwareStatementAssertionSignatureValidatorService.class);
+
+    private static ResponseFactory responseFactory;
 
     @BeforeAll
-    public static void beforeAll() throws NoSuchAlgorithmException {
-        RSA_SIGNER = CryptoUtils.createRSASSASigner();
+    static void setupAll(){
+        final ContentTypeFormatterFactory contentTypeFormatterFactory = new ContentTypeFormatterFactory();
+        final ContentTypeNegotiator contentTypeNegotiator =
+                new ContentTypeNegotiator(contentTypeFormatterFactory.getSupportedContentTypes());
+        responseFactory = new ResponseFactory(contentTypeNegotiator,
+                contentTypeFormatterFactory);
     }
 
 
     @BeforeEach
-    void setUp() throws MalformedURLException {
+    void setUp() {
         handler = mock(Handler.class);
-        Map<URL, JWKSet> jwkSetByUrl = new HashMap();
-        jwkSetByUrl.put(new URL(DIRECTORY_JWKS_URI), createJwkSet());
-        jwkSetByUrl.put(new URL(SOFTWARE_STATEMENT_JWKS_URI), createJwkSet());
         this.request = new Request().setMethod("POST");
         filter = new RegistrationRequestJwtSignatureValidationFilter(
-                softwareStatementAssertionSignatureValidatorService,
-                dcrRegistrationRequestSignatureValidator);
+                ssaSignatureValidatorService, dcrRegistrationRequestSignatureValidator, responseFactory);
         context = new AttributesContext(new RootContext());
     }
 
     @AfterEach
     void tearDown() {
         reset(handler, dcrRegistrationRequestSignatureValidator,
-                softwareStatementAssertionSignatureValidatorService);
-    }
-
-      private JWKSet createJwkSet() {
-        return new JWKSet(List.of(RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString()),
-                RestJwkSetServiceTest.createJWK(UUID.randomUUID().toString())));
-    }
-
-    /**
-     * Uses nimbusds to create a SignedJWT and returns JWS object in its compact format consisting of
-     * Base64URL-encoded parts delimited by period ('.') characters.
-     *
-     * @param claims      The claims to include in the signed jwt
-     * @param signingAlgo the algorithm to use for signing
-     * @return the jws in its compact form consisting of Base64URL-encoded parts delimited by period ('.') characters.
-     */
-    private String createEncodedJwtString(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
-        try {
-            final SignedJWT signedJWT = new SignedJWT(new JWSHeader(signingAlgo), JWTClaimsSet.parse(claims));
-            signedJWT.sign(RSA_SIGNER);
-            return signedJWT.serialize();
-        } catch (ParseException | JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private SignedJwt createSignedJwt(Map<String, Object> claims, JWSAlgorithm signingAlgo) {
-        String encodedJwsString = createEncodedJwtString(claims, signingAlgo);
-        return new JwtReconstruction().reconstructJwt(encodedJwsString, SignedJwt.class);
+                ssaSignatureValidatorService);
     }
 
     @Test
@@ -141,7 +91,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
         when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
@@ -160,7 +110,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         // Given
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
         when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
@@ -181,7 +131,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newExceptionPromise(
                         new DCRSignatureValidationException(DCRErrorCode.INVALID_SOFTWARE_STATEMENT, "invalid jwt signature")));
         when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
@@ -205,7 +155,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newRuntimeExceptionPromise(
                     new DCRSignatureValidationRuntimeException("Runtime exception validating SSA")));
 
@@ -225,7 +175,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
         when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newExceptionPromise(
@@ -248,7 +198,7 @@ class RegistrationRequestJwtSignatureValidationFilterTest {
         context.getAttributes().put(RegistrationRequest.REGISTRATION_REQUEST_KEY, registrationRequest);
         Promise<Response, NeverThrowsException> resultPromise = Response.newResponsePromise(new Response(Status.OK));
         when(handler.handle(any(), any())).thenReturn(resultPromise);
-        when(softwareStatementAssertionSignatureValidatorService.validateJwtSignature(any(), any()))
+        when(ssaSignatureValidatorService.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
         when(dcrRegistrationRequestSignatureValidator.validateJwtSignature(any(), any()))
                 .thenReturn(Promises.newRuntimeExceptionPromise(

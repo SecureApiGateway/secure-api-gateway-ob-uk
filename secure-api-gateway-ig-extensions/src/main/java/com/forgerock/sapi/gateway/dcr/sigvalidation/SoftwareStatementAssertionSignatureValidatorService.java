@@ -75,6 +75,7 @@ public class SoftwareStatementAssertionSignatureValidatorService {
                 try {
                     this.jwtSignatureValidator.validateSignature(softwareStatement.getSignedJwt(), directoryJwkSet);
                     log.debug("({}) SSA has a valid signature", transactionId);
+                    softwareStatement.setSignatureHasBeenValidated(true);
                     return Promises.newResultPromise(new Response(Status.OK));
                 } catch (SignatureException e) {
                     String errorDescription = "Failed to validate SSA against jwks_uri '" + issuingDirectoryJwksUrl +

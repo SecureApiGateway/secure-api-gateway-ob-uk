@@ -18,9 +18,7 @@ package com.forgerock.sapi.gateway.dcr.request;
 
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
@@ -38,11 +36,11 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.forgerock.sapi.gateway.common.rest.AcceptHeaderSupplier;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
-import com.forgerock.sapi.gateway.common.rest.AcceptHeaderSupplier;
-import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
@@ -57,7 +55,6 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 public class RegistrationRequestEntityValidatorFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(RegistrationRequestEntityValidatorFilter.class);
-
     private final RegistrationRequestEntitySupplier registrationEntitySupplier;
     private final TrustedDirectoryService trustedDirectoryService;
     private final RegistrationRequest.Builder registrationRequestBuilder;
@@ -119,12 +116,9 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
             log.warn("({}) caught runtime exception while applying RegistrationRequestEntityValidatorFilter",
                     transactionId, rte);
             List<String> acceptHeader = acceptHeaderSupplier.apply(context, request);
-            Map<String, String> errorFields = new LinkedHashMap<>();
-            errorFields.put("error", "Server unable to process request");
-            errorFields.put("trace_id", transactionId);
-            Response response = responseFactory.getResponse(transactionId, acceptHeader,
-                    Status.INTERNAL_SERVER_ERROR, errorFields);
-            return Promises.newResultPromise(response);
+            Response internServerError = responseFactory.getInternalServerErrorResponse(transactionId,
+                    acceptHeader);
+            return Promises.newResultPromise(internServerError);
         }
     }
 

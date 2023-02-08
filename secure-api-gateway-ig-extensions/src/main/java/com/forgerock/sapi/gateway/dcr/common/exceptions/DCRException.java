@@ -18,6 +18,8 @@ package com.forgerock.sapi.gateway.dcr.common.exceptions;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.forgerock.util.Reject;
+
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 
 /**
@@ -28,7 +30,13 @@ public class DCRException extends Exception {
     protected final String errorDescription;
     
     public DCRException(DCRErrorCode errorCode, String errorDescription){
-        super("errorCode: '" + errorCode.getCode() + "', errorDescription: '" + errorDescription + "'");
+        this(errorCode, errorDescription, null);
+    }
+
+    public DCRException(DCRErrorCode errorCode, String errorDescription, Throwable cause){
+        super("errorCode: '" + errorCode.getCode() + "', errorDescription: '" + errorDescription + "'", cause);
+        Reject.checkNotNull(errorCode, "errorCode must be supplied");
+        Reject.checkNotBlank(errorDescription, "errorMessage must be supplied");
         this.errorCode = errorCode;
         this.errorDescription = errorDescription;
     }
