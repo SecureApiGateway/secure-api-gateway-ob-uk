@@ -145,18 +145,15 @@ public class ConsentRequestAccessAuthorisationFilter implements Filter {
     private String getUserIdFromSsoToken(Context context) {
         final SsoTokenContext ssoContext = context.asContext(SsoTokenContext.class);
         final Map<String, Object> info = ssoContext.getInfo();
-        if (!info.containsKey(ssoTokenUserIdKey)) {
-            throw new IllegalStateException("SsoTokenContext is missing required uid value");
+        final Object userId = info.get(ssoTokenUserIdKey);
+        if (!(userId instanceof String)) {
+            throw new IllegalStateException("SsoTokenContext.uid is missing or not a string");
         }
-        final Object ssoTokenUserIdObj = info.get(ssoTokenUserIdKey);
-        if (!(ssoTokenUserIdObj instanceof String)) {
-            throw new IllegalStateException("SsoTokenContext.uid must be a string");
-        }
-        return (String) ssoTokenUserIdObj;
+        return (String) userId;
     }
 
     /**
-     *
+     * Heaplet which creates {@link ConsentRequestAccessAuthorisationFilter}
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
