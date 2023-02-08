@@ -40,19 +40,19 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  * Filter that protects access to a consent request by validating that an end user browser session belongs to the
  * same user that is specified in the signed consent request JWT (sent from AM). This can be used in filter chains
  * which protect Remote Consent flows.
- *
+ * <p>
  * This filter depends on the {@link SsoTokenContext} and {@link JwtValidationContext}, therefore it must be installed
  * after filters which add these contexts.
- *
+ * <p>
  * The {@link SsoTokenContext} is used to determine the user that is logged in, by inspecting the session "uid".
- *
+ * <p>
  * The {@link JwtValidationContext} is used to determine the user that owns the consent request, by inspecting the
  * "username" claim. It is assumed that consent request JWT has been fully validated, that the signature has been verified and that
  * the "exp", "iat", "iss" and "aud" claims have all been validated.
- *
+ * <p>
  * If the SSO user matches the consent user then this filter passes the request on to the next handler in the chain.
  * Otherwise, this filter responds with HTTP 401.
- *
+ * <p>
  * If any exceptions are raised when extracting the user data from the contexts then this filter responds with HTTP 500.
  * This is because an exception indicates either an error in the IG configuration or AM configuration; there is no action
  * that an end user can take to resolve the issue.
@@ -154,6 +154,17 @@ public class ConsentRequestAccessAuthorisationFilter implements Filter {
 
     /**
      * Heaplet which creates {@link ConsentRequestAccessAuthorisationFilter}
+     * <p>
+     * Optional config:
+     * - consentRequestUserIdClaim: the name of the claim in the consent_request JWT which contains the userId (default: username)
+     * - ssoTokenUserIdKey: {@link SsoTokenContext#getInfo()} key which contains the userId (default: uid)
+     * <p>
+     * Example config:
+     * {
+     *             "name": "ConsentRequestAccessAuthorisationFilter",
+     *             "type": "ConsentRequestAccessAuthorisationFilter",
+     *             "comment": "Verify user SSO session is allowed to access the consent"
+     * }
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
