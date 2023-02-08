@@ -17,12 +17,9 @@ package com.forgerock.sapi.gateway.dcr.sigvalidation;
 
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
-import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -31,10 +28,7 @@ import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
-import org.forgerock.json.jose.common.JwtReconstruction;
-import org.forgerock.json.jose.exceptions.InvalidJwtException;
 import org.forgerock.json.jose.jws.JwsAlgorithm;
-import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.AttributesContext;
@@ -167,8 +161,24 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
     }
 
     /**
-     * Heaplet is used to get arguments from the IG config and create a RequestAndSsaSignatureValidationFilter
-     * on the IG heap.
+     * Heaplet used to create {@link RegistrationRequestJwtSignatureValidationFilter} objects
+     *
+     * Mandatory fields:
+     *  - jwkSetService: the name of the service (defined in config on the heap) that can obtain JWK Sets from a jwk
+     *                   set url
+     *  - jwtSignatureValidator: the name of the service that the filter should use to validate a jwt signature against
+     *                           a JWK Set
+     *
+     * Example config:
+     * {
+     *   "comment": "Validate the signature of the SSA and the request Jwt",
+     *   "name": "RequestAndSsaSignatureValidationFilter",
+     *   "type": "RequestAndSsaSignatureValidationFilter",
+     *   "config": {
+     *     "jwkSetService": "OBJwkSetService",
+     *     "jwtSignatureValidator": "RsaJwtSignatureValidator"
+     *   }
+     * }
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
@@ -200,44 +210,6 @@ public class RegistrationRequestJwtSignatureValidationFilter implements Filter {
 
             return new RegistrationRequestJwtSignatureValidationFilter(
                     ssaSignatureValidator, registrationRequestValidator, responseFactory);
-        }
-
-        private boolean configuredSigningAlgorithmsAreSubsetOfSupportedAlgorithms(
-                List<String> supportedSigningAlgorithms) {
-            return new HashSet<>(DEFAULT_SUPPORTED_JWS_ALGORITHMS).containsAll(supportedSigningAlgorithms);
-        }
-    }
-
-    /**
-     * Supplies the Registration Request json object from a JWT contained within the Request.entity
-     * <p>
-     * The JWT signing algo in the header is validated against the supported set of signing algorithms for FAPI.
-     * No other validation is done at this point, it is assumed that Filters later in the chain will validate the
-     * sig etc
-     */
-    public static class RegistrationRequestObjectFromJwtSupplier implements BiFunction<Context, Request, SignedJwt> {
-
-        public RegistrationRequestObjectFromJwtSupplier() {
-        }
-
-        @Override
-        public SignedJwt apply(Context context, Request request) {
-            final String fapiInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
-            try {
-                final String registrationRequestJwtString = request.getEntity().getString();
-                log.debug("({}) Registration Request JWT to validate: {}", fapiInteractionId,
-                        registrationRequestJwtString);
-                final SignedJwt registrationRequestJwt = new JwtReconstruction().reconstructJwt(
-                        registrationRequestJwtString, SignedJwt.class);
-
-                return registrationRequestJwt;
-            } catch (InvalidJwtException | IOException e) {
-                log.warn("(" + fapiInteractionId + ") FAPI DCR failed: unable to extract registration object JWT from" +
-                        " request", e);
-                // These are not validation errors, so do not raise a validation exception, instead allow the filter
-                // to handle the null response
-                return null;
-            }
         }
     }
 

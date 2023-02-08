@@ -123,8 +123,20 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
     }
 
     /**
-     * Heaplet is used to get arguments from the IG config and create a RequestAndSsaSignatureValidationFilter
-     * on the IG heap.
+     * Heaplet used to create {@link RegistrationRequestEntityValidatorFilter} objects
+     *
+     * Mandatory fields:
+     *  - trustedDirectoryService: the name of the service used to provide the trusted directory config
+     *
+     * Example config:
+     * {
+     *      "comment": "Pull the registration request from the entity and create a RegistrationRequest object context attribute",
+     *      "name": "RegistrationRequestEntityValidationFilter",
+     *      "type": "RegistrationRequestEntityValidatorFilter",
+     *      "config": {
+     *        "trustedDirectoryService": "TrustedDirectoriesService"
+     *      }
+     *  }
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
