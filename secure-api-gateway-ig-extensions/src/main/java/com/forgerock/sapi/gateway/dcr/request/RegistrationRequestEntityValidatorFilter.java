@@ -36,9 +36,9 @@ import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.forgerock.sapi.gateway.common.rest.AcceptHeaderSupplier;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeNegotiator;
+import com.forgerock.sapi.gateway.common.rest.HttpMediaTypes;
 import com.forgerock.sapi.gateway.dcr.common.ResponseFactory;
 import com.forgerock.sapi.gateway.dcr.common.exceptions.DCRException;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
@@ -56,40 +56,27 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(RegistrationRequestEntityValidatorFilter.class);
     private final RegistrationRequestEntitySupplier registrationEntitySupplier;
-    private final TrustedDirectoryService trustedDirectoryService;
     private final RegistrationRequest.Builder registrationRequestBuilder;
-    private final JwtDecoder jwtDecoder;
-    private final AcceptHeaderSupplier acceptHeaderSupplier;
     private final ResponseFactory responseFactory;
+
+    private final List<String> RESPONSE_MEDIA_TYPES = List.of(HttpMediaTypes.APPLICATION_JSON);
 
     /**
      * Constructor
      * @param registrationEntitySupplier - used by the filter to obtain the b64 url encoded registration request string
      *                                   from the request entity
-     * @param acceptHeaderSupplier - used to obtain the accept header values from the request
-     * @param trustedDirectoryService - used to obtain information about the trusted directory that issued the software
-     *                                statement provided in the registration request
      * @param registrationRequestBuilder - A builder that can be used to create a RegistrationRequest model from the b64
      *                                   url encoded jwt string provided in the request
-     * @param jwtDecoder - a utility class that decodes the b64 url encoded jwt string into a {@code SignedJwt} form
      * @param responseFactory used to create a suitably formatted response should an error occur while processing the
      *                        registration request
      */
     public RegistrationRequestEntityValidatorFilter(RegistrationRequestEntitySupplier registrationEntitySupplier,
-            AcceptHeaderSupplier acceptHeaderSupplier, TrustedDirectoryService trustedDirectoryService, 
-            RegistrationRequest.Builder registrationRequestBuilder, JwtDecoder jwtDecoder,
-            ResponseFactory responseFactory) {
+            RegistrationRequest.Builder registrationRequestBuilder, ResponseFactory responseFactory) {
         Reject.ifNull(registrationEntitySupplier, "registrationEntitySupplier must be provided");
-        Reject.ifNull(acceptHeaderSupplier, "acceptHeaderSupplier must be provided");
-        Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
         Reject.ifNull(registrationRequestBuilder, "registrationRequestBuilder must be provided");
-        Reject.ifNull(jwtDecoder, "jwtDecoder must be provided");
         Reject.ifNull(responseFactory, "responseFactory must be provided");
         this.registrationEntitySupplier = registrationEntitySupplier;
-        this.acceptHeaderSupplier = acceptHeaderSupplier;
-        this.trustedDirectoryService = trustedDirectoryService;
         this.registrationRequestBuilder = registrationRequestBuilder;
-        this.jwtDecoder = jwtDecoder;
         this.responseFactory = responseFactory;
     }
 
@@ -106,8 +93,7 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
             log.info("({}) created context attribute " + RegistrationRequest.REGISTRATION_REQUEST_KEY, transactionId);
             return next.handle(context, request);
         } catch (DCRException exception){
-            List<String> acceptHeader = acceptHeaderSupplier.apply(context, request);
-            Response response = responseFactory.getResponse(transactionId, acceptHeader, Status.BAD_REQUEST,
+            Response response = responseFactory.getResponse(transactionId, RESPONSE_MEDIA_TYPES, Status.BAD_REQUEST,
                     exception.getErrorFields());
             log.info("({}) Failed to understand the Registration Request body: {}", transactionId,
                     exception.getMessage(), exception);
@@ -115,9 +101,8 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
         } catch (RuntimeException rte){
             log.warn("({}) caught runtime exception while applying RegistrationRequestEntityValidatorFilter",
                     transactionId, rte);
-            List<String> acceptHeader = acceptHeaderSupplier.apply(context, request);
             Response internServerError = responseFactory.getInternalServerErrorResponse(transactionId,
-                    acceptHeader);
+                    RESPONSE_MEDIA_TYPES);
             return Promises.newResultPromise(internServerError);
         }
     }
@@ -144,10 +129,9 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
             final TrustedDirectoryService trustedDirectoryService = config.get("trustedDirectoryService")
                     .as(requiredHeapObject(heap, TrustedDirectoryService.class));
 
-            final RegistrationRequestEntitySupplier registrationEntitySupplier =
-                    new RegistrationRequestEntitySupplier();
+            final RegistrationRequestEntitySupplier registrationEntitySupplier
+                    = new RegistrationRequestEntitySupplier();
 
-            final AcceptHeaderSupplier acceptHeaderSupplier = new AcceptHeaderSupplier();
             final JwtDecoder jwtDecoder = new JwtDecoder();
             final SoftwareStatement.Builder softwareStatementBuilder = new SoftwareStatement.Builder(
                     trustedDirectoryService, jwtDecoder);
@@ -161,8 +145,8 @@ public class RegistrationRequestEntityValidatorFilter implements Filter {
             final ResponseFactory responseFactory = new ResponseFactory(contentTypeNegotiator,
                     contentTypeFormatterFactory);
 
-            return new RegistrationRequestEntityValidatorFilter( registrationEntitySupplier, acceptHeaderSupplier,
-                    trustedDirectoryService, registrationRequestBuilder, jwtDecoder, responseFactory);
+            return new RegistrationRequestEntityValidatorFilter( registrationEntitySupplier,
+                    registrationRequestBuilder, responseFactory);
         }
     }
 }

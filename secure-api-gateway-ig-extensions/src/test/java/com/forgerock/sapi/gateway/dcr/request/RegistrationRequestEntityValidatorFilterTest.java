@@ -78,9 +78,10 @@ class RegistrationRequestEntityValidatorFilterTest {
 
     @BeforeEach
     void setUp() {
-        when(handler.handle(any(Context.class), any(Request.class))).thenReturn(Promises.newResultPromise(new Response(Status.OK)));
-        filter = new RegistrationRequestEntityValidatorFilter(reqRequestSupplier, acceptHeaderSupplier,
-                trustedDirectoryService, registrationRequestBuilder, jwtDecoder, responseFactory);
+        when(handler.handle(any(Context.class), any(Request.class)))
+                .thenReturn(Promises.newResultPromise(new Response(Status.OK)));
+        filter = new RegistrationRequestEntityValidatorFilter(reqRequestSupplier, registrationRequestBuilder,
+                responseFactory);
     }
 
     @AfterEach
