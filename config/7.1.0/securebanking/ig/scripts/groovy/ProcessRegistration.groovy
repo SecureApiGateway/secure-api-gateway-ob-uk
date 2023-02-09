@@ -15,6 +15,8 @@ import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.SignatureException
 import com.nimbusds.jose.jwk.RSAKey;
 import com.securebanking.gateway.dcr.ErrorResponseFactory
+import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest
+import com.forgerock.sapi.gateway.common.jwt.ClaimsSetFacade
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
@@ -61,6 +63,17 @@ if (!trustedDirectoryService) {
     return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
 }
 
+if (!attributes.registrationRequest) {
+    logger.error(SCRIPT_NAME + "RegistrationRequestEntityValidatorFilter must be run prior to this script")
+    return new Response(Status.INTERNAL_SERVER_ERROR)
+}
+def registrationRequest = attributes.registrationRequest
+if (! registrationRequest.signatureHasBeenValidated() ){
+    logger.error(SCRIPT_NAME + "registrationResponse signature has not been validated. " +
+            "RegistrationRequestJwtSignatureValidatorFilter must be run prior to this script")
+    return new Response(Status.INTERNAL_SERVER_ERROR)
+}
+
 def method = request.method
 
 switch (method.toUpperCase()) {
@@ -80,17 +93,33 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("No roles in client certificate for registration")
         }
 
+
+
         Jwt regJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, request.entity.getString(), "registration JWT")
         if (!regJwt) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
         }
 
-        JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
-        if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
+        if (registrationRequest.hasExpired()){
             logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
+//        JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
+//        if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
+//            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
+//            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
+//        }
 
+        ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
+        Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
+        if(optionalResponseTypes.isEmpty()){
+            registrationRequest.setResponseTypes(defaultResponseTypes)
+        } else {
+            // Think we can choose to overwrite invalid types here....
+        }
+
+
+        // Check response types - in Registration Request
         def responseTypes = registrationJwtClaimSet.getClaim("response_types")
         if (!responseTypes) {
             registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
