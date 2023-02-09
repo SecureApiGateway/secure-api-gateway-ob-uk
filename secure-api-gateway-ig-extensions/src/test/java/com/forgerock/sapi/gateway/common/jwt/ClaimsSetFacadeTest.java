@@ -176,7 +176,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        List<String> responseTypes =  claimsSetFacade.getRequiredStringArrayClaim("response_type");
+        List<String> responseTypes =  claimsSetFacade.getRequiredStringListClaim("response_type");
 
         // Then
         assertThat(responseTypes).isNotNull();
@@ -190,7 +190,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringArrayClaim("response_type"), JwtException.class);
+        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringListClaim("response_type"), JwtException.class);
 
         // Then
         assertThat(exception).isNotNull();
@@ -204,7 +204,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringArrayClaim("response_type"), JwtException.class);
+        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringListClaim("response_type"), JwtException.class);
 
         // Then
         assertThat(exception).isNotNull();
@@ -218,7 +218,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringArrayClaim("response_type"), JwtException.class);
+        JwtException exception =  catchThrowableOfType(()->claimsSetFacade.getRequiredStringListClaim("response_type"), JwtException.class);
 
         // Then
         assertThat(exception).isNotNull();
@@ -232,7 +232,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        Optional<List<String>> values = claimsSetFacade.getOptionalStringArrayClaim("response_type");
+        Optional<List<String>> values = claimsSetFacade.getOptionalStringListClaim("response_type");
 
         // Then
         assertThat(values).isNotNull();
@@ -246,7 +246,7 @@ class ClaimsSetFacadeTest {
         ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
 
         // When
-        Optional<List<String>> values = claimsSetFacade.getOptionalStringArrayClaim("response_type");
+        Optional<List<String>> values = claimsSetFacade.getOptionalStringListClaim("response_type");
 
         // Then
         assertThat(values).isNotNull();

@@ -86,25 +86,9 @@ public class ClaimsSetFacade {
      * @return a valid (i.e. not null or empty) {@code String} containing the value associated with the claim
      * @throws JwtException if either the claim does not exist or it's value is either empty or not a String value
      */
-    public List<String> getRequiredStringArrayClaim(String claimName) throws JwtException {
-        Optional<List<String>> values = getOptionalStringArrayClaim(claimName);
+    public List<String> getRequiredStringListClaim(String claimName) throws JwtException {
+        Optional<List<String>> values = getOptionalStringListClaim(claimName);
         return values.orElseThrow(()->{ return new JwtException("Jwt claim '" + claimName + "' not defined");});
-//        checkClaimName(claimName);
-//        try {
-//            JsonValue claimValue = this.claimsSet.get(claimName);
-//            if (claimValue.getObject() == null) {
-//                throw new JwtException("Jwt claim '" + claimName + "' not defined");
-//            }
-//            if (claimValue.isList()){
-//                List<Object> valuesAsList = claimValue.asList();
-//                List<String> valuesAsStringList = valuesAsList.stream().map(String.class::cast).collect(Collectors.toList());
-//                return valuesAsStringList;
-//            } else {
-//                throw new JwtException("Jwt claim '" + claimName + "' is not of type List");
-//            }
-//        } catch (ClassCastException exception) {
-//            throw new JwtException("Jwt claim '" + claimName + "' is not a List of Strings");
-//        }
     }
 
     /**
@@ -114,7 +98,7 @@ public class ClaimsSetFacade {
      * @return a valid (i.e. not null or empty) {@code String} containing the value associated with the claim
      * @throws JwtException if either the claim does not exist or it's value is either empty or not a String value
      */
-    public Optional<List<String>> getOptionalStringArrayClaim(String claimName) throws JwtException {
+    public Optional<List<String>> getOptionalStringListClaim(String claimName) throws JwtException {
         checkClaimName(claimName);
         try {
             JsonValue claimValue = this.claimsSet.get(claimName);
