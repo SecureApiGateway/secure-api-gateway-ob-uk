@@ -104,11 +104,11 @@ switch (method.toUpperCase()) {
             logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
-//        JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
-//        if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
-//            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-//            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
-//        }
+        JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
+        if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
+            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
+            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
+        }
 
         ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
         Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
@@ -118,11 +118,10 @@ switch (method.toUpperCase()) {
             // Think we can choose to overwrite invalid types here....
         }
 
-
         // Check response types - in Registration Request
-        def responseTypes = registrationJwtClaimSet.getClaim("response_types")
+        def responseTypes = regRequestClaimsSet.getClaim("response_types")
         if (!responseTypes) {
-            registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
+            regRequestClaimsSet.setClaim("response_types", defaultResponseTypes)
         } else if (!supportedResponseTypes.contains(responseTypes)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("response_types: " + responseTypes + " not supported")
         }
