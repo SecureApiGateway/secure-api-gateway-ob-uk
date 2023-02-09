@@ -17,6 +17,10 @@ package com.forgerock.sapi.gateway.common.jwt;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.ivy.util.StringUtils;
 import org.forgerock.json.JsonValue;
@@ -43,6 +47,18 @@ public class ClaimsSetFacade {
         this.claimsSet = claimsSet;
     }
 
+    public boolean hasExpired() throws JwtException {
+        boolean hasExpired = false;
+        Date expirationTime = claimsSet.getExpirationTime();
+        if(expirationTime == null){
+            throw new JwtException("JWT has no expiration date");
+        }
+        if (expirationTime.before(new Date())) {
+            hasExpired = true;
+        }
+        return hasExpired;
+    }
+
     /**
      * Get a String type claim from the JWT
      *
@@ -60,6 +76,60 @@ public class ClaimsSetFacade {
             return claimValue;
         } catch (ClassCastException exception) {
             throw new JwtException("Jwt must contain String claim '" + claimName + "'");
+        }
+    }
+
+    /**
+     * Get a String type claim from the JWT
+     *
+     * @param claimName the name of the claim
+     * @return a valid (i.e. not null or empty) {@code String} containing the value associated with the claim
+     * @throws JwtException if either the claim does not exist or it's value is either empty or not a String value
+     */
+    public List<String> getRequiredStringArrayClaim(String claimName) throws JwtException {
+        Optional<List<String>> values = getOptionalStringArrayClaim(claimName);
+        return values.orElseThrow(()->{ return new JwtException("Jwt claim '" + claimName + "' not defined");});
+//        checkClaimName(claimName);
+//        try {
+//            JsonValue claimValue = this.claimsSet.get(claimName);
+//            if (claimValue.getObject() == null) {
+//                throw new JwtException("Jwt claim '" + claimName + "' not defined");
+//            }
+//            if (claimValue.isList()){
+//                List<Object> valuesAsList = claimValue.asList();
+//                List<String> valuesAsStringList = valuesAsList.stream().map(String.class::cast).collect(Collectors.toList());
+//                return valuesAsStringList;
+//            } else {
+//                throw new JwtException("Jwt claim '" + claimName + "' is not of type List");
+//            }
+//        } catch (ClassCastException exception) {
+//            throw new JwtException("Jwt claim '" + claimName + "' is not a List of Strings");
+//        }
+    }
+
+    /**
+     * Get a String type claim from the JWT
+     *
+     * @param claimName the name of the claim
+     * @return a valid (i.e. not null or empty) {@code String} containing the value associated with the claim
+     * @throws JwtException if either the claim does not exist or it's value is either empty or not a String value
+     */
+    public Optional<List<String>> getOptionalStringArrayClaim(String claimName) throws JwtException {
+        checkClaimName(claimName);
+        try {
+            JsonValue claimValue = this.claimsSet.get(claimName);
+            if (claimValue.getObject() == null) {
+                return Optional.empty();
+            }
+            if (claimValue.isList()){
+                List<Object> valuesAsList = claimValue.asList();
+                List<String> valuesAsStringList = valuesAsList.stream().map(String.class::cast).collect(Collectors.toList());
+                return Optional.of(valuesAsStringList);
+            } else {
+                throw new JwtException("Jwt claim '" + claimName + "' is not of type List");
+            }
+        } catch (ClassCastException exception) {
+            throw new JwtException("Jwt claim '" + claimName + "' is not a List of Strings");
         }
     }
 
