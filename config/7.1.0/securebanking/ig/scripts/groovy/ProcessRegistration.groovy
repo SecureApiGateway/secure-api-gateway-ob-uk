@@ -100,51 +100,64 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
         }
 
-        if (registrationRequest.hasExpired()){
-            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
-        }
         JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
         if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
             logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
 
+
+
+        if (registrationRequest.hasExpired()){
+            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
+            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
+        }
+
+        // rejectInvalidResponseTypes
         ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
         Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
         if(optionalResponseTypes.isEmpty()){
             registrationRequest.setResponseTypes(defaultResponseTypes)
         } else {
-            // Think we can choose to overwrite invalid types here....
+            // Think we can choose to overwrite invalid types with preferred type here.
         }
 
-        // Check response types - in Registration Request
-        def responseTypes = regRequestClaimsSet.getClaim("response_types")
+
+
+
+        // Check response types - in Registration Request - this is done in the FAPI filter
+        def responseTypes = registrationJwtClaimSet.getClaim("response_types")
         if (!responseTypes) {
-            regRequestClaimsSet.setClaim("response_types", defaultResponseTypes)
+            registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
         } else if (!supportedResponseTypes.contains(responseTypes)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("response_types: " + responseTypes + " not supported")
         }
 
+        // Check token_endpoint_auth_methods
         def tokenEndpointAuthMethod = registrationJwtClaimSet.getClaim("token_endpoint_auth_method")
         if (!tokenEndpointAuthMethod || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
         }
 
+        // AM should reject this case??
         if (tokenEndpointAuthMethod.equals("tls_client_auth") && !registrationJwtClaimSet.getClaim("tls_client_auth_subject_dn")) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
         }
 
+        // Checked by the RegistrationRequestEntityValidatorFilter
         def ssa = registrationJwtClaimSet.getClaim("software_statement", String.class);
         if (!ssa) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement claim is missing")
         }
         logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
 
+
         // This is nulled down because currently the SSA issued by the Open Banking Test Directory is not valid and is
         // rejected by AM. This is set to change when OBIE release a new version of the Directory in Feb 2023.
-        registrationJwtClaimSet.setClaim("software_statement", null);
+        // This should now be fixed, so let's see what happens eh???
+        //registrationJwtClaimSet.setClaim("software_statement", null);
 
+        // SSA available from registrationRequest now
         Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
         if (!ssaJwt) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
@@ -157,6 +170,7 @@ switch (method.toUpperCase()) {
         }
         logger.debug(SCRIPT_NAME + "issuer is {}", ssaIssuer)
 
+
         TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
         if (trustedDirectory) {
             logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
@@ -165,6 +179,7 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
         }
 
+        // Fapi filter checks redirect URIs....
         try {
             validateRegistrationRedirectUris(registrationJwtClaimSet, ssaClaims)
         } catch (e) {
@@ -172,6 +187,7 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidRedirectUriErrorResponse(e.getMessage())
         }
 
+        // This is OB specific
         // Validate the issuer claim for the registration matches the SSA software_id
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
