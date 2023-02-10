@@ -100,37 +100,46 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
         }
 
-        if (registrationRequest.hasExpired()){
-            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
-        }
         JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
         if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
             logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
         }
 
+
+
+        if (registrationRequest.hasExpired()){
+            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
+            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
+        }
+
+        // rejectInvalidResponseTypes
         ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
         Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
         if(optionalResponseTypes.isEmpty()){
             registrationRequest.setResponseTypes(defaultResponseTypes)
         } else {
-            // Think we can choose to overwrite invalid types here....
+            // Think we can choose to overwrite invalid types with preferred type here.
         }
 
+
+
+
         // Check response types - in Registration Request
-        def responseTypes = regRequestClaimsSet.getClaim("response_types")
+        def responseTypes = registrationJwtClaimSet.getClaim("response_types")
         if (!responseTypes) {
-            regRequestClaimsSet.setClaim("response_types", defaultResponseTypes)
+            registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
         } else if (!supportedResponseTypes.contains(responseTypes)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("response_types: " + responseTypes + " not supported")
         }
 
+        // Check token_endpoint_auth_methods
         def tokenEndpointAuthMethod = registrationJwtClaimSet.getClaim("token_endpoint_auth_method")
         if (!tokenEndpointAuthMethod || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
         }
 
+        // AM should reject this case??
         if (tokenEndpointAuthMethod.equals("tls_client_auth") && !registrationJwtClaimSet.getClaim("tls_client_auth_subject_dn")) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
         }
