@@ -15,28 +15,36 @@ responseCheck = new Response(Status.OK)
 responseCheck.headers['Content-Type'] = "application/json"
 
 String idempotencyKeyHeaderValue = request.getHeaders().getFirst("x-idempotency-key")
-logger.debug(SCRIPT_NAME + "IdempotencyKey header value: " + idempotencyKeyHeaderValue)
+logger.debug(SCRIPT_NAME + " idempotency key: " + idempotencyKeyHeaderValue)
 
 def method = request.method
-
-def filter = "_queryFilter="+ idempotencyArgFieldToFilter + "+eq+%22" + URLEncoder.encode(idempotencyKeyHeaderValue, "UTF-8") + "%22"
-
-logger.debug(SCRIPT_NAME + "Filter: " + filter)
-String fields = "_fields=_id,OBIntentObject,user/_id,accounts,account,apiClient/oauth2ClientId,apiClient/name,AccountId,IdempotencyKey"
-def requestUri = routeArgIdmBaseUri + "/openidm/managed/" + intentArgObject + "?" + filter + "&" + fields
-
+f550510ee57facefdd456df8e7beb218f550510
 // Only check when post
 switch (method.toUpperCase()) {
     case "POST":
-        logger.debug(SCRIPT_NAME + " idempotency key: " + idempotencyKeyHeaderValue)
         if (idempotencyKeyHeaderValue == null) {
             message = "Failed to get create the resource, 'x-idempotency-key' header / value expected"
             logger.error(SCRIPT_NAME + message)
             responseCheck.status = Status.BAD_REQUEST
             responseCheck.entity = "{ \"error\":\"" + message + "\"}"
             return responseCheck
+            // the idempotencyKey size must be at most 40 characters
+        } else if(idempotencyKeyHeaderValue.length() > 39){
+            message = "Failed to get create the resource, 'x-idempotency-key' size exceded, the size must be at most 40 characters"
+            logger.error(SCRIPT_NAME + message)
+            responseCheck.status = Status.BAD_REQUEST
+            responseCheck.entity = "{ \"error\":\"" + message + "\"}"
+            return responseCheck
         }
 
+        // prepare the request filter
+        def filter = "_queryFilter="+ idempotencyArgFieldToFilter + "+eq+%22" + URLEncoder.encode(idempotencyKeyHeaderValue, "UTF-8") + "%22"
+        logger.debug(SCRIPT_NAME + "Filter: " + filter)
+        String fields = "_fields=_id,OBIntentObject,user/_id,accounts,account,apiClient/oauth2ClientId,apiClient/name,AccountId,IdempotencyKey"
+        def requestUri = routeArgIdmBaseUri + "/openidm/managed/" + intentArgObject + "?" + filter + "&" + fields
+        logger.debug(SCRIPT_NAME + "Request URI: " + requestUri)
+
+        // build the request
         Request intentRequest = new Request();
         intentRequest.setUri(requestUri);
         intentRequest.setMethod('GET');
