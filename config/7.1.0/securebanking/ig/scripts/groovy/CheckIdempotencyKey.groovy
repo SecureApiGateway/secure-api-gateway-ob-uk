@@ -54,6 +54,12 @@ switch (method.toUpperCase()) {
 
             def intentResponseResult = intentResponse.entity.getJson().result
             if (!intentResponseResult.isEmpty()) {
+                // For file submission the response needs to be Ok with empty entity
+                if(idempotencyArgFieldToFilter == "IdempotencyKeyFile") {
+                    intentResponse.status = Status.OK
+                    intentResponse.entity = ""
+                    return newResultPromise(intentResponse)
+                }
                 intentResponse.status = Status.CREATED
                 intentResponse.entity = JsonOutput.toJson(intentResponseResult[0].get("OBIntentObject"))
                 return newResultPromise(intentResponse)
