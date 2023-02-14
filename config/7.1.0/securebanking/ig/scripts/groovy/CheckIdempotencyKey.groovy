@@ -30,7 +30,7 @@ switch (method.toUpperCase()) {
             return responseCheck
             // the idempotencyKey size must be at most 40 characters
         } else if(idempotencyKeyHeaderValue.length() > 39){
-            message = "Failed to get create the resource, 'x-idempotency-key' size exceded, the size must be at most 40 characters"
+            message = "Failed to get create the resource, 'x-idempotency-key' size exceeded, the size must be at most 40 characters"
             logger.error(SCRIPT_NAME + message)
             responseCheck.status = Status.BAD_REQUEST
             responseCheck.entity = "{ \"error\":\"" + message + "\"}"
