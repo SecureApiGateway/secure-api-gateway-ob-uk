@@ -124,12 +124,28 @@
           }
         },
         {
+          "comment": "Check incoming idempotency key header",
+          "name": "ValidateIdempotencyKey",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "clientHandler": "IDMClientHandler",
+            "file": "CheckIdempotencyKey.groovy",
+            "args": {
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+              "idempotencyArgFieldToFilter": "IdempotencyKeyFile",
+              "intentArgObject": "filePaymentsIntent"
+            }
+          }
+        },
+        {
           "comment": "Validate file against the consent previously submitted",
           "name": "Validate File",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
             "file": "ValidateFileConsent.groovy",
+            "clientHandler": "ForgeRockClientHandler",
             "args": {
               "routeArgRsBaseURI": "${urls.rsBaseUri}",
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",

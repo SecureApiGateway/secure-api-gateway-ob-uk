@@ -125,6 +125,21 @@
           }
         },
         {
+          "comment": "Check incoming idempotency key header",
+          "name": "ValidateIdempotencyKey",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "clientHandler": "IDMClientHandler",
+            "file": "CheckIdempotencyKey.groovy",
+            "args": {
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+              "idempotencyArgFieldToFilter": "IdempotencyKey",
+              "intentArgObject": "domesticVrpPaymentIntent"
+            }
+          }
+        },
+        {
           "comment": "Check VRPType",
           "name": "VRPTypeVerifier",
           "type": "ScriptableFilter",

@@ -12,6 +12,8 @@ SCRIPT_NAME = "[ProcessPaymentConsent] (" + fapiInteractionId + ") - ";
 
 logger.debug(SCRIPT_NAME + "Running...")
 
+String idempotencyKeyHeaderValue = request.getHeaders().getFirst("x-idempotency-key")
+
 def apiClientId = contexts.oauth2.accessToken.info.client_id
 if (apiClientId == null || apiClientId == "") {
     // in case of client credentials grant
@@ -43,6 +45,7 @@ switch (method.toUpperCase()) {
                 OBIntentObjectType: routeArgObIntentObjectType,
                 OBIntentObject    : paymentIntentData,
                 apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
+                IdempotencyKey    : idempotencyKeyHeaderValue
         ]
 
         logger.debug(SCRIPT_NAME + "IDM object json [" + idmIntent + "]")
