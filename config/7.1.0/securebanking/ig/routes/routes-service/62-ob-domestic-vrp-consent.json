@@ -135,6 +135,7 @@
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "idempotencyArgFieldToFilter": "IdempotencyKey",
+              "idempotencyArgExpirationFieldToFilter": "IdempotencyKeyExpiration",
               "intentArgObject": "domesticVrpPaymentIntent"
             }
           }

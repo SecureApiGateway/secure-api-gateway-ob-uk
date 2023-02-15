@@ -134,6 +134,7 @@
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "idempotencyArgFieldToFilter": "IdempotencyKeyFile",
+              "idempotencyArgExpirationFieldToFilter": "IdempotencyKeyExpirationFile",
               "intentArgObject": "filePaymentsIntent"
             }
           }
@@ -149,7 +150,7 @@
             "args": {
               "routeArgRsBaseURI": "${urls.rsBaseUri}",
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
-              "routeArgObjDomesticPaymentConsent": "filePaymentsIntent",
+              "routeArgObjIntent": "filePaymentsIntent",
               "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
               "routeArgObjApiClient": "apiClient",
               "routeArgConsentIdPrefix": "PFC_"

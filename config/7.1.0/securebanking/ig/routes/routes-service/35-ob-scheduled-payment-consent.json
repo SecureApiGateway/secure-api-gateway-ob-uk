@@ -144,6 +144,7 @@
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "idempotencyArgFieldToFilter": "IdempotencyKey",
+              "idempotencyArgExpirationFieldToFilter": "IdempotencyKeyExpiration",
               "intentArgObject": "domesticScheduledPaymentIntent"
             }
           }
@@ -186,7 +187,7 @@
             "type": "application/x-groovy",
             "file": "ProcessPaymentConsent.groovy",
             "args": {
-              "routeArgObjDomesticPaymentConsent": "domesticScheduledPaymentIntent",
+              "routeArgObjIntent": "domesticScheduledPaymentIntent",
               "routeArgObIntentObjectType": "OBWriteDomesticScheduledConsentResponse5",
               "routeArgObjApiClient": "apiClient",
               "routeArgConsentIdPrefix": "PDSC_"

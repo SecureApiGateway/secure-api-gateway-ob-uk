@@ -50,19 +50,20 @@ switch (method.toUpperCase()) {
                 OBIntentObjectType: routeArgObIntentObjectType,
                 OBIntentObject    : paymentIntentData,
                 apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
+                Oauth2ClientId    : apiClientId,
                 IdempotencyKey    : idempotencyKeyHeaderValue,
                 IdempotencyKeyExpiration: idempotencyKeyExpiredDateTime.getEpochSecond()
         ]
 
         logger.debug(SCRIPT_NAME + "IDM object json [" + idmIntent + "]")
         request.setEntity(idmIntent)
-        request.uri.path = "/openidm/managed/" + routeArgObjDomesticPaymentConsent
+        request.uri.path = "/openidm/managed/" + routeArgObjIntent
         request.uri.query = "action=create";
         break
 
     case "GET":
         def consentId = request.uri.path.substring(request.uri.path.lastIndexOf("/") + 1);
-        request.uri.path = "/openidm/managed/" + routeArgObjDomesticPaymentConsent + "/" + consentId
+        request.uri.path = "/openidm/managed/" + routeArgObjIntent + "/" + consentId
         request.uri.query = "_fields=OBIntentObject"
         break
 
@@ -76,14 +77,14 @@ return next.handle(context, request).then(this.&extractOBIntentObjectFromIdmResp
  * Responses from IDM will always contain the "OBIntentObject" as a top level field (even if we filter).
  * We want to send only the contents of the OBIntentObject as the response to the client i.e. a valid Open Banking API response
  */
-private Response extractOBIntentObjectFromIdmResponse(response) {
+private static Response extractOBIntentObjectFromIdmResponse(response) {
     if (response.status.isSuccessful()) {
         response.entity = response.entity.getJson().get("OBIntentObject")
     }
     return response
 }
 
-private void processProcessPaymentConsentRequestData(consentId, paymentIntentData, statusToSet) {
+private static void processProcessPaymentConsentRequestData(consentId, paymentIntentData, statusToSet) {
     def tz = TimeZone.getTimeZone("UTC");
     def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     df.setTimeZone(tz);
@@ -100,7 +101,7 @@ private void processProcessPaymentConsentRequestData(consentId, paymentIntentDat
  * Extract the Open Banking Api version from the request uri
  * Example uri: /rs/open-banking/v3.1.10/aisp/account-access-consents
  */
-private String getObApiVersion(request) {
+private static String getObApiVersion(request) {
     def uri = request.uri.toString()
     def pathPrefix = "/rs/open-banking/"
     int prefixEndIndex = uri.indexOf(pathPrefix)

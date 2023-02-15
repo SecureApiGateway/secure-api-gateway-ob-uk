@@ -135,6 +135,7 @@
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
               "idempotencyArgFieldToFilter": "IdempotencyKey",
+              "idempotencyArgExpirationFieldToFilter": "IdempotencyKeyExpiration",
               "intentArgObject": "internationalPaymentIntent"
             }
           }
@@ -177,7 +178,7 @@
             "type": "application/x-groovy",
             "file": "ProcessPaymentConsent.groovy",
             "args": {
-              "routeArgObjDomesticPaymentConsent": "internationalPaymentIntent",
+              "routeArgObjIntent": "internationalPaymentIntent",
               "routeArgObIntentObjectType": "OBWriteInternationalConsentResponse6",
               "routeArgObjApiClient": "apiClient",
               "routeArgConsentIdPrefix": "PIC_"

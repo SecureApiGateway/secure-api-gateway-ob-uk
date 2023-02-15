@@ -46,16 +46,17 @@ switch (method.toUpperCase()) {
             // in case of client credentials grant
             apiClientId = contexts.oauth2.accessToken.info.sub
         }
-        // calculate the expired time for idempotency key (current date time + 24 hours)
-        Instant idempotencyKeyExpire = Instant.now().plus(24, ChronoUnit.HOURS)
+        // current time to filter the idempotency key expiration time (idempotencyKeyExpiration stored in seconds = creation time + 24hours)
+        Instant currentInstantTime = Instant.now()
         logger.debug(SCRIPT_NAME + "apiClientId: " + apiClientId + ", idempotencyKeyExpire: " + idempotencyKeyExpire +", in seconds: " + idempotencyKeyExpire.getEpochSecond())
+        // filter by idempotency key, idempotency key expiration time (only valid for 24hours since has been created) and Oauth2ClientId
         def filter = "_queryFilter="+ idempotencyArgFieldToFilter + "+eq+%22" +
                 URLEncoder.encode(idempotencyKeyHeaderValue, "UTF-8") + "%22" +
-                "+and+IdempotencyKeyExpiration+le+" + idempotencyKeyExpire.getEpochSecond() +
-                "+and+oauth2ClientId+eq+%22" + apiClientId + "%22"
+                "+and+" + idempotencyArgExpirationFieldToFilter + "+ge+" + currentInstantTime.getEpochSecond() +
+                "+and+Oauth2ClientId+eq+%22" + apiClientId + "%22"
 
         logger.debug(SCRIPT_NAME + "Filter: " + filter)
-        String fields = "_fields=_id,OBIntentObject,user/_id,accounts,account,apiClient/oauth2ClientId,apiClient/name,AccountId,IdempotencyKey"
+        String fields = "_fields=_id,OBIntentObject"
         def requestUri = routeArgIdmBaseUri + "/openidm/managed/" + intentArgObject + "?" + filter + "&" + fields
         logger.debug(SCRIPT_NAME + "Request URI: " + requestUri)
 
@@ -93,7 +94,16 @@ switch (method.toUpperCase()) {
 next.handle(context, request)
 
 /*
-curl -v -X GET -H "X-OpenIDM-Username: amadmin" -H "X-OpenIDM-Password: xRYlpBo0tJl4jcqsE3J8G1US" \
--H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJraWQiOiJjZ0Zxb1hCY25yK1RwcU5ORFJMVkhaYXBQQU09IiwiYWxnIjoiUFMyNTYifQ.eyJzdWIiOiJhOGNiMzA1ZC04ZmU3LTQ5NzktYjJmMy0xZWJkYzU3NDQyOGYiLCJjdHMiOiJPQVVUSDJfU1RBVEVMRVNTX0dSQU5UIiwiYXV0aF9sZXZlbCI6MCwiYXVkaXRUcmFja2luZ0lkIjoiMzAyZjhjMGYtY2VkNS00OGRjLTljNDAtMzY4NzEzNWFhNTFlLTIzOTA0MCIsInN1Ym5hbWUiOiJhOGNiMzA1ZC04ZmU3LTQ5NzktYjJmMy0xZWJkYzU3NDQyOGYiLCJpc3MiOiJodHRwczovL29iZGVtby5qb3JnZXNhbmNoZXpwZXJlei5mb3JnZXJvY2suZmluYW5jaWFsL2FtL29hdXRoMi9yZWFsbXMvcm9vdC9yZWFsbXMvYWxwaGEiLCJ0b2tlbk5hbWUiOiJhY2Nlc3NfdG9rZW4iLCJ0b2tlbl90eXBlIjoiQmVhcmVyIiwiYXV0aEdyYW50SWQiOiJuSW9WRGZ4MzNPNWMtcnJGQzhqTkFXSVpLdlkiLCJhdWQiOiJpZy1jbGllbnQiLCJuYmYiOjE2NzYzOTE5OTAsImdyYW50X3R5cGUiOiJwYXNzd29yZCIsInNjb3BlIjpbImZyOmlkbToqIl0sImF1dGhfdGltZSI6MTY3NjM5MTk5MCwicmVhbG0iOiIvYWxwaGEiLCJleHAiOjE2NzY3NTE5OTAsImlhdCI6MTY3NjM5MTk5MCwiZXhwaXJlc19pbiI6MzYwMDAwLCJqdGkiOiJZdzFNS2xTd0QxMFk3ci1vaEZ3TmdTLXI3ZVUifQ.5zFi-cF22Yv0KFaMDWw-TorYPayx9qIJ7e0o83tJPP6ifboEt9K_6qWmlnHZi3Zh5gN82qEwKRuu3TdyhM4H8yhJD4tGZHZ-HhxtYcKrA8M6PHrILroh9Plqvdp0LkH6v1Bu2CvIV4zEt8IKNYuJGa3ZtkZv_Fn02bjFdux7j5TcT5XNv1Hg4QOGtLXGeMB8tPHkyOK1h1WlK_Kpje91m8Pmiqix7Fke0_KtF_RIrfFARtM3jL91-5mmJPEyoms7ALfFfH1_Kr_lsGWM4sBr9mVJwtMS-3TvA-QCR0IKKu2OXEUy9hKG7TUjSm2r6YIHCeLzhGnlTpwFf4XtewJwgA" \
-https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/domesticPaymentIntent?_queryFilter=IdempotencyKey+eq+%22c7790dd5-e890-45a6-b58b-76a91c2f2a7d%22+and+IdempotencyKeyExpiration+le+1676480666+and+apiClient/_id+eq+%220e2738b6-ab92-4156-8327-066ad8ffb5aa%22
+curl -v -X GET \
+-H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJraWQiOiJrKzN4cXR1NzhMY283aFMraldmUzVnV2ZpNU09IiwiYWxnIjoiUFMyNTYifQ.eyJzdWIiOiJlYzE2YzNkOS1hNDRhLTRhNDMtYmExNS01ZTM2YWEwYTZiNTQiLCJjdHMiOiJPQVVUSDJfU1RBVEVMRVNTX0dSQU5UIiwiYXV0aF9sZXZlbCI6MCwiYXVkaXRUcmFja2luZ0lkIjoiMjlkOTJmZWMtZTM2Ni00YmZlLTg3OGItN2ZhODQ1NDgzOWY3LTI1MDIxIiwic3VibmFtZSI6ImVjMTZjM2Q5LWE0NGEtNGE0My1iYTE1LTVlMzZhYTBhNmI1NCIsImlzcyI6Imh0dHBzOi8vb2JkZW1vLmpvcmdlc2FuY2hlenBlcmV6LmZvcmdlcm9jay5maW5hbmNpYWwvYW0vb2F1dGgyL3JlYWxtcy9yb290L3JlYWxtcy9hbHBoYSIsInRva2VuTmFtZSI6ImFjY2Vzc190b2tlbiIsInRva2VuX3R5cGUiOiJCZWFyZXIiLCJhdXRoR3JhbnRJZCI6ImJYYXFWdHRaTWllQXRzTk1yazk4ZjZSRGRmYyIsImF1ZCI6ImlnLWNsaWVudCIsIm5iZiI6MTY3NjQ1NDQ2MCwiZ3JhbnRfdHlwZSI6InBhc3N3b3JkIiwic2NvcGUiOlsiZnI6aWRtOioiXSwiYXV0aF90aW1lIjoxNjc2NDU0NDYwLCJyZWFsbSI6Ii9hbHBoYSIsImV4cCI6MTY3NjgxNDQ2MCwiaWF0IjoxNjc2NDU0NDYwLCJleHBpcmVzX2luIjozNjAwMDAsImp0aSI6IjZXZGJoMmNFRWUzdGZjbGFsbDNEYUZFR2hBYyJ9.i6ug6ZIqjCv-dzDc5kT2gp-eijaL0_5N8SHVNkFQT6Kr40MyYSDr7dEMt7lkevVdWQNymKhhSo-lk8RMX82oHZOHBFoX14ob4q5284MIRAlyQ4txfSWp-dmgJMn-ha4SP4xOyHcIFjFs1y3s2__j82e3931cJDGm_IkWz4nv4CdhN9voT9GiYVsqBdMW9u-ZniFVYJ6bCljQfd5UnA_JPbJVRvEuAiUg5Ahj3ukspfSpQA0WycUfTBPxRf44B7BxwhILZT0mKIqMcFYbQJYYbnizVIrAeSAIUEAvIjbHUSxO4rjrrVbKGItA8cDqsWV43BhBsjlM5QuK_vsMt2DySw" \
+https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/domesticPaymentIntent \
+?_queryFilter=IdempotencyKey+eq+%22c7790dd5-e890-45a6-b58b-76a91c2f2a7d%22+and+IdempotencyKeyExpiration+le+1676541807+and+apiClient/oauth2ClientId+eq+%227fdff41b-6013-47ee-a0d4-0baf38f5dd8f%22
+
+curl \
+--header "X-OpenIDM-Username: amadmin" \
+--header "X-OpenIDM-Password: DiyGGSAB53IUzodjoklGNOkX" \
+--header "Accept-API-Version: resource=1.0" \
+'https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/user?_queryFilter=userName+eq+"psu4test"'
+
+curl -v -H @header-file "https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/domesticPaymentIntent?_queryFilter=IdempotencyKey+eq+%22c7790dd5-e890-45a6-b58b-76a91c2f2a7d%22+and+*_ref/oauth2ClientId+eq+%22%227fdff41b-6013-47ee-a0d4-0baf38f5dd8f&_prettyPrint=true&_fields=*_ref/oauth2ClientId"
  */
