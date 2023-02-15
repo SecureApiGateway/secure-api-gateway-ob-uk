@@ -1,4 +1,6 @@
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 /*
  * Script to prepare payment consent
@@ -38,6 +40,9 @@ switch (method.toUpperCase()) {
         paymentIntentData = request.entity.getJson()
         processProcessPaymentConsentRequestData(consentId, paymentIntentData, status)
 
+        // calculate the expired time for idempotency key (current date time + 24 hours)
+        Instant idempotencyKeyExpiredDateTime = Instant.now().plus(24, ChronoUnit.HOURS)
+
         def version = getObApiVersion(request)
         def idmIntent = [
                 _id               : consentId,
@@ -45,7 +50,8 @@ switch (method.toUpperCase()) {
                 OBIntentObjectType: routeArgObIntentObjectType,
                 OBIntentObject    : paymentIntentData,
                 apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
-                IdempotencyKey    : idempotencyKeyHeaderValue
+                IdempotencyKey    : idempotencyKeyHeaderValue,
+                IdempotencyKeyExpiration: idempotencyKeyExpiredDateTime.getEpochSecond()
         ]
 
         logger.debug(SCRIPT_NAME + "IDM object json [" + idmIntent + "]")
