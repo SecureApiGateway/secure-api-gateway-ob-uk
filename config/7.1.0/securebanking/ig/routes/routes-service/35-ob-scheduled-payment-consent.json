@@ -174,7 +174,6 @@
             "args": {
               "routeArgRsBaseURI": "${urls.rsBaseUri}",
               "routeArgIntentQueryParameter": "intent",
-              "routeArgVersionQueryParameter": "version",
               "routeArgIntentType": "PDSC_"
             }
           }

@@ -48,7 +48,7 @@ switch (method.toUpperCase()) {
         }
         // current time to filter the idempotency key expiration time (idempotencyKeyExpiration stored in seconds = creation time + 24hours)
         Instant currentInstantTime = Instant.now()
-        logger.debug(SCRIPT_NAME + "apiClientId: " + apiClientId + ", idempotencyKeyExpire: " + idempotencyKeyExpire +", in seconds: " + idempotencyKeyExpire.getEpochSecond())
+        logger.debug(SCRIPT_NAME + "apiClientId: " + apiClientId + ", current Instant: " + currentInstantTime +", in seconds: " + currentInstantTime.getEpochSecond())
         // filter by idempotency key, idempotency key expiration time (only valid for 24hours since has been created) and Oauth2ClientId
         def filter = "_queryFilter="+ idempotencyArgFieldToFilter + "+eq+%22" +
                 URLEncoder.encode(idempotencyKeyHeaderValue, "UTF-8") + "%22" +
@@ -78,6 +78,7 @@ switch (method.toUpperCase()) {
 
             def intentResponseResult = intentResponse.entity.getJson().result
             if (!intentResponseResult.isEmpty()) {
+                logger.info("Found a intent for Oauth2ClientId: " + apiClientId + " with not expired " + idempotencyArgFieldToFilter +": " + idempotencyKeyHeaderValue)
                 // For file submission the response needs to be Ok with empty entity
                 if(idempotencyArgFieldToFilter == "IdempotencyKeyFile") {
                     intentResponse.status = Status.OK
@@ -92,18 +93,3 @@ switch (method.toUpperCase()) {
         })
 }
 next.handle(context, request)
-
-/*
-curl -v -X GET \
--H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJraWQiOiJrKzN4cXR1NzhMY283aFMraldmUzVnV2ZpNU09IiwiYWxnIjoiUFMyNTYifQ.eyJzdWIiOiJlYzE2YzNkOS1hNDRhLTRhNDMtYmExNS01ZTM2YWEwYTZiNTQiLCJjdHMiOiJPQVVUSDJfU1RBVEVMRVNTX0dSQU5UIiwiYXV0aF9sZXZlbCI6MCwiYXVkaXRUcmFja2luZ0lkIjoiMjlkOTJmZWMtZTM2Ni00YmZlLTg3OGItN2ZhODQ1NDgzOWY3LTI1MDIxIiwic3VibmFtZSI6ImVjMTZjM2Q5LWE0NGEtNGE0My1iYTE1LTVlMzZhYTBhNmI1NCIsImlzcyI6Imh0dHBzOi8vb2JkZW1vLmpvcmdlc2FuY2hlenBlcmV6LmZvcmdlcm9jay5maW5hbmNpYWwvYW0vb2F1dGgyL3JlYWxtcy9yb290L3JlYWxtcy9hbHBoYSIsInRva2VuTmFtZSI6ImFjY2Vzc190b2tlbiIsInRva2VuX3R5cGUiOiJCZWFyZXIiLCJhdXRoR3JhbnRJZCI6ImJYYXFWdHRaTWllQXRzTk1yazk4ZjZSRGRmYyIsImF1ZCI6ImlnLWNsaWVudCIsIm5iZiI6MTY3NjQ1NDQ2MCwiZ3JhbnRfdHlwZSI6InBhc3N3b3JkIiwic2NvcGUiOlsiZnI6aWRtOioiXSwiYXV0aF90aW1lIjoxNjc2NDU0NDYwLCJyZWFsbSI6Ii9hbHBoYSIsImV4cCI6MTY3NjgxNDQ2MCwiaWF0IjoxNjc2NDU0NDYwLCJleHBpcmVzX2luIjozNjAwMDAsImp0aSI6IjZXZGJoMmNFRWUzdGZjbGFsbDNEYUZFR2hBYyJ9.i6ug6ZIqjCv-dzDc5kT2gp-eijaL0_5N8SHVNkFQT6Kr40MyYSDr7dEMt7lkevVdWQNymKhhSo-lk8RMX82oHZOHBFoX14ob4q5284MIRAlyQ4txfSWp-dmgJMn-ha4SP4xOyHcIFjFs1y3s2__j82e3931cJDGm_IkWz4nv4CdhN9voT9GiYVsqBdMW9u-ZniFVYJ6bCljQfd5UnA_JPbJVRvEuAiUg5Ahj3ukspfSpQA0WycUfTBPxRf44B7BxwhILZT0mKIqMcFYbQJYYbnizVIrAeSAIUEAvIjbHUSxO4rjrrVbKGItA8cDqsWV43BhBsjlM5QuK_vsMt2DySw" \
-https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/domesticPaymentIntent \
-?_queryFilter=IdempotencyKey+eq+%22c7790dd5-e890-45a6-b58b-76a91c2f2a7d%22+and+IdempotencyKeyExpiration+le+1676541807+and+apiClient/oauth2ClientId+eq+%227fdff41b-6013-47ee-a0d4-0baf38f5dd8f%22
-
-curl \
---header "X-OpenIDM-Username: amadmin" \
---header "X-OpenIDM-Password: DiyGGSAB53IUzodjoklGNOkX" \
---header "Accept-API-Version: resource=1.0" \
-'https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/user?_queryFilter=userName+eq+"psu4test"'
-
-curl -v -H @header-file "https://iam.jorgesanchezperez.forgerock.financial/openidm/managed/domesticPaymentIntent?_queryFilter=IdempotencyKey+eq+%22c7790dd5-e890-45a6-b58b-76a91c2f2a7d%22+and+*_ref/oauth2ClientId+eq+%22%227fdff41b-6013-47ee-a0d4-0baf38f5dd8f&_prettyPrint=true&_fields=*_ref/oauth2ClientId"
- */

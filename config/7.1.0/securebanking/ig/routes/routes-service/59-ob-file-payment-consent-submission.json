@@ -148,12 +148,7 @@
             "file": "ValidateFileConsent.groovy",
             "clientHandler": "ForgeRockClientHandler",
             "args": {
-              "routeArgRsBaseURI": "${urls.rsBaseUri}",
-              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
-              "routeArgObjIntent": "filePaymentsIntent",
-              "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
-              "routeArgObjApiClient": "apiClient",
-              "routeArgConsentIdPrefix": "PFC_"
+              "routeArgRsBaseURI": "${urls.rsBaseUri}"
             }
           }
         },
@@ -166,12 +161,7 @@
             "file": "PatchFileConsent.groovy",
             "clientHandler": "IDMClientHandler",
             "args": {
-              "routeArgRsBaseURI": "${urls.rsBaseUri}",
-              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
-              "routeArgObjDomesticPaymentConsent": "filePaymentsIntent",
-              "routeArgObIntentObjectType": "OBWriteFileConsentResponse4",
-              "routeArgObjApiClient": "apiClient",
-              "routeArgConsentIdPrefix": "PFC_"
+              "routeArgRsBaseURI": "${urls.rsBaseUri}"
             }
           }
         }
