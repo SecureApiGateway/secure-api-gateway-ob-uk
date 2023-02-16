@@ -3,8 +3,9 @@
  */
 
 import groovy.json.JsonOutput
+import jdk.internal.joptsimple.internal.Strings
+
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
@@ -24,7 +25,7 @@ def method = request.method
 // Only check when post
 switch (method.toUpperCase()) {
     case "POST":
-        if (idempotencyKeyHeaderValue == null) {
+        if (idempotencyKeyHeaderValue == null || idempotencyKeyHeaderValue == Strings.EMPTY) {
             message = "Failed to get create the resource, 'x-idempotency-key' header / value expected"
             logger.error(SCRIPT_NAME + message)
             responseCheck.status = Status.BAD_REQUEST
