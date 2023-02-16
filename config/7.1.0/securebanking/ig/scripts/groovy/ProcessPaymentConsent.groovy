@@ -74,7 +74,7 @@ private Promise<Response, NeverThrowsException> getIdmConsent(originalRequest, c
     // Query IDM for a consent with the matching id
     var getRequest = new Request(originalRequest)
     getRequest.method = "GET"
-    getRequest.uri.path = "/openidm/managed/" + routeArgObjDomesticPaymentConsent + "/" + consentId
+    getRequest.uri.path = "/openidm/managed/" + routeArgObjIntent + "/" + consentId
     getRequest.uri.query = "_fields=OBIntentObject,apiClient/oauth2ClientId"
     return next.handle(context, getRequest)
             .then(response -> performAccessAuthorisationCheck(response, oauth2ClientId))

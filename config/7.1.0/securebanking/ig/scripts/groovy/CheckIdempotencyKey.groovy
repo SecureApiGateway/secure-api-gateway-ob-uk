@@ -48,6 +48,7 @@ switch (method.toUpperCase()) {
         // current time to filter the idempotency key expiration time (idempotencyKeyExpiration stored in seconds = creation time + 24hours)
         Instant currentInstantTime = Instant.now()
         logger.debug(SCRIPT_NAME + "apiClientId: " + apiClientId + ", current Instant: " + currentInstantTime +", in seconds: " + currentInstantTime.getEpochSecond())
+
         // filter by idempotency key, idempotency key expiration time (only valid for 24hours since has been created) and Oauth2ClientId
         def filter = "_queryFilter="+ idempotencyArgFieldToFilter + "+eq+%22" +
                 URLEncoder.encode(idempotencyKeyHeaderValue, "UTF-8") + "%22" +
