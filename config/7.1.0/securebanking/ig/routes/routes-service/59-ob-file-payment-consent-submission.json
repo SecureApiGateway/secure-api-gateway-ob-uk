@@ -161,7 +161,8 @@
             "file": "PatchFileConsent.groovy",
             "clientHandler": "IDMClientHandler",
             "args": {
-              "routeArgRsBaseURI": "${urls.rsBaseUri}"
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+              "routeArgObjIntent": "filePaymentsIntent"
             }
           }
         }
