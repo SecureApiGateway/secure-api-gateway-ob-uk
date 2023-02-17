@@ -80,7 +80,7 @@ switch (method.toUpperCase()) {
             if (!intentResponseResult.isEmpty()) {
                 logger.info("Found a intent for Oauth2ClientId: " + apiClientId + " with not expired " + idempotencyArgFieldToFilter +": " + idempotencyKeyHeaderValue)
                 // For file submission the response needs to be Ok with empty entity
-                if(idempotencyArgFieldToFilter == "IdempotencyKeyFile") {
+                if(idempotencyArgFieldToFilter == "FileIdempotencyKey") {
                     intentResponse.status = Status.OK
                     intentResponse.entity = ""
                     return newResultPromise(intentResponse)
