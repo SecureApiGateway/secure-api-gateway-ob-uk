@@ -16,10 +16,10 @@ logger.debug(SCRIPT_NAME + "Running...")
 
 String idempotencyKeyHeaderValue = request.getHeaders().getFirst("x-idempotency-key")
 
-def apiClientId = contexts.oauth2.accessToken.info.client_id
-if (apiClientId == null || apiClientId == "") {
+def oauth2ClientId = contexts.oauth2.accessToken.info.client_id
+if (oauth2ClientId == null || oauth2ClientId == "") {
     // in case of client credentials grant
-    apiClientId = contexts.oauth2.accessToken.info.sub
+    oauth2ClientId = contexts.oauth2.accessToken.info.sub
 }
 
 def method = request.method
@@ -49,8 +49,8 @@ switch (method.toUpperCase()) {
                 OBVersion         : version,
                 OBIntentObjectType: routeArgObIntentObjectType,
                 OBIntentObject    : paymentIntentData,
-                apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
-                Oauth2ClientId    : apiClientId,
+                apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + oauth2ClientId],
+                Oauth2ClientId    : oauth2ClientId,
                 IdempotencyKey    : idempotencyKeyHeaderValue,
                 IdempotencyKeyExpirationTime: idempotencyKeyExpiredDateTime.getEpochSecond()
         ]
@@ -63,7 +63,7 @@ switch (method.toUpperCase()) {
 
     case "GET":
         def consentId = request.uri.path.substring(request.uri.path.lastIndexOf("/") + 1);
-        return getIdmConsent(request, consentId, apiClientId)
+        return getIdmConsent(request, consentId, oauth2ClientId)
 
     case "DELETE":
         def consentId = request.uri.path.substring(request.uri.path.lastIndexOf("/") + 1)
