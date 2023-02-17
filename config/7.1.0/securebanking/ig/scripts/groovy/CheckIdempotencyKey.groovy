@@ -28,14 +28,14 @@ switch (method.toUpperCase()) {
             logger.error(SCRIPT_NAME + message)
             responseCheck.status = Status.BAD_REQUEST
             responseCheck.entity = "{ \"error\":\"" + message + "\"}"
-            return responseCheck
+            return newResultPromise(responseCheck)
             // the idempotencyKey size must be at most 40 characters
-        } else if(idempotencyKeyHeaderValue.length() > 39){
+        } else if(idempotencyKeyHeaderValue.length() > 40){
             message = "Failed to get create the resource, 'x-idempotency-key' size exceeded, the size must be at most 40 characters"
             logger.error(SCRIPT_NAME + message)
             responseCheck.status = Status.BAD_REQUEST
             responseCheck.entity = "{ \"error\":\"" + message + "\"}"
-            return responseCheck
+            return newResultPromise(responseCheck)
         }
 
         // prepare the request filter
@@ -73,7 +73,7 @@ switch (method.toUpperCase()) {
                 logger.error(SCRIPT_NAME + message)
                 response.status = intentResponseStatus
                 response.entity = "{ \"error\":\"" + message + "\"}"
-                return response
+                return newResultPromise(response)
             }
 
             def intentResponseResult = intentResponse.entity.getJson().result
