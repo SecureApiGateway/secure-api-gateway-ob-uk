@@ -52,7 +52,7 @@ switch (method.toUpperCase()) {
                 apiClient         : ["_ref": "managed/" + routeArgObjApiClient + "/" + apiClientId],
                 Oauth2ClientId    : apiClientId,
                 IdempotencyKey    : idempotencyKeyHeaderValue,
-                IdempotencyKeyExpiration: idempotencyKeyExpiredDateTime.getEpochSecond()
+                IdempotencyKeyExpirationTime: idempotencyKeyExpiredDateTime.getEpochSecond()
         ]
 
         logger.debug(SCRIPT_NAME + "IDM object json [" + idmIntent + "]")

@@ -133,8 +133,8 @@
             "file": "CheckIdempotencyKey.groovy",
             "args": {
               "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
-              "idempotencyArgFieldToFilter": "IdempotencyKeyFile",
-              "idempotencyArgExpirationFieldToFilter": "IdempotencyKeyExpirationFile",
+              "idempotencyArgFieldToFilter": "FileIdempotencyKey",
+              "idempotencyArgExpirationFieldToFilter": "FileIdempotencyKeyExpirationTime",
               "intentArgObject": "filePaymentsIntent"
             }
           }

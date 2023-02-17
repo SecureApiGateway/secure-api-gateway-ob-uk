@@ -9,9 +9,9 @@ if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
 SCRIPT_NAME = "[PatchFileConsent] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 
-String idempotencyKeyFileHeaderValue = request.getHeaders().getFirst("x-idempotency-key")
+String fileIdempotencyKeyHeaderValue = request.getHeaders().getFirst("x-idempotency-key")
 // calculate the expired time for idempotency key (current date time + 24 hours)
-Instant idempotencyKeyExpiredDateTime = Instant.now().plus(24, ChronoUnit.HOURS)
+Instant fileIdempotencyKeyExpiredTime = Instant.now().plus(24, ChronoUnit.HOURS)
 
 def splitUri = request.uri.path.split("/")
 def consentId = splitUri[6]
@@ -25,7 +25,7 @@ patchRequest.setUri(requestUri + "&_action=patch");
 patchRequest.getHeaders().add("Content-Type", "application/json");
 patchRequest.setEntity(
         JsonOutput.toJson(
-                buildPatchRequest(request.entity.getString(), idempotencyKeyFileHeaderValue, idempotencyKeyExpiredDateTime)
+                buildPatchRequest(request.entity.getString(), fileIdempotencyKeyHeaderValue, fileIdempotencyKeyExpiredTime)
         )
 )
 
@@ -61,13 +61,13 @@ static def buildPatchRequest(String fileContent, String idempotencyKeyFileHeader
 
     body.push([
             "operation": "replace",
-            "field"    : "IdempotencyKeyFile",
+            "field"    : "FileIdempotencyKey",
             "value"    : idempotencyKeyFileHeaderValue
     ])
 
     body.push([
             "operation": "replace",
-            "field"    : "IdempotencyKeyExpirationFile",
+            "field"    : "FileIdempotencyKeyExpirationTime",
             "value"    : idempotencyKeyExpiredDateTime.getEpochSecond()
     ])
 
