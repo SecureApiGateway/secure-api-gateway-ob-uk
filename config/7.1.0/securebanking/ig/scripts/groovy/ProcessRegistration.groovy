@@ -125,7 +125,7 @@ switch (method.toUpperCase()) {
 
 
 
-        // Check response types - in Registration Request
+        // Check response types - in Registration Request - this is done in the FAPI filter
         def responseTypes = registrationJwtClaimSet.getClaim("response_types")
         if (!responseTypes) {
             registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
@@ -144,16 +144,20 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
         }
 
+        // Checked by the RegistrationRequestEntityValidatorFilter
         def ssa = registrationJwtClaimSet.getClaim("software_statement", String.class);
         if (!ssa) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement claim is missing")
         }
         logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
 
+
         // This is nulled down because currently the SSA issued by the Open Banking Test Directory is not valid and is
         // rejected by AM. This is set to change when OBIE release a new version of the Directory in Feb 2023.
-        registrationJwtClaimSet.setClaim("software_statement", null);
+        // This should now be fixed, so let's see what happens eh???
+        //registrationJwtClaimSet.setClaim("software_statement", null);
 
+        // SSA available from registrationRequest now
         Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
         if (!ssaJwt) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
@@ -166,6 +170,7 @@ switch (method.toUpperCase()) {
         }
         logger.debug(SCRIPT_NAME + "issuer is {}", ssaIssuer)
 
+
         TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
         if (trustedDirectory) {
             logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
@@ -174,6 +179,7 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
         }
 
+        // Fapi filter checks redirect URIs....
         try {
             validateRegistrationRedirectUris(registrationJwtClaimSet, ssaClaims)
         } catch (e) {
@@ -181,6 +187,7 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidRedirectUriErrorResponse(e.getMessage())
         }
 
+        // This is OB specific
         // Validate the issuer claim for the registration matches the SSA software_id
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
