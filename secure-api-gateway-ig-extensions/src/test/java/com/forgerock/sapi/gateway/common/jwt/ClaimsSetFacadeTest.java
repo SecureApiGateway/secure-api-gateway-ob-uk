@@ -253,4 +253,36 @@ class ClaimsSetFacadeTest {
         assertThat(values.isEmpty()).isFalse();
         assertThat(values.get().contains("code id_token")).isTrue();
     }
+
+    @Test
+    void success_setStringListClaim() throws JwtException {
+        // Given
+        JwtClaimsSet claimsSet = new JwtClaimsSet();
+        ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
+
+        // When
+        List<String> expectedResponseTypes = List.of("code", "code id_token");
+        claimsSetFacade.setStringArrayClaim("response_type", expectedResponseTypes);
+
+        // Then
+        Optional<List<String>> responseTypeValues = claimsSetFacade.getOptionalStringListClaim("response_type");
+        assertThat(responseTypeValues.isPresent()).isTrue();
+        assertThat(responseTypeValues.get()).isEqualTo(expectedResponseTypes);
+    }
+
+    @Test
+    void success_overwriteStringListClaim() throws JwtException {
+        // Given
+        JwtClaimsSet claimsSet = new JwtClaimsSet(Map.of("response_type", List.of("code id_token")));
+        ClaimsSetFacade claimsSetFacade = new ClaimsSetFacade(claimsSet);
+
+        // When
+        List<String> expectedResponseTypes = List.of("code1", "code1 id_token1");
+        claimsSetFacade.setStringArrayClaim("response_type", expectedResponseTypes);
+
+        // Then
+        Optional<List<String>> responseTypeValues = claimsSetFacade.getOptionalStringListClaim("response_type");
+        assertThat(responseTypeValues.isPresent()).isTrue();
+        assertThat(responseTypeValues.get()).isEqualTo(expectedResponseTypes);
+    }
 }

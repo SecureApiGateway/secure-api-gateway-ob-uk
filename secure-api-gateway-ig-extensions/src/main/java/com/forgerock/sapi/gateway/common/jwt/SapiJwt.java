@@ -118,7 +118,7 @@ public class SapiJwt {
     /**
      * @return the underlying ClaimsSetFacade that can be used to access the JwtClaims
      */
-    protected ClaimsSetFacade getClaimsSet() {
+    public ClaimsSetFacade getClaimsSet() {
         return claimsSet;
     }
 }
