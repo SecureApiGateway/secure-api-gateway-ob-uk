@@ -172,4 +172,9 @@ public class ClaimsSetFacade {
         }
         return issuer;
     }
+
+    public ClaimsSetFacade setStringArrayClaim(String claimName, List<String> values) {
+        this.claimsSet.setClaim(claimName, values);
+        return this;
+    }
 }

@@ -110,6 +110,8 @@ import com.forgerock.sapi.gateway.mtls.CertificateFromHeaderSupplier;
  *     <li>5.2.2 9: shall require the redirect_uri in the authorization request; </li>
  *     <li>5.2.2 20: shall require redirect URIs to use the https scheme; </li>
  * </ul>
+ *
+*  Note, we also check that the redirect_uri does not contain localhost as we don't want redirects to URIs on the
  * </p>
  *
  * <p>
@@ -285,6 +287,9 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      *     <li>5.2.2 9: shall require the redirect_uri in the authorization request; </li>
      *     <li>5.2.2 20: shall require redirect URIs to use the https scheme; </li>
      * </ul>
+     *
+     * Note, we also check that the redirect_uri does not contain localhost as we don't want redirects to URIs on the
+     * server
      * @param registrationObject
      */
     void validateRedirectUris(JsonValue registrationObject) {
@@ -304,6 +309,10 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             }
             if (!"https".equals(redirectUri.getScheme())) {
                 throw new ValidationException(DCRErrorCode.INVALID_REDIRECT_URI, "redirect_uris must use https scheme");
+            }
+
+            if (redirectUri.getHost().contains("localhost")) {
+                throw new ValidationException(DCRErrorCode.INVALID_REDIRECT_URI, "redirect_uris must not contain localhost");
             }
         }
     }

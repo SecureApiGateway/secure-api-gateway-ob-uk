@@ -24,6 +24,14 @@
     <groupId>com.forgerock.securebanking.uk.gateway</groupId>
     <artifactId>securebanking-openbanking-uk-gateway</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>com.forgerock.securebanking.uk.gateway</groupId>
+            <artifactId>secure-api-gateway-ig-extensions</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
     <packaging>pom</packaging>
     <name>securebanking-openbanking-uk-gateway</name>
     <description>Gateway (IG) Extensions modules that are used by IG to extend uk spec functionalities for SBAT

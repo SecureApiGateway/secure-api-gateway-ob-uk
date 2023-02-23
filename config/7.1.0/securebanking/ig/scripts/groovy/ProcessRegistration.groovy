@@ -1,3 +1,4 @@
+import com.forgerock.sapi.gateway.common.jwt.JwtException
 import com.forgerock.sapi.gateway.jwt.JwtUtils
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory
 import org.forgerock.util.promise.*
@@ -16,6 +17,7 @@ import java.security.SignatureException
 import com.nimbusds.jose.jwk.RSAKey;
 import com.securebanking.gateway.dcr.ErrorResponseFactory
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest
+import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement
 import com.forgerock.sapi.gateway.common.jwt.ClaimsSetFacade
 import static org.forgerock.util.promise.Promises.newResultPromise
 
@@ -58,16 +60,12 @@ def errorResponseFactory = new ErrorResponseFactory(SCRIPT_NAME)
 def defaultResponseTypes = ["code id_token"]
 def supportedResponseTypes = [defaultResponseTypes]
 
-if (!trustedDirectoryService) {
-    logger.error(SCRIPT_NAME + "No TrustedDirectoriesService defined on the heap in config.json")
-    return new Response(Status.INTERNAL_SERVER_ERROR).body("No TrustedDirectoriesService defined on the heap in config.json")
-}
-
 if (!attributes.registrationRequest) {
     logger.error(SCRIPT_NAME + "RegistrationRequestEntityValidatorFilter must be run prior to this script")
     return new Response(Status.INTERNAL_SERVER_ERROR)
 }
-def registrationRequest = attributes.registrationRequest
+
+RegistrationRequest registrationRequest = attributes.registrationRequest
 if (! registrationRequest.signatureHasBeenValidated() ){
     logger.error(SCRIPT_NAME + "registrationResponse signature has not been validated. " +
             "RegistrationRequestJwtSignatureValidatorFilter must be run prior to this script")
@@ -93,63 +91,54 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("No roles in client certificate for registration")
         }
 
-
-
         Jwt regJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, request.entity.getString(), "registration JWT")
         if (!regJwt) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("registration request object is not a valid JWT")
         }
 
-        JwtClaimsSet registrationJwtClaimSet = regJwt.getClaimsSet()
-        if (JwtUtils.hasExpired(registrationJwtClaimSet)) {
-            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
-        }
-
-
-
         if (registrationRequest.hasExpired()){
             logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-            return errorResponseFactory.invalidClientMetadataErrorResponse("registration has expired")
+            return errorResponseFactory.invalidClientMetadataErrorResponse("registration request jwt has expired")
         }
 
-        // rejectInvalidResponseTypes
+        // rejectInvalidResponseTypes - the FAPI filter does this for us. However, we currently can't support the
+        // response_type "code" in conjunction with the response_mode value jwt that is allowed by the FAPI filter so
+        // we will restrict this to "code id_token" here.
         ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
         Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
         if(optionalResponseTypes.isEmpty()){
             registrationRequest.setResponseTypes(defaultResponseTypes)
         } else {
-            // Think we can choose to overwrite invalid types with preferred type here.
+            // https://datatracker.ietf.org/doc/html/rfc7591#section-3.2.1 states that:
+            //   "The authorization server MAY reject or
+            //   replace any of the client's requested metadata values submitted
+            //   during the registration and substitute them with suitable values."
+            if (!supportedResponseTypes.contains(optionalResponseTypes.get())){
+               registrationRequest.setResponseTypes(defaultResponseTypes);
+            }
         }
 
-
-
-
-        // Check response types - in Registration Request - this is done in the FAPI filter
-        def responseTypes = registrationJwtClaimSet.getClaim("response_types")
-        if (!responseTypes) {
-            registrationJwtClaimSet.setClaim("response_types", defaultResponseTypes)
-        } else if (!supportedResponseTypes.contains(responseTypes)) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("response_types: " + responseTypes + " not supported")
+        // Check token_endpoint_auth_methods. OB Spec says this MUST be defined with 1..1 cardinality in the
+        // registration request.
+        Optional<String> optionalEndpointAuthMethod =
+                regRequestClaimsSet.getOptionalStringListClaim("token_endpoint_auth_method")
+        if ( optionalEndpointAuthMethod.isEmpty()){
+            return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method must be specified")
+        } else {
+            if (!tokenEndpointAuthMethodsSupported.contains(optionalEndpointAuthMethod.get())){
+                return errorResponseFactory.invalidClientMetadataErrorResponse(
+                        "token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
+            }
         }
 
-        // Check token_endpoint_auth_methods
-        def tokenEndpointAuthMethod = registrationJwtClaimSet.getClaim("token_endpoint_auth_method")
-        if (!tokenEndpointAuthMethod || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("token_endpoint_auth_method claim must be one of: " + tokenEndpointAuthMethodsSupported)
-        }
-
+        String tokenEndpointAuthMethod = optionalEndpointAuthMethod.get();
         // AM should reject this case??
         if (tokenEndpointAuthMethod.equals("tls_client_auth") && !registrationJwtClaimSet.getClaim("tls_client_auth_subject_dn")) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
         }
 
-        // Checked by the RegistrationRequestEntityValidatorFilter
-        def ssa = registrationJwtClaimSet.getClaim("software_statement", String.class);
-        if (!ssa) {
-            return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement claim is missing")
-        }
-        logger.debug(SCRIPT_NAME + "Got ssa [" + ssa + "]")
+        SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement()
+        logger.debug(SCRIPT_NAME + "Got ssa [" + softwareStatement + "]")
 
 
         // This is nulled down because currently the SSA issued by the Open Banking Test Directory is not valid and is
@@ -157,115 +146,102 @@ switch (method.toUpperCase()) {
         // This should now be fixed, so let's see what happens eh???
         //registrationJwtClaimSet.setClaim("software_statement", null);
 
-        // SSA available from registrationRequest now
-        Jwt ssaJwt = JwtUtils.getSignedJwtFromString(SCRIPT_NAME, ssa, "SSA")
-        if (!ssaJwt) {
-            return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_statement is not a valid JWT")
-        }
-
-        def ssaClaims = ssaJwt.getClaimsSet();
-        String ssaIssuer = ssaClaims.getIssuer()
-        if (ssaIssuer == null || ssaIssuer.isBlank()) {
-            return errorResponseFactory.invalidClientMetadataErrorResponse("Registration jwt must contain an issuer")
-        }
-        logger.debug(SCRIPT_NAME + "issuer is {}", ssaIssuer)
-
-
-        TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(ssaIssuer)
-        if (trustedDirectory) {
-            logger.debug(SCRIPT_NAME + "Found trusted directory for issuer '" + ssaIssuer + "'")
-        } else {
-            logger.debug(SCRIPT_NAME + "Could not find Trusted Directory for issuer '" + ssaIssuer + "'")
-            return errorResponseFactory.invalidSoftwareStatementErrorResponse("issuer: " + ssaIssuer + " is not supported")
-        }
-
-        // Fapi filter checks redirect URIs....
-        try {
-            validateRegistrationRedirectUris(registrationJwtClaimSet, ssaClaims)
-        } catch (e) {
-            logger.warn(SCRIPT_NAME + "failed to validate redirect_uris", e)
-            return errorResponseFactory.invalidRedirectUriErrorResponse(e.getMessage())
-        }
-
         // This is OB specific
         // Validate the issuer claim for the registration matches the SSA software_id
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
-        String registrationIssuer = registrationJwtClaimSet.getIssuer()
-        String ssaSoftwareId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementSoftwareIdClaimName())
+        String registrationIssuer = registrationRequest.getIssuer()
+        String ssaSoftwareId = softwareStatement.getSoftwareId()
         logger.debug("{}registrationIssuer is {}, ssaSoftwareId is {}", SCRIPT_NAME, registrationIssuer, ssaSoftwareId)
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("invalid issuer claim")
         }
 
-        def apiClientOrgName = ssaClaims.getClaim("software_client_name", String.class);
-        def apiClientOrgCertId = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementOrgIdClaimName(), String.class);
-
+        def apiClientOrgId = softwareStatement.getOrgId()
+        def apiClientOrgName = apiClientOrgId
         logger.debug(SCRIPT_NAME + "Inbound details from SSA: apiClientOrgName: {} apiClientOrgCertId: {}",
                 apiClientOrgName,
-                apiClientOrgCertId
+                apiClientOrgId
         )
 
-        def registrationJWTs = [
-                "ssaStr"             : ssa,
-                "ssaJwt"             : ssaJwt,
-                "registrationJwt"    : regJwt,
-                "registrationJwksUri": null,
-                "registrationJwks"   : null
-        ]
-
+          // This structure is no longer used by subsequent filters
+//        // This structure ends up being put added to the attributes context and is used by the CreateApiClient.groovy
+//        // script to create - was used by SSAVerifier too. Have removed SSAVerifier from the route as all the
+//        // verification is now done in the RegistrationRequestEntityValidatorFilter
+//        def registrationJWTs = [
+//                "ssaStr"             : softwareStatement.getB64EncodedJwtString(),
+//                "ssaJwt"             : softwareStatement.getSignedJwt(),
+//                "registrationJwt"    : regJwt,
+//                "registrationJwksUri": null,
+//                "registrationJwks"   : null
+//        ]
+//
+//
+//        if (softwareStatement.hasJwksUri()) {
+//            registrationJWTs["registrationJwksUri"] = softwareStatement.getJwksUri()
+//        } else {
+//            registrationJWTs["registrationJwks"] = softwareStatement.getJwks();
+//        }
 
         // Update OIDC registration request
-        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
-            def apiClientOrgJwksUri = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksUriClaimName());
-            if (routeArgObJwksHosts) {
-                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                def jwksUri = null;
-                try {
-                    jwksUri = new URI(apiClientOrgJwksUri)
-                }
-                catch (e) {
-                    return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_jwks_endpoint does not contain a valid URI")
-                }
-                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                if (routeArgObJwksHosts && routeArgObJwksHosts.contains(jwksUri.getHost())) {
-                    def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
-                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}", apiClientOrgJwksUri, newUri);
-                    apiClientOrgJwksUri = newUri
-
-                }
-            }
-            logger.debug(SCRIPT_NAME + "Using jwks uri: {}", apiClientOrgJwksUri)
-            registrationJwtClaimSet.setClaim("jwks_uri", apiClientOrgJwksUri)
-            registrationJWTs["registrationJwksUri"] = apiClientOrgJwksUri
-        } else {
-            def apiClientJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
-            logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
-            registrationJwtClaimSet.setClaim("jwks", apiClientJwks)
-            registrationJWTs["registrationJwks"] = apiClientJwks
-        }
+        // TODO: Work out why we set jwks_uri and jwks claims in the registration request! Do we need to do this?
+//        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
+//            def apiClientOrgJwksUri = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksUriClaimName());
+//            if (routeArgObJwksHosts) {
+//                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
+//                def jwksUri = null;
+//                try {
+//                    jwksUri = new URI(apiClientOrgJwksUri)
+//                }
+//                catch (e) {
+//                    return errorResponseFactory.invalidSoftwareStatementErrorResponse("software_jwks_endpoint does not contain a valid URI")
+//                }
+//                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
+//                if (routeArgObJwksHosts && routeArgObJwksHosts.contains(jwksUri.getHost())) {
+//                    def newUri = routeArgProxyBaseUrl + "/" + jwksUri.getHost() + jwksUri.getPath();
+//                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}", apiClientOrgJwksUri, newUri);
+//                    apiClientOrgJwksUri = newUri
+//
+//                }
+//            }
+//            logger.debug(SCRIPT_NAME + "Using jwks uri: {}", apiClientOrgJwksUri)
+//            registrationJwtClaimSet.setClaim("jwks_uri", apiClientOrgJwksUri)
+//            registrationJWTs["registrationJwksUri"] = apiClientOrgJwksUri
+//        } else {
+//            def apiClientJwks = ssaClaims.getClaim(trustedDirectory.getSoftwareStatementJwksClaimName());
+//            logger.debug(SCRIPT_NAME + "Using jwks from software_statement")
+//            registrationJwtClaimSet.setClaim("jwks", apiClientJwks)
+//            registrationJWTs["registrationJwks"] = apiClientJwks
+//        }
 
         // The Jwks will be added by filters run on each route... we won't need  to store them here.
         // Store SSA and registration JWT for signature check
         attributes.registrationJWTs = registrationJWTs
 
-        registrationJwtClaimSet.setClaim("client_name", apiClientOrgName)
-        registrationJwtClaimSet.setClaim("tls_client_certificate_bound_access_tokens", true)
+        // ToDo: Why are we setting client name here??
+        // registrationJwtClaimSet.setClaim("client_name", apiClientOrgName)
 
-        // Why is this here?
+        // ToDo: I don't think we should force this. We do checks in each route to ensure that the TLS certificate is
+        // validatable by the jwks_uri. Tying the access tokens to the cert used to obtain the access token may cause
+        // issues if a TPP renews a cert. The access token would be then unable to be used with the new cert, and the
+        // TPP would have to go through a consent flow again to get an access token associated with the new cert.
+        // registrationJwtClaimSet.setClaim("tls_client_certificate_bound_access_tokens", true)
+
+        // ToDo: Why is this here?
         def subject_type = registrationJwtClaimSet.getClaim("subject_type", String.class);
         if (!subject_type) {
             registrationJwtClaimSet.setClaim("subject_type", "pairwise");
         }
 
-        Response errorResponse = performOpenBankingScopeChecks(errorResponseFactory, registrationJwtClaimSet, ssaClaims)
+        Response errorResponse = performOpenBankingScopeChecks(errorResponseFactory, registrationRequest)
         if (errorResponse != null) {
             return errorResponse
         }
 
         // TODO: Subject DN for cert bound access tokens
 
-        // Convert to JSON and pass it on
+        // AM doesn't understand JWS encoded registration requests, so we need to convert the jwt JSON and pass it on
+        // However, this might not be the best place to do that?
         def regJson = registrationJwtClaimSet.build();
         logger.debug(SCRIPT_NAME + "final json [" + regJson + "]")
         request.setEntity(regJson)
@@ -276,30 +252,30 @@ switch (method.toUpperCase()) {
         }
 
         // Verify that the tls transport cert is registered for the TPP's software statement
-        if (trustedDirectory.softwareStatementHoldsJwksUri()) {
-            URL apiClientOrgJwksUri = new URL(registrationJWTs["registrationJwksUri"])
-            logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + apiClientOrgJwksUri)
-            return jwkSetService.getJwkSet(apiClientOrgJwksUri)
-                .thenCatchAsync(e -> {
-                    String errorDescription = "Unable to get jwks from url: " + apiClientOrgJwksUri
-                    logger.warn(SCRIPT_NAME + "Failed to get jwks due to exception: " + errorDescription, e)
-                    return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
-                })
-                .thenAsync(jwkSet -> {
-                    if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                        String errorDescription = "tls transport cert does not match any certs " +
-                                "registered in jwks for software statement"
-                        logger.debug("{}{}", SCRIPT_NAME, errorDescription)
-                        return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
-                    }
-                    if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
-                        String errorDescription = "registration JWT signature invalid"
-                        logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+        if ( softwareStatement.hasJwksUri() ) {
+            URL softwareStatementJwksUri = softwareStatement.getJwksUri();
+            logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + softwareStatementJwksUri)
+            return jwkSetService.getJwkSet(softwareStatementJwksUri)
+                    .thenCatchAsync(e -> {
+                        String errorDescription = "Unable to get jwks from url: " + softwareStatementJwksUri
+                        logger.warn(SCRIPT_NAME + "Failed to get jwks due to exception: " + errorDescription, e)
                         return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
-                    }
-                    return next.handle(context, request)
-                            .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
-                })
+                    })
+                    .thenAsync(jwkSet -> {
+                        if (!tlsClientCertExistsInJwkSet(jwkSet)) {
+                            String errorDescription = "tls transport cert does not match any certs " +
+                                    "registered in jwks for software statement"
+                            logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                            return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
+                        }
+                        if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
+                            String errorDescription = "registration JWT signature invalid"
+                            logger.debug("{}{}", SCRIPT_NAME, errorDescription)
+                            return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
+                        }
+                        return next.handle(context, request)
+                                .thenOnResult(response -> addSoftwareStatementToResponse(response, ssa))
+                    })
         } else {
             // Verify against the software_jwks which is a JWKSet embedded within the software_statement
             // NOTE: this is only suitable for developer testing purposes
@@ -307,16 +283,15 @@ switch (method.toUpperCase()) {
                 String errorDescription = "software_statement must contain software_jwks_endpoint"
                 return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
             }
-            def apiClientOrgJwks = registrationJWTs["registrationJwks"]
-            logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientOrgJwks)
-            def jwkSet = new JWKSet(new JsonValue(apiClientOrgJwks.get("keys")))
-            if (!tlsClientCertExistsInJwkSet(jwkSet)) {
+            JWKSet apiClientJwkSet = softwareStatement.getJwksSet()
+            logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientJwks)
+            if (!tlsClientCertExistsInJwkSet(apiClientJwkSet)) {
                 String errorDescription = "tls transport cert does not match any certs registered in jwks for software " +
                         "statement"
                 logger.debug("{}{}", SCRIPT_NAME, errorDescription)
                 return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
             }
-            if (!validateRegistrationJwtSignature(regJwt, jwkSet)) {
+            if (!validateRegistrationJwtSignature(regJwt, apiClientJwkSet)) {
                 String errorDescription = "registration JWT signature invalid"
                 logger.debug("{}{}", SCRIPT_NAME, errorDescription)
                 return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
@@ -355,7 +330,7 @@ switch (method.toUpperCase()) {
  * "scope 	1..1 	scope 	Scopes the client is asking for (if not specified, default scopes are assigned by the AS).
  * This consists of a list scopes separated by spaces. 	String(256)"
  *
- * In the Open Banking issues SSA we can find no scopes defined, however, we do have 'software_roles' which is an array
+ * In the Open Banking issued SSA we can find no scopes defined, however, we do have 'software_roles' which is an array
  * of strings containing AISP, PISP, or a subset thereof, or ASPSP. We must check that the scopes requested are allowed
  * according to the roles defined in the software statement.
  *
@@ -363,24 +338,33 @@ switch (method.toUpperCase()) {
  * @param ssaClaims the claims from the ssa
  * @return false if the OBIE specification rules are met, true if they are not
  */
-private Response performOpenBankingScopeChecks(ErrorResponseFactory errorResponseFactory,
-                                               JwtClaimsSet registrationRequestClaims, JwtClaimsSet ssaClaims) {
+private Response performOpenBankingScopeChecks(ErrorResponseFactory errorResponseFactory) {
     logger.debug("{}performing OpenBanking Scope tests", SCRIPT_NAME)
-    String requestedScopes = registrationRequestClaims.getClaim("scope")
-    if (requestedScopes == null) {
-        String errorDescription = "The request jwt does not contain the required scopes claim"
-        logger.info(SCRIPT_NAME + errorDescription)
-        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+
+    ClaimsSetFacade registrationRequestClaims = registrationRequest.getClaimsSet()
+
+    String requestedScopes;
+    try {
+        requestedScopes = registrationRequestClaims.getStringClaim("scope")
+    } catch (JwtException jwtException) {
+
+            String errorDescription = "The request jwt does not contain the required scopes claim"
+            logger.info(SCRIPT_NAME + errorDescription)
+            return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
     }
     logger.debug("{}requestedScopes are {}", SCRIPT_NAME, requestedScopes)
 
-    String[] ssaRoles = ssaClaims.getClaim("software_roles")
-    logger.debug("{}ssaRoles are {}", SCRIPT_NAME, ssaRoles)
-    if (ssaRoles == null | ssaRoles.length == 0) {
+    ClaimsSetFacade softwareStatementClaims = registrationRequest.getSoftwareStatement().getClaimsSet()
+
+    List<String> ssaRoles
+    try {
+        ssaRoles = softwareStatementClaims.getRequiredStringListClaim("software_roles")
+    } catch (JwtException jwtException) {
         String errorDescription = "The software_statement jwt does not contain a 'software_roles' claim"
         logger.debug(SCRIPT_NAME + errorDescription)
         return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
     }
+    logger.debug("{}ssaRoles are {}", SCRIPT_NAME, ssaRoles)
 
     if (requestedScopes.contains("accounts") && !ssaRoles.contains("AISP")) {
         String errorDescription = "registration request contains scopes not allowed " +
@@ -459,41 +443,3 @@ private boolean validateRegistrationJwtSignature(jwt, jwkSet) {
     }
 }
 
-/**
- * Validate the redirect_uris claim in the registration request is valid as per the OB DCR spec:
- * https://openbankinguk.github.io/dcr-docs-pub/v3.2/dynamic-client-registration.html
- */
-private void validateRegistrationRedirectUris(registrationJwtClaimSet, ssaClaims) {
-    def regRedirectUris = registrationJwtClaimSet.getClaim("redirect_uris")
-    def ssaRedirectUris = ssaClaims.getClaim("software_redirect_uris")
-    if (!ssaRedirectUris || ssaRedirectUris.size() == 0) {
-        throw new IllegalStateException("software_statement must contain redirect_uris")
-    }
-    // If no redirect_uris supplied in registration request, use all of the uris defined in software_redirect_uris
-    if (!regRedirectUris || regRedirectUris.size() == 0) {
-        registrationJwtClaimSet.setClaim("redirect_uris", ssaRedirectUris)
-    } else {
-        // validate registration redirects are the same as, or a subset of, software_redirect_uris
-        if (regRedirectUris.size() > ssaRedirectUris.size()) {
-            throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_redirect_uris")
-        } else {
-            for (regRedirect in regRedirectUris) {
-                def redirectUrl
-                try {
-                    redirectUrl = new URL(regRedirect)
-                } catch (e) {
-                    throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " is not a valid URI")
-                }
-                if (!"https".equals(redirectUrl.getProtocol())) {
-                    throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must use https")
-                }
-                if ("localhost".equals(redirectUrl.getHost())) {
-                    throw new IllegalStateException("invalid registration request redirect_uris value: " + regRedirect + " must not point to localhost")
-                }
-                if (!ssaRedirectUris.contains(regRedirect)) {
-                    throw new IllegalStateException("invalid registration request redirect_uris value, must match or be a subset of the software_redirect_uris")
-                }
-            }
-        }
-    }
-}
