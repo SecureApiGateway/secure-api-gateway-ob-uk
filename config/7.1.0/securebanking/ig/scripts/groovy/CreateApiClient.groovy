@@ -57,7 +57,7 @@ switch(method.toUpperCase()) {
       }
 
       RegistrationRequest registrationRequest = attributes.registrationRequest
-      SoftwareStatement softwareStatement = registrationRequest.getSoftewareStatement()
+      SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement()
 
       def oauth2ClientId = amResponse.entity.getJson().client_id
       if (!oauth2ClientId) {
@@ -146,7 +146,7 @@ def buildApiClientIdmObject(oauth2ClientId, softwareStatement) {
   def apiClientIdmObj = [
           "_id"           : oauth2ClientId,
           "id"            : softwareStatement.getSoftwareId(),
-          "name"          : softwareStatement.getSoftwareName(),
+          "name"          : softwareStatement.getSoftwareId(),
           "ssa"           : softwareStatement.getB64EncodedJwtString(),
           "oauth2ClientId": oauth2ClientId,
           "apiClientOrg"  : ["_ref": "managed/" + routeArgObjApiClientOrg + "/" + softwareStatement.getOrgId()]

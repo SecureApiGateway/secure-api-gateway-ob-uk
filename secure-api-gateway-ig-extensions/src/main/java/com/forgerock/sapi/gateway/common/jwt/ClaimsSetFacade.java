@@ -177,4 +177,13 @@ public class ClaimsSetFacade {
         this.claimsSet.setClaim(claimName, values);
         return this;
     }
+
+    public ClaimsSetFacade setStringClaim(String claimName, String value){
+        this.claimsSet.setClaim(claimName, value);
+        return this;
+    }
+
+    public String build(){
+        return this.claimsSet.build();
+    }
 }
