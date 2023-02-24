@@ -26,7 +26,10 @@ import org.forgerock.util.promise.Promises;
 
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
 
-public class IdmApiClientService {
+/**
+ * ApiClientService implementation which retrieves ApiClient data from IDM
+ */
+public class IdmApiClientService implements ApiClientService {
 
     /**
      * The base uri to use in GET requests to IDM to query for the apiClient
@@ -52,6 +55,7 @@ public class IdmApiClientService {
         this.idmApiClientDecoder = idmApiClientDecoder;
     }
 
+    @Override
     public Promise<ApiClient, Exception> getApiClient(String clientId) {
         Reject.ifBlank("clientId must be provided");
         try {

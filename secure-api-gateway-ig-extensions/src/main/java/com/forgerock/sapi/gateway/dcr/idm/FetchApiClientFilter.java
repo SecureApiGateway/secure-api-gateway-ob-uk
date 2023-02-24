@@ -69,7 +69,7 @@ public class FetchApiClientFilter implements Filter {
     /**
      * Service which can retrieve ApiClient data
      */
-    private final IdmApiClientService idmApiClientService;
+    private final ApiClientService apiClientService;
 
     /**
      * Utility method to retrieve an ApiClient object from a Context.
@@ -83,11 +83,11 @@ public class FetchApiClientFilter implements Filter {
         return (ApiClient) context.asContext(AttributesContext.class).getAttributes().get(API_CLIENT_ATTR_KEY);
     }
 
-    public FetchApiClientFilter(IdmApiClientService idmApiClientService, String accessTokenClientIdClaim) {
-        Reject.ifNull(idmApiClientService, "apiClientService must be provided");
+    public FetchApiClientFilter(ApiClientService apiClientService, String accessTokenClientIdClaim) {
+        Reject.ifNull(apiClientService, "apiClientService must be provided");
         Reject.ifBlank(accessTokenClientIdClaim, "accessTokenClientIdClaim must be provided");
         this.accessTokenClientIdClaim = accessTokenClientIdClaim;
-        this.idmApiClientService = idmApiClientService;
+        this.apiClientService = apiClientService;
     }
 
     @Override
@@ -100,7 +100,7 @@ public class FetchApiClientFilter implements Filter {
         }
         final String clientId = (String)info.get(accessTokenClientIdClaim);
 
-        return idmApiClientService.getApiClient(clientId).thenAsync(apiClient -> {
+        return apiClientService.getApiClient(clientId).thenAsync(apiClient -> {
             logger.debug("({}) adding apiClient: {} to AttributesContext[\"{}\"]", FAPIUtils.getFapiInteractionIdForDisplay(context), apiClient, API_CLIENT_ATTR_KEY);
             context.asContext(AttributesContext.class).getAttributes().put(API_CLIENT_ATTR_KEY, apiClient);
             return next.handle(context, request);
@@ -149,8 +149,8 @@ public class FetchApiClientFilter implements Filter {
             }
             final String accessTokenClientIdClaim = config.get("accessTokenClientIdClaim").defaultTo(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM).asString();
 
-            final IdmApiClientService idmApiClientService = new IdmApiClientService(httpClient, idmGetApiClientBaseUri, new IdmApiClientDecoder());
-            return new FetchApiClientFilter(idmApiClientService, accessTokenClientIdClaim);
+            final ApiClientService apiClientService = new IdmApiClientService(httpClient, idmGetApiClientBaseUri, new IdmApiClientDecoder());
+            return new FetchApiClientFilter(apiClientService, accessTokenClientIdClaim);
         }
     }
 }

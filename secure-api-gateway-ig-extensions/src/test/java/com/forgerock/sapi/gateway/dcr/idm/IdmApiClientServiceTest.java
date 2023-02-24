@@ -51,8 +51,8 @@ class IdmApiClientServiceTest {
         final JsonValue idmClientData = createIdmApiClientDataRequiredFieldsOnly(TEST_CLIENT_ID);
         final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(TEST_IDM_BASE_URI, TEST_CLIENT_ID, idmClientData);
 
-        final IdmApiClientService idmApiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
-        final Promise<ApiClient, Exception> apiClientPromise = idmApiClientService.getApiClient(TEST_CLIENT_ID);
+        final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final ApiClient apiClient = apiClientPromise.get(1, TimeUnit.MILLISECONDS);
 
         verifyIdmClientDataMatchesApiClientObject(idmClientData, apiClient);
@@ -61,8 +61,8 @@ class IdmApiClientServiceTest {
     @Test
     void testThrowsExceptionWhenIdmReturnsErrorResponse() {
         final Handler idmResponse = Handlers.INTERNAL_SERVER_ERROR;
-        final IdmApiClientService idmApiClientService = new IdmApiClientService(new Client(idmResponse), TEST_IDM_BASE_URI, idmApiClientDecoder);
-        final Promise<ApiClient, Exception> apiClientPromise = idmApiClientService.getApiClient(TEST_CLIENT_ID);
+        final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponse), TEST_IDM_BASE_URI, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final Exception exception = assertThrows(Exception.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
         assertEquals("Failed to get ApiClient from IDM, response status: [Status: 500 Internal Server Error]",
@@ -75,8 +75,8 @@ class IdmApiClientServiceTest {
         final Response invalidIdmResponse = new Response(Status.OK).setEntity(new Form());
         final Client idmClientHandler = new Client((ctx, req) -> Promises.newResultPromise(invalidIdmResponse));
 
-        final IdmApiClientService idmApiClientService = new IdmApiClientService(idmClientHandler, TEST_IDM_BASE_URI, idmApiClientDecoder);
-        final Promise<ApiClient, Exception> apiClient = idmApiClientService.getApiClient("123");
+        final ApiClientService apiClientService = new IdmApiClientService(idmClientHandler, TEST_IDM_BASE_URI, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClient = apiClientService.getApiClient("123");
         final Exception exception = assertThrows(Exception.class, () -> apiClient.getOrThrow(1, TimeUnit.MILLISECONDS));
 
         assertEquals("Failed to decode apiClient response json", exception.getMessage());
@@ -88,8 +88,8 @@ class IdmApiClientServiceTest {
         idmClientData.remove("ssa"); // Remove the required ssa field
         final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(TEST_IDM_BASE_URI, TEST_CLIENT_ID, idmClientData);
 
-        final IdmApiClientService idmApiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
-        final Promise<ApiClient, Exception> apiClientPromise = idmApiClientService.getApiClient(TEST_CLIENT_ID);
+        final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final Exception exception = assertThrows(Exception.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
         assertEquals("/ssa: is a required field, failed to decode IDM ApiClient", exception.getMessage());
@@ -99,8 +99,8 @@ class IdmApiClientServiceTest {
     void testThrowsExceptionWhenIdmUrlIsInvalid() {
         final String badIdmUri = "999://localhost/openidm/managed/";
 
-        final IdmApiClientService idmApiClientService = new IdmApiClientService(new Client(Handlers.FORBIDDEN), badIdmUri, idmApiClientDecoder);
-        final Promise<ApiClient, Exception> apiClientPromise = idmApiClientService.getApiClient(TEST_CLIENT_ID);
+        final ApiClientService apiClientService = new IdmApiClientService(new Client(Handlers.FORBIDDEN), badIdmUri, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final Exception exception = assertThrows(Exception.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
         assertEquals("java.net.URISyntaxException: Illegal character in scheme name at index 0:" +
