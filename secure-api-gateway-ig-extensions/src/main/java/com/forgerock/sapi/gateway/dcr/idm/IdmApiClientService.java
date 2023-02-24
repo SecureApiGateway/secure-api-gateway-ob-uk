@@ -53,6 +53,7 @@ public class IdmApiClientService {
     }
 
     public Promise<ApiClient, Exception> getApiClient(String clientId) {
+        Reject.ifBlank("clientId must be provided");
         try {
             final Request getApiClientRequest = new Request().setMethod("GET")
                                                              .setUri(idmGetApiClientBaseUri + clientId + "?_fields=apiClientOrg,*");
