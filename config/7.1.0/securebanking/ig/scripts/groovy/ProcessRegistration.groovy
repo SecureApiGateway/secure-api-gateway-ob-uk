@@ -180,7 +180,7 @@ switch (method.toUpperCase()) {
             return errorResponse
         }
 
-        // TODO: Subject DN for cert bound access tokens
+        regRequestClaimsSet.setClaim("tls_client_certificate_bound_access_tokens", true)
 
         // AM doesn't understand JWS encoded registration requests, so we need to convert the jwt JSON and pass it on
         // However, this might not be the best place to do that?
