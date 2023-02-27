@@ -32,6 +32,7 @@ import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.Context;
+import org.forgerock.util.AsyncFunction;
 import org.forgerock.util.Reject;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.forgerock.sapi.gateway.dcr.idm.ApiClientService;
 import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientDecoder;
 import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientService;
+import com.forgerock.sapi.gateway.dcr.models.ApiClient;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jwks.ApiClientJwkSetService;
 import com.forgerock.sapi.gateway.jwks.DefaultApiClientJwkSetService;
@@ -51,9 +53,11 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
 public class TokenEndpointTransportCertValidationFilter implements Filter {
 
+    static final String DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM = "aud";
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final String accessTokenClientIdClaim = "aud";
+    private final String accessTokenClientIdClaim;
 
     private final JwtReconstruction jwtReconstruction = new JwtReconstruction();
 
@@ -69,17 +73,19 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
 
     public TokenEndpointTransportCertValidationFilter(ApiClientService apiClientService, TrustedDirectoryService trustedDirectoryService,
                                                       ApiClientJwkSetService apiClientJwkSetService, CertificateResolver certificateResolver,
-                                                      TransportCertValidator transportCertValidator) {
+                                                      TransportCertValidator transportCertValidator, String accessTokenClientIdClaim) {
         Reject.ifNull(apiClientService, "apiClientService must be provided");
         Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
         Reject.ifNull(apiClientJwkSetService, "apiClientJwkSetService must be provided");
         Reject.ifNull(certificateResolver, "certificateResolver must be provided");
         Reject.ifNull(transportCertValidator, "transportCertValidator must be provided");
+        Reject.ifBlank(accessTokenClientIdClaim, "accessTokenClientIdClaim must be provided");
         this.apiClientService = apiClientService;
         this.trustedDirectoryService = trustedDirectoryService;
         this.apiClientJwkSetService = apiClientJwkSetService;
         this.certificateResolver = certificateResolver;
         this.transportCertValidator = transportCertValidator;
+        this.accessTokenClientIdClaim = accessTokenClientIdClaim;
     }
 
     @Override
@@ -89,7 +95,7 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
         try {
              clientCertificate = certificateResolver.resolveCertificate(context, request);
         } catch (CertificateException e) {
-            logger.error("({}) Failed to resolve client mtls certificate", e);
+            logger.error("({}) Failed to resolve client mtls certificate", fapiInteractionIdForDisplay, e);
             // TODO Review exceptions raised by the resolver and clean them up.
             return Promises.newResultPromise(TransportCertValidationFilter.createErrorResponse(e.getMessage()));
         }
@@ -100,51 +106,67 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
             if (!response.getStatus().isSuccessful()) {
                 return Promises.newResultPromise(response);
             } else {
-                return response.getEntity().getJsonAsync()
-                                           .then(this::getClientId)
-                                           .thenAsync(apiClientService::getApiClient, e -> Promises.newExceptionPromise(new Exception(e)))
-                                           .thenAsync(apiClient -> {
-                        final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(apiClient);
-                        if (trustedDirectory == null) {
-                            logger.error("({}) Failed to get trusted directory for apiClient: {}", fapiInteractionIdForDisplay, apiClient);
-                            // TODO review
-                            return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
-                        }
+                return response.getEntity()
+                               .getJsonAsync()
+                               .then(this::getClientId)
+                               .thenAsync(apiClientService::getApiClient, io -> {
+                                   // Exception handler to keep the generics happy, converts Promise<T, IOException> => Promise<T, Exception>
+                                   logger.warn("({}) IOException getting json from response", io);
+                                   return Promises.newExceptionPromise(io);
+                               })
+                               .thenAsync(validateApiClientTransportCert(fapiInteractionIdForDisplay, clientCertificate, response),
+                                          ex -> {
+                                            // Top level exception handler
+                                            logger.error("({}) Failed to validate client mtls cert", fapiInteractionIdForDisplay, ex);
+                                            return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+                                          },
+                                          rte -> {
+                                              logger.error("({}) Failed to validate client mtls cert", fapiInteractionIdForDisplay, rte);
+                                              return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+                                          });
 
-                        return apiClientJwkSetService.getJwkSet(apiClient, trustedDirectory).then(jwkSet -> {
-                            try {
-                                transportCertValidator.validate(clientCertificate, jwkSet);
-                            } catch (CertificateException ce) {
-                                logger.error("({}) failed to validate that the supplied client certificate", ce);
-                                // TODO Review exceptions raised by the resolver and clean them up.
-                                return TransportCertValidationFilter.createErrorResponse(ce.getMessage());
-                            }
-                            // Successfully validated the client's cert, allow the original response to continue along the filter chain.
-                            logger.debug("({}) transport cert validated successfully", fapiInteractionIdForDisplay);
-                            return response;
-                        }, ex -> {
-                            logger.error("({}) Failed to get JWKS for ApiClient", fapiInteractionIdForDisplay, ex);
-                            return new Response(Status.INTERNAL_SERVER_ERROR);
-                        });
-                    }, ex -> {
-                        logger.error("({}) Failed to get ApiClient", fapiInteractionIdForDisplay, ex);
-                        return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
-                    });
             }
         });
     }
 
-    private String getClientId(Object jsonValue) {
+    private AsyncFunction<ApiClient, Response, NeverThrowsException> validateApiClientTransportCert(String fapiInteractionIdForDisplay, X509Certificate clientCertificate, Response response) {
+        return apiClient -> {
+            final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(apiClient);
+            if (trustedDirectory == null) {
+                logger.error("({}) Failed to get trusted directory for apiClient: {}", fapiInteractionIdForDisplay, apiClient);
+                // TODO review
+                return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
+            }
+
+            return apiClientJwkSetService.getJwkSet(apiClient, trustedDirectory).then(jwkSet -> {
+                try {
+                    transportCertValidator.validate(clientCertificate, jwkSet);
+                } catch (CertificateException ce) {
+                    logger.error("({}) failed to validate that the supplied client certificate", ce);
+                    // TODO Review exceptions raised by the resolver and clean them up.
+                    return TransportCertValidationFilter.createErrorResponse(ce.getMessage());
+                }
+                // Successfully validated the client's cert, allow the original response to continue along the filter chain.
+                logger.debug("({}) transport cert validated successfully", fapiInteractionIdForDisplay);
+                return response;
+            }, ex -> {
+                logger.error("({}) Failed to get JWKS for ApiClient", fapiInteractionIdForDisplay, ex);
+                return new Response(Status.INTERNAL_SERVER_ERROR);
+            });
+        };
+    }
+
+    String getClientId(Object jsonValue) {
         final JsonValue json = JsonValue.json(jsonValue);
         final JsonValue accessToken = json.get("access_token");
         if (accessToken == null || accessToken.isNull()) {
-            throw new IllegalStateException("access_token is missing");
+            throw new IllegalStateException("Failed to get client_id: access_token is missing");
         }
 
         final SignedJwt accessTokenJwt = jwtReconstruction.reconstructJwt(accessToken.asString(), SignedJwt.class);
         final JsonValue clientId = accessTokenJwt.getClaimsSet().get(accessTokenClientIdClaim);
         if (clientId.isNull()) {
-            throw new IllegalStateException("access_token claims missing required: " + accessTokenClientIdClaim + " claim");
+            throw new IllegalStateException("Failed to get client_id: access_token claims missing required '" + accessTokenClientIdClaim + "' claim");
         }
         return clientId.asString();
     }
@@ -176,9 +198,12 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             final CertificateResolver certResolver = new HeaderCertificateResolver(clientCertHeaderName);
 
+            final String accessTokenClientIdClaim =  config.get("accessTokenClientIdClaim")
+                                                           .defaultTo(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM).asString();
+
             return new TokenEndpointTransportCertValidationFilter(apiClientService, trustedDirectoryService,
                                                                   apiClientJwkSetService, certResolver,
-                                                                  transportCertValidator);
+                                                                  transportCertValidator, accessTokenClientIdClaim);
 
         }
     }
