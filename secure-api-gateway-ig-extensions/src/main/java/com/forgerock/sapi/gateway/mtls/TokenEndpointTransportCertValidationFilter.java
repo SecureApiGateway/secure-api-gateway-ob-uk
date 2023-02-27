@@ -96,23 +96,21 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
 
         // Defer cert validation until the response path, then we know that the client authenticated successfully
         return next.handle(context, request).thenAsync(response -> {
+            // Allow errors to pass on up the chain
             if (!response.getStatus().isSuccessful()) {
                 return Promises.newResultPromise(response);
             } else {
-                return response.getEntity().getJsonAsync().thenAsync(jsonValue -> {
-                    final String clientId;
-                    try {
-                        clientId = getClientId(jsonValue);
-                    } catch (Exception ex) {
-                        logger.error("({}) Failed to get clientId from access_token", fapiInteractionIdForDisplay, ex);
-                        return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
-                    }
-
-                    return apiClientService.getApiClient(clientId).thenAsync(apiClient -> {
+                return response.getEntity().getJsonAsync()
+                                           .then(this::getClientId)
+                                           .thenAsync(apiClientService::getApiClient, e -> Promises.newExceptionPromise(new Exception(e)))
+                                           .thenAsync(apiClient -> {
                         final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(apiClient);
                         if (trustedDirectory == null) {
                             logger.error("({}) Failed to get trusted directory for apiClient: {}", fapiInteractionIdForDisplay, apiClient);
+                            // TODO review
+                            return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                         }
+
                         return apiClientJwkSetService.getJwkSet(apiClient, trustedDirectory).then(jwkSet -> {
                             try {
                                 transportCertValidator.validate(clientCertificate, jwkSet);
@@ -132,12 +130,6 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                         logger.error("({}) Failed to get ApiClient", fapiInteractionIdForDisplay, ex);
                         return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                     });
-
-
-                }, ioe -> {
-                    // FIXME
-                    return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
-                });
             }
         });
     }
