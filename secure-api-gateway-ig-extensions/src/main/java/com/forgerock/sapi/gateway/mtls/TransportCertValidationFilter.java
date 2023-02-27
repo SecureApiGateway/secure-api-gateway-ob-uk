@@ -20,13 +20,8 @@ import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.function.BiFunction;
 
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
@@ -86,7 +81,8 @@ public class TransportCertValidationFilter implements Filter {
         this.transportCertValidator = transportCertValidator;
     }
 
-    private Response createErrorResponse(String message) {
+    // FIXME
+    static Response createErrorResponse(String message) {
         return new Response(Status.BAD_REQUEST).setEntity(json(object(field("error_description", message))));
     }
 
