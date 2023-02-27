@@ -221,7 +221,7 @@ switch (method.toUpperCase()) {
                 return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
             }
             JWKSet apiClientJwkSet = softwareStatement.getJwksSet()
-            logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientJwks)
+            logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientJwkSet)
             if (!tlsClientCertExistsInJwkSet(apiClientJwkSet)) {
                 String errorDescription = "tls transport cert does not match any certs registered in jwks for software " +
                         "statement"
