@@ -23,5 +23,11 @@ import com.forgerock.sapi.gateway.dcr.models.ApiClient;
  * Service which retrieves an ApiClient
  */
 public interface ApiClientService {
+
+    /**
+     * Gets an {@link ApiClient} by their clientId
+     * @param clientId the OAuth2 client_id of the ApiClient
+     * @return Promise which either returns the ApiClient or an Exception if an error occurs.
+     */
     Promise<ApiClient, Exception> getApiClient(String clientId);
 }

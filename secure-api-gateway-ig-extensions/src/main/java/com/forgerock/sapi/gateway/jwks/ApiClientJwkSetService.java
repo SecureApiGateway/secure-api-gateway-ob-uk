@@ -27,5 +27,11 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
  */
 public interface ApiClientJwkSetService {
 
+    /**
+     * Get a {@link JWKSet} for an {@link ApiClient} that is registered with a {@link TrustedDirectory}
+     * @param apiClient the ApiClient to get the JWKSet for, this contains the keys for the ApiClient that are registed with the TrustedDirectory
+     * @param trustedDirectory the TrustedDirectory that the ApiClient is registered with
+     * @return Promise containing with the JWKSet or {@link FailedToLoadJWKException} if an error occurred.
+     */
     Promise<JWKSet, FailedToLoadJWKException> getJwkSet(ApiClient apiClient, TrustedDirectory trustedDirectory);
 }
