@@ -15,6 +15,7 @@
  */
 package com.forgerock.sapi.gateway.mtls;
 
+import static com.forgerock.sapi.gateway.dcr.idm.IdmApiClientDecoderTest.createIdmApiClientDataAllFields;
 import static com.forgerock.sapi.gateway.mtls.TokenEndpointTransportCertValidationFilter.DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM;
 import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
@@ -31,6 +32,8 @@ import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Map;
@@ -44,7 +47,10 @@ import org.forgerock.json.JsonValue;
 import org.forgerock.json.jose.exceptions.FailedToLoadJWKException;
 import org.forgerock.json.jose.exceptions.InvalidJwtException;
 import org.forgerock.json.jose.jwk.JWKSet;
+import org.forgerock.openig.heap.HeapImpl;
+import org.forgerock.openig.heap.Name;
 import org.forgerock.services.context.RootContext;
+import org.forgerock.util.Pair;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
@@ -53,8 +59,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.dcr.idm.ApiClientService;
+import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientServiceTest.MockApiClientTestDataIdmHandler;
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
 import com.forgerock.sapi.gateway.jwks.ApiClientJwkSetService;
+import com.forgerock.sapi.gateway.jwks.mocks.MockJwkSetService;
+import com.forgerock.sapi.gateway.mtls.TokenEndpointTransportCertValidationFilter.Heaplet;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryOpenBankingTest;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
@@ -63,6 +72,8 @@ import com.forgerock.sapi.gateway.util.TestHandlers.TestSuccessResponseHandler;
 import com.nimbusds.jose.JWSAlgorithm;
 
 class TokenEndpointTransportCertValidationFilterTest {
+
+    private final String testClientId = "client-id-1234";
 
     @Nested
     class TransportCertValidationTests {
@@ -79,6 +90,10 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         private TransportCertValidator mockTransportCertValidator;
 
+        private ApiClient testApiClient;
+
+        private final TrustedDirectoryOpenBankingTest testTrustedDirectory = new TrustedDirectoryOpenBankingTest();
+
 
         @BeforeEach
         public void createValidFilter() {
@@ -94,6 +109,16 @@ class TokenEndpointTransportCertValidationFilterTest {
 
             transportCertValidationFilter = new TokenEndpointTransportCertValidationFilter(mockApiClientService, mockTrustedDirectoryService,
                     mockApiClientJwkSetService, mockCertificateResolver, mockTransportCertValidator, DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM);
+
+            testApiClient = new ApiClient();
+            testApiClient.setOauth2ClientId(testClientId);
+            final URI jwksUri;
+            try {
+                jwksUri = new URI("http://localhost/jwks");
+                testApiClient.setJwksUri(jwksUri);
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         @Test
@@ -110,7 +135,7 @@ class TokenEndpointTransportCertValidationFilterTest {
         void errorResponseFromNextHandlerIsPassedOn() throws Exception {
             // next handler in chain returns forbidden response
             final TestHandler nextHandler = new TestHandler(Handlers.forbiddenHandler());
-            doReturn(mock(X509Certificate.class)).when(mockCertificateResolver).resolveCertificate(any(), any());
+            mockCertificateResolverValidCert();
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
             assertEquals(Status.FORBIDDEN, response.getStatus());
@@ -124,7 +149,7 @@ class TokenEndpointTransportCertValidationFilterTest {
                 return Promises.newResultPromise(response);
             });
 
-            doReturn(mock(X509Certificate.class)).when(mockCertificateResolver).resolveCertificate(any(), any());
+            mockCertificateResolverValidCert();
 
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -141,7 +166,7 @@ class TokenEndpointTransportCertValidationFilterTest {
                 return Promises.newResultPromise(response);
             });
 
-            doReturn(mock(X509Certificate.class)).when(mockCertificateResolver).resolveCertificate(any(), any());
+            mockCertificateResolverValidCert();
 
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -150,15 +175,9 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         @Test
         void failsWhenApiClientCouldNotBeFound() throws Exception {
-            final String testClientId = "client999";
-            final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
-                final Response response = new Response(Status.OK);
-                final JsonValue jsonResponseMissingAccessTokenField = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
-                response.setEntity(jsonResponseMissingAccessTokenField);
-                return Promises.newResultPromise(response);
-            });
+            final TestHandler nextHandler = createResponseWithValidAccessToken();
 
-            doReturn(mock(X509Certificate.class)).when(mockCertificateResolver).resolveCertificate(any(), any());
+            mockCertificateResolverValidCert();
             doReturn(Promises.newExceptionPromise(new Exception("boom"))).when(mockApiClientService).getApiClient(eq(testClientId));
 
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
@@ -168,21 +187,10 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         @Test
         void failsWhenTrustedDirectoryConfigCouldNotBeFound() throws Exception {
-            final String testClientId = "client999";
-            final ApiClient apiClient = new ApiClient();
-            apiClient.setOauth2ClientId(testClientId);
-            final URI jwksUri = new URI("http://localhost/jwks");
-            apiClient.setJwksUri(jwksUri);
+            final TestHandler nextHandler = createResponseWithValidAccessToken();
 
-            final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
-                final Response response = new Response(Status.OK);
-                final JsonValue jsonResponseMissingAccessTokenField = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
-                response.setEntity(jsonResponseMissingAccessTokenField);
-                return Promises.newResultPromise(response);
-            });
-
-            doReturn(mock(X509Certificate.class)).when(mockCertificateResolver).resolveCertificate(any(), any());
-            doReturn(Promises.newResultPromise(apiClient)).when(mockApiClientService).getApiClient(eq(testClientId));
+            mockCertificateResolverValidCert();
+            mockApiClientReturnsTestApiClient();
 
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -191,27 +199,13 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         @Test
         void failsWhenApiClientJwksCouldNotBeFound() throws Exception {
-            final String testClientId = "client999";
-            final ApiClient apiClient = new ApiClient();
-            apiClient.setOauth2ClientId(testClientId);
-            final URI jwksUri = new URI("http://localhost/jwks");
-            apiClient.setJwksUri(jwksUri);
+            final TestHandler nextHandler = createResponseWithValidAccessToken();
 
-            final TrustedDirectoryOpenBankingTest trustedDirectory = new TrustedDirectoryOpenBankingTest();
+            mockCertificateResolverValidCert();
+            mockApiClientReturnsTestApiClient();;
+            mockTrustedDirectoryServiceReturndTestTrustedDirectory();
 
-            final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
-                final Response response = new Response(Status.OK);
-                final JsonValue jsonResponseMissingAccessTokenField = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
-                response.setEntity(jsonResponseMissingAccessTokenField);
-                return Promises.newResultPromise(response);
-            });
-
-            final X509Certificate clientCert = mock(X509Certificate.class);
-            doReturn(clientCert).when(mockCertificateResolver).resolveCertificate(any(), any());
-            doReturn(Promises.newResultPromise(apiClient)).when(mockApiClientService).getApiClient(eq(testClientId));
-
-            doReturn(trustedDirectory).when(mockTrustedDirectoryService).getTrustedDirectoryConfiguration(eq(apiClient));
-            doReturn(Promises.newExceptionPromise(new FailedToLoadJWKException("boom"))).when(mockApiClientJwkSetService).getJwkSet(eq(apiClient), eq(trustedDirectory));
+            doReturn(Promises.newExceptionPromise(new FailedToLoadJWKException("boom"))).when(mockApiClientJwkSetService).getJwkSet(eq(testApiClient), eq(testTrustedDirectory));
 
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -220,30 +214,15 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         @Test
         void failsWhenTransportCertValidationFails()  throws Exception {
-            final String testClientId = "client999";
-            final ApiClient apiClient = new ApiClient();
-            apiClient.setOauth2ClientId(testClientId);
-            final URI jwksUri = new URI("http://localhost/jwks");
-            apiClient.setJwksUri(jwksUri);
-
-            final TrustedDirectoryOpenBankingTest trustedDirectory = new TrustedDirectoryOpenBankingTest();
-
-            final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
-                final Response response = new Response(Status.OK);
-                final JsonValue jsonResponseMissingAccessTokenField = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
-                response.setEntity(jsonResponseMissingAccessTokenField);
-                return Promises.newResultPromise(response);
-            });
+            final TestHandler nextHandler = createResponseWithValidAccessToken();
 
             final X509Certificate clientCert = mock(X509Certificate.class);
             doReturn(clientCert).when(mockCertificateResolver).resolveCertificate(any(), any());
-            doReturn(Promises.newResultPromise(apiClient)).when(mockApiClientService).getApiClient(eq(testClientId));
-
-            doReturn(trustedDirectory).when(mockTrustedDirectoryService).getTrustedDirectoryConfiguration(eq(apiClient));
-
+            mockApiClientReturnsTestApiClient();
+            mockTrustedDirectoryServiceReturndTestTrustedDirectory();
 
             final JWKSet clientJwks = new JWKSet();
-            doReturn(Promises.newResultPromise(clientJwks)).when(mockApiClientJwkSetService).getJwkSet(eq(apiClient), eq(trustedDirectory));
+            doReturn(Promises.newResultPromise(clientJwks)).when(mockApiClientJwkSetService).getJwkSet(eq(testApiClient), eq(testTrustedDirectory));
             doThrow(new CertificateException("Cert has expired")).when(mockTransportCertValidator).validate(eq(clientCert), eq(clientJwks));
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -252,36 +231,35 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         @Test
         void succeedsWhenCertIsValid() throws Exception {
-            final String testClientId = "client999";
-            final ApiClient apiClient = new ApiClient();
-            apiClient.setOauth2ClientId(testClientId);
-            final URI jwksUri = new URI("http://localhost/jwks");
-            apiClient.setJwksUri(jwksUri);
+            final TestHandler nextHandler = createResponseWithValidAccessToken();
 
-            final TrustedDirectoryOpenBankingTest trustedDirectory = new TrustedDirectoryOpenBankingTest();
-
-            final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
-                final Response response = new Response(Status.OK);
-                final JsonValue jsonResponseMissingAccessTokenField = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
-                response.setEntity(jsonResponseMissingAccessTokenField);
-                return Promises.newResultPromise(response);
-            });
-
-            final X509Certificate clientCert = mock(X509Certificate.class);
-            doReturn(clientCert).when(mockCertificateResolver).resolveCertificate(any(), any());
-            doReturn(Promises.newResultPromise(apiClient)).when(mockApiClientService).getApiClient(eq(testClientId));
-
-            doReturn(trustedDirectory).when(mockTrustedDirectoryService).getTrustedDirectoryConfiguration(eq(apiClient));
-
+            mockCertificateResolverValidCert();
+            mockApiClientReturnsTestApiClient();
+            mockTrustedDirectoryServiceReturndTestTrustedDirectory();
 
             final JWKSet clientJwks = new JWKSet();
-            doReturn(Promises.newResultPromise(clientJwks)).when(mockApiClientJwkSetService).getJwkSet(eq(apiClient), eq(trustedDirectory));
+            doReturn(Promises.newResultPromise(clientJwks)).when(mockApiClientJwkSetService).getJwkSet(eq(testApiClient), eq(testTrustedDirectory));
             final Promise<Response, NeverThrowsException> responsePromise = transportCertValidationFilter.filter(new RootContext("root"), new Request(), nextHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
 
             assertEquals(Status.OK, response.getStatus());
             assertTrue(nextHandler.hasBeenInteractedWith());
         }
+
+        private X509Certificate mockCertificateResolverValidCert() throws Exception {
+            final X509Certificate mockCert = mock(X509Certificate.class);
+            doReturn(mockCert).when(mockCertificateResolver).resolveCertificate(any(), any());
+            return mockCert;
+        }
+
+        private void mockApiClientReturnsTestApiClient() {
+            doReturn(Promises.newResultPromise(testApiClient)).when(mockApiClientService).getApiClient(eq(testClientId));
+        }
+
+        private void mockTrustedDirectoryServiceReturndTestTrustedDirectory() {
+            doReturn(testTrustedDirectory).when(mockTrustedDirectoryService).getTrustedDirectoryConfiguration(eq(testApiClient));
+        }
+
         private void validateResponseIsBadRequest(Response response, String expectedErrorMsg) {
             assertEquals(Status.BAD_REQUEST, response.getStatus());
             try {
@@ -290,6 +268,51 @@ class TokenEndpointTransportCertValidationFilterTest {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    @Nested
+    class TransportCertValidationFilterHeapletTests {
+
+        @Test
+        public void testFilterCreatedFromHeaplet() throws Exception {
+            final Pair<X509Certificate, JWKSet> certAndJwks = CryptoUtils.generateTestTransportCertAndJwks("tls");
+            final X509Certificate clientCert = certAndJwks.getFirst();
+            final JWKSet clientJwks = certAndJwks.getSecond();
+            final String certHeader = "ssl-client-cert";
+
+            final Heaplet transportCertValidationFilterHeaplet = new Heaplet();
+            final HeapImpl heap = new HeapImpl(Name.of("heap"));
+
+            final URL apiClientJwksUrl = new URL("https://localhost/apiClient.jwks");
+            final JsonValue idmClientData = createIdmApiClientDataAllFields(testClientId, apiClientJwksUrl.toString());
+
+            final String idmBaseUri = "https://localhost/idm/getApiClient/";
+            final MockApiClientTestDataIdmHandler mockApiClientTestDataIdmHandler = new MockApiClientTestDataIdmHandler(idmBaseUri, testClientId, idmClientData);
+
+            heap.put("clientHandler", mockApiClientTestDataIdmHandler);
+            heap.put("trustedDirectoryService", (TrustedDirectoryService) issuer -> new TrustedDirectoryOpenBankingTest());
+            heap.put("jwkSetService", new MockJwkSetService(Map.of(apiClientJwksUrl, clientJwks)));
+            heap.put("transportCertValidator", new DefaultTransportCertValidator());
+
+            final JsonValue config = json(object(field("clientHandler", "clientHandler"),
+                                                field("idmGetApiClientBaseUri", idmBaseUri),
+                                                field("trustedDirectoryService", "trustedDirectoryService"),
+                                                field("jwkSetService", "jwkSetService"),
+                                                field("transportCertValidator", "transportCertValidator"),
+                                                field("clientTlsCertHeader", certHeader)));
+            final TokenEndpointTransportCertValidationFilter filter = (TokenEndpointTransportCertValidationFilter) transportCertValidationFilterHeaplet.create(Name.of("test"), config, heap);
+
+            final TestHandler responseHandler = createResponseWithValidAccessToken();
+
+
+            final Request request = HeaderCertificateResolverTest.createRequestWithCertHeader(clientCert, certHeader);
+
+            final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new RootContext("root"), request, responseHandler);
+            final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
+
+            assertEquals(Status.OK, response.getStatus());
+            assertTrue(responseHandler.hasBeenInteractedWith());
         }
     }
 
@@ -343,5 +366,15 @@ class TokenEndpointTransportCertValidationFilterTest {
 
     private String createAccessToken(Map<String, Object> claims) {
         return CryptoUtils.createEncodedJwtString(claims, JWSAlgorithm.PS256);
+    }
+
+    private TestHandler createResponseWithValidAccessToken() {
+        final TestHandler nextHandler = new TestHandler((ctxt, request) -> {
+            final Response response = new Response(Status.OK);
+            final JsonValue jsonResponse = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, testClientId)))));
+            response.setEntity(jsonResponse);
+            return Promises.newResultPromise(response);
+        });
+        return nextHandler;
     }
 }

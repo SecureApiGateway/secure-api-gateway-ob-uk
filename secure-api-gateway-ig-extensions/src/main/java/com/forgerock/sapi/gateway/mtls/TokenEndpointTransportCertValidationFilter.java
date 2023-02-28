@@ -96,7 +96,6 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
              clientCertificate = certificateResolver.resolveCertificate(context, request);
         } catch (CertificateException e) {
             logger.error("({}) Failed to resolve client mtls certificate", fapiInteractionIdForDisplay, e);
-            // TODO Review exceptions raised by the resolver and clean them up.
             return Promises.newResultPromise(TransportCertValidationFilter.createErrorResponse(e.getMessage()));
         }
 
@@ -124,7 +123,6 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                                               logger.error("({}) Failed to validate client mtls cert", fapiInteractionIdForDisplay, rte);
                                               return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                                           });
-
             }
         });
     }
@@ -134,7 +132,6 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
             final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(apiClient);
             if (trustedDirectory == null) {
                 logger.error("({}) Failed to get trusted directory for apiClient: {}", fapiInteractionIdForDisplay, apiClient);
-                // TODO review
                 return Promises.newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
             }
 
@@ -143,7 +140,6 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                     transportCertValidator.validate(clientCertificate, jwkSet);
                 } catch (CertificateException ce) {
                     logger.error("({}) failed to validate that the supplied client certificate", ce);
-                    // TODO Review exceptions raised by the resolver and clean them up.
                     return TransportCertValidationFilter.createErrorResponse(ce.getMessage());
                 }
                 // Successfully validated the client's cert, allow the original response to continue along the filter chain.

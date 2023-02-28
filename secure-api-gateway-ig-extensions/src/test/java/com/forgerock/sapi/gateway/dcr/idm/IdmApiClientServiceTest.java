@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
 
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
 
-class IdmApiClientServiceTest {
+public class IdmApiClientServiceTest {
 
     public static final String TEST_IDM_BASE_URI = "http://localhost/openidm/managed/";
     public static final String TEST_CLIENT_ID = "9999";
@@ -115,12 +115,12 @@ class IdmApiClientServiceTest {
      *
      * If the validation fails then a Runtime exception is returned, which will be thrown when Promise.get is called.
      */
-    static class MockApiClientTestDataIdmHandler implements Handler {
+    public static class MockApiClientTestDataIdmHandler implements Handler {
         private final MutableUri idmBaseUri;
         private final String expectedClientId;
         private final JsonValue staticApiClientData;
 
-        MockApiClientTestDataIdmHandler(String idmBaseUri, String expectedClientId, JsonValue staticApiClientData) {
+        public MockApiClientTestDataIdmHandler(String idmBaseUri, String expectedClientId, JsonValue staticApiClientData) {
             try {
                 this.idmBaseUri = MutableUri.uri(idmBaseUri);
             } catch (URISyntaxException e) {

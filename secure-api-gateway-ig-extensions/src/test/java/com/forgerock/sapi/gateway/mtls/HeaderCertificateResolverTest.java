@@ -34,15 +34,15 @@ class HeaderCertificateResolverTest {
 
     private static final String TEST_CERT_HEADER_NAME = "clientCertHeader";
 
-    private static X509Certificate createValidCert() {
+    public static X509Certificate createValidCert() {
         return CryptoUtils.generateX509Cert(CryptoUtils.generateRsaKeyPair(), "CN=blah");
     }
 
-    private static Request createRequest(X509Certificate certificate) {
-        return createRequest(certificate, TEST_CERT_HEADER_NAME);
+    public static Request createRequestWithCertHeader(X509Certificate certificate) {
+        return createRequestWithCertHeader(certificate, TEST_CERT_HEADER_NAME);
     }
 
-    private static Request createRequest(X509Certificate certificate, String headerName) {
+    public static Request createRequestWithCertHeader(X509Certificate certificate, String headerName) {
         final Request request = new Request();
         final String certUrlEncodedPem = URLEncoder.encode(CryptoUtils.convertToPem(certificate), StandardCharsets.UTF_8);
         request.addHeaders(new GenericHeader(headerName, certUrlEncodedPem));
@@ -53,7 +53,7 @@ class HeaderCertificateResolverTest {
     @Test
     void successfullyResolvesClientCert() throws Exception {
         final X509Certificate clientCert = createValidCert();
-        final Request request = createRequest(clientCert);
+        final Request request = createRequestWithCertHeader(clientCert);
 
         final HeaderCertificateResolver headerCertificateResolver = new HeaderCertificateResolver(TEST_CERT_HEADER_NAME);
 
