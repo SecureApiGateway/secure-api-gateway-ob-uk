@@ -32,24 +32,24 @@ import org.slf4j.LoggerFactory;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**
- * CertificateResolver implementation that resolves the client's mTLS certificate from a HTTP Request Header.
+ * CertificateRetriever implementation that retrieves the client's mTLS certificate from a HTTP Request Header.
  *
- * The certificateHeaderName field is used to control which header is used to resolve the cert.
+ * The certificateHeaderName field determines which header the cert is retrieved from.
  * The header value is expected to be a PEM encoded then URL encoded X509 certificate.
  */
-public class HeaderCertificateResolver implements CertificateResolver {
+public class FromHeaderCertificateRetriever implements CertificateRetriever {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final String certificateHeaderName;
 
-    public HeaderCertificateResolver(String certificateHeaderName) {
+    public FromHeaderCertificateRetriever(String certificateHeaderName) {
         Reject.ifBlank(certificateHeaderName, "certificateHeaderName must be provided");
         this.certificateHeaderName = certificateHeaderName;
     }
 
     @Override
-    public X509Certificate resolveCertificate(Context context, Request request) throws CertificateException {
+    public X509Certificate retrieveCertificate(Context context, Request request) throws CertificateException {
         final String fapInteractionId = FAPIUtils.getFapiInteractionIdForDisplay(context);
         final String headerValue = request.getHeaders().getFirst(certificateHeaderName);
         if (headerValue == null) {

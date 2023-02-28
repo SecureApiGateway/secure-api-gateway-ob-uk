@@ -60,10 +60,10 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
  * path then we can be sure that we have an authenticated client.
  *
  * The access_token returned by the Authorisation Server is inspected to retrieve the client_id by using the
- * configurable accessTokenClientIdClaim. Once the client_id has been retrieve, it is used to look up the resources
+ * configurable accessTokenClientIdClaim. Once the client_id has been retrieved, it is used to look up the resources
  * needed to do validation, namely the {@link ApiClient} and their {@link org.forgerock.json.jose.jwk.JWKSet}.
  *
- * A configurable {@link CertificateResolver} is used to resolve the client's MTLS certificate. This is then validated
+ * A configurable {@link CertificateRetriever} is used to retrieve the client's MTLS certificate. This is then validated
  * against the JWKSet for the ApiClient by using a {@link TransportCertValidator}.
  *
  * If the validation is successful the Authorisation Server Response is passed on along the filter chain. Otherwise,
@@ -85,9 +85,9 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
     private final JwtReconstruction jwtReconstruction = new JwtReconstruction();
 
     /**
-     * Resolver of the client's mTLS certificate
+     * Retrieves the client's mTLS certificate
      */
-    private final CertificateResolver certificateResolver;
+    private final CertificateRetriever certificateRetriever;
 
     /**
      * Service which retrieves {@link ApiClient} data
@@ -110,18 +110,18 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
     private final TransportCertValidator transportCertValidator;
 
     public TokenEndpointTransportCertValidationFilter(ApiClientService apiClientService, TrustedDirectoryService trustedDirectoryService,
-                                                      ApiClientJwkSetService apiClientJwkSetService, CertificateResolver certificateResolver,
+                                                      ApiClientJwkSetService apiClientJwkSetService, CertificateRetriever certificateRetriever,
                                                       TransportCertValidator transportCertValidator, String accessTokenClientIdClaim) {
         Reject.ifNull(apiClientService, "apiClientService must be provided");
         Reject.ifNull(trustedDirectoryService, "trustedDirectoryService must be provided");
         Reject.ifNull(apiClientJwkSetService, "apiClientJwkSetService must be provided");
-        Reject.ifNull(certificateResolver, "certificateResolver must be provided");
+        Reject.ifNull(certificateRetriever, "certificateRetriever must be provided");
         Reject.ifNull(transportCertValidator, "transportCertValidator must be provided");
         Reject.ifBlank(accessTokenClientIdClaim, "accessTokenClientIdClaim must be provided");
         this.apiClientService = apiClientService;
         this.trustedDirectoryService = trustedDirectoryService;
         this.apiClientJwkSetService = apiClientJwkSetService;
-        this.certificateResolver = certificateResolver;
+        this.certificateRetriever = certificateRetriever;
         this.transportCertValidator = transportCertValidator;
         this.accessTokenClientIdClaim = accessTokenClientIdClaim;
     }
@@ -131,7 +131,7 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
         final String fapiInteractionIdForDisplay = FAPIUtils.getFapiInteractionIdForDisplay(context);
         final X509Certificate clientCertificate;
         try {
-             clientCertificate = certificateResolver.resolveCertificate(context, request);
+             clientCertificate = certificateRetriever.retrieveCertificate(context, request);
         } catch (CertificateException e) {
             logger.error("({}) Failed to resolve client mtls certificate", fapiInteractionIdForDisplay, e);
             return Promises.newResultPromise(TransportCertValidationFilter.createErrorResponse(e.getMessage()));
@@ -264,13 +264,13 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                     .as(requiredHeapObject(heap, TransportCertValidator.class));
 
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            final CertificateResolver certResolver = new HeaderCertificateResolver(clientCertHeaderName);
+            final CertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(clientCertHeaderName);
 
             final String accessTokenClientIdClaim =  config.get("accessTokenClientIdClaim")
                                                            .defaultTo(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM).asString();
 
             return new TokenEndpointTransportCertValidationFilter(apiClientService, trustedDirectoryService,
-                                                                  apiClientJwkSetService, certResolver,
+                                                                  apiClientJwkSetService, certificateRetriever,
                                                                   transportCertValidator, accessTokenClientIdClaim);
 
         }

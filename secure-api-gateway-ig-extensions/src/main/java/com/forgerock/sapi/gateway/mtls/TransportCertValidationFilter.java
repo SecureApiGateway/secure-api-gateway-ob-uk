@@ -50,7 +50,7 @@ import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
  * This filter depends on the {@link JWKSet} containing the keys for this {@link ApiClient} being present in
  * the {@link AttributesContext}.
  *
- * The certificate for the request is supplied by the pluggable certificateResolver, see {@link CertificateResolver}
+ * The certificate for the request is supplied by the pluggable certificateRetriever, see {@link FromHeaderCertificateRetriever}
  * for an example implementation (this is the default configured by the {@link Heaplet})
  *
  * Once the {@link X509Certificate} and JWKSet have been obtained, then the filter delegates to a {@link TransportCertValidator}
@@ -63,20 +63,20 @@ public class TransportCertValidationFilter implements Filter {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
-     * Resolves the client's x509 certificate used for mutual TLS
+     * Retrieves the client's x509 certificate used for mutual TLS
      */
-    private final CertificateResolver certificateResolver;
+    private final CertificateRetriever certificateRetriever;
 
     /**
      * Validator which checks if the client's MTLS certificate is valid.
      */
     private final TransportCertValidator transportCertValidator;
 
-    public TransportCertValidationFilter(CertificateResolver certificateResolver,
+    public TransportCertValidationFilter(CertificateRetriever certificateRetriever,
                                         TransportCertValidator transportCertValidator) {
-        Reject.ifNull(certificateResolver, "certificateResolver must be provided");
+        Reject.ifNull(certificateRetriever, "certificateRetriever must be provided");
         Reject.ifNull(transportCertValidator, "transportCertValidator must be provided");
-        this.certificateResolver = certificateResolver;
+        this.certificateRetriever = certificateRetriever;
         this.transportCertValidator = transportCertValidator;
     }
 
@@ -93,7 +93,7 @@ public class TransportCertValidationFilter implements Filter {
 
         final X509Certificate certificate;
         try {
-            certificate = certificateResolver.resolveCertificate(context, request);
+            certificate = certificateRetriever.retrieveCertificate(context, request);
         } catch (CertificateException e) {
             logger.warn("("+  FAPIUtils.getFapiInteractionIdForDisplay(context) + ") transport cert not valid", e);
             return Promises.newResultPromise(createErrorResponse("client tls certificate must be provided as a valid x509 certificate"));
@@ -144,8 +144,8 @@ public class TransportCertValidationFilter implements Filter {
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             final TransportCertValidator transportCertValidator = config.get("transportCertValidator").required()
                                                                         .as(requiredHeapObject(heap, TransportCertValidator.class));
-            final CertificateResolver headerCertResolver = new HeaderCertificateResolver(clientCertHeaderName);
-            return new TransportCertValidationFilter(headerCertResolver, transportCertValidator);
+            final CertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(clientCertHeaderName);
+            return new TransportCertValidationFilter(certificateRetriever, transportCertValidator);
         }
     }
 }

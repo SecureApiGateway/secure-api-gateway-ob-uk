@@ -22,19 +22,19 @@ import org.forgerock.http.protocol.Request;
 import org.forgerock.services.context.Context;
 
 /**
- * Resolves of a client's mTLS certificate
+ * Retriever of client mTLS certificates
  */
-public interface CertificateResolver {
+public interface CertificateRetriever {
 
     /**
-     * Resolves the client's mTLS certificate from the Request and Context
+     * Retrieves the client's mTLS certificate from the Request and Context
      *
      * @param context Context - the filter context
      * @param request Request - the HTTP request
      * @return X509Certificate supplied by the client as part of mTLS
-     * @throws CertificateException thrown if the certificate could not be resolved, or if the resolved certificate
+     * @throws CertificateException thrown if the certificate could not be retrieved, or if the retrieved certificate
      * is malformed.
      */
-    X509Certificate resolveCertificate(Context context, Request request) throws CertificateException;
+    X509Certificate retrieveCertificate(Context context, Request request) throws CertificateException;
 
 }

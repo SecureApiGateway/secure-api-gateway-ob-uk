@@ -86,7 +86,7 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         private ApiClientJwkSetService mockApiClientJwkSetService;
 
-        private CertificateResolver mockCertificateResolver;
+        private CertificateRetriever mockCertificateRetriever;
 
         private TransportCertValidator mockTransportCertValidator;
 
@@ -102,13 +102,13 @@ class TokenEndpointTransportCertValidationFilterTest {
             mockApiClientJwkSetService = mock(ApiClientJwkSetService.class);
 
             // Default resolver behavior is to throw an exception
-            mockCertificateResolver = mock(CertificateResolver.class, invocationOnMock -> {
+            mockCertificateRetriever = mock(CertificateRetriever.class, invocationOnMock -> {
                 throw new CertificateException("invalid cert");
             });
             mockTransportCertValidator = mock(TransportCertValidator.class);
 
             transportCertValidationFilter = new TokenEndpointTransportCertValidationFilter(mockApiClientService, mockTrustedDirectoryService,
-                    mockApiClientJwkSetService, mockCertificateResolver, mockTransportCertValidator, DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM);
+                    mockApiClientJwkSetService, mockCertificateRetriever, mockTransportCertValidator, DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM);
 
             testApiClient = new ApiClient();
             testApiClient.setOauth2ClientId(testClientId);
@@ -217,7 +217,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TestHandler nextHandler = createResponseWithValidAccessToken();
 
             final X509Certificate clientCert = mock(X509Certificate.class);
-            doReturn(clientCert).when(mockCertificateResolver).resolveCertificate(any(), any());
+            doReturn(clientCert).when(mockCertificateRetriever).retrieveCertificate(any(), any());
             mockApiClientReturnsTestApiClient();
             mockTrustedDirectoryServiceReturndTestTrustedDirectory();
 
@@ -248,7 +248,7 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         private X509Certificate mockCertificateResolverValidCert() throws Exception {
             final X509Certificate mockCert = mock(X509Certificate.class);
-            doReturn(mockCert).when(mockCertificateResolver).resolveCertificate(any(), any());
+            doReturn(mockCert).when(mockCertificateRetriever).retrieveCertificate(any(), any());
             return mockCert;
         }
 
@@ -306,7 +306,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TestHandler responseHandler = createResponseWithValidAccessToken();
 
 
-            final Request request = HeaderCertificateResolverTest.createRequestWithCertHeader(clientCert, certHeader);
+            final Request request = FromHeaderCertificateRetrieverTest.createRequestWithCertHeader(clientCert, certHeader);
 
             final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new RootContext("root"), request, responseHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
@@ -357,7 +357,7 @@ class TokenEndpointTransportCertValidationFilterTest {
 
         private TokenEndpointTransportCertValidationFilter createFilter() {
             return new TokenEndpointTransportCertValidationFilter(mock(ApiClientService.class), mock(TrustedDirectoryService.class),
-                    mock(ApiClientJwkSetService.class), mock(CertificateResolver.class), mock(TransportCertValidator.class),
+                    mock(ApiClientJwkSetService.class), mock(CertificateRetriever.class), mock(TransportCertValidator.class),
                     DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM);
         }
 
