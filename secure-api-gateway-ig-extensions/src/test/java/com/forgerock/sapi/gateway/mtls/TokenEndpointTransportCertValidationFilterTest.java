@@ -295,7 +295,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             heap.put("jwkSetService", new MockJwkSetService(Map.of(apiClientJwksUrl, clientJwks)));
             heap.put("transportCertValidator", new DefaultTransportCertValidator());
 
-            final JsonValue config = json(object(field("clientHandler", "clientHandler"),
+            final JsonValue config = json(object(field("idmClientHandler", "clientHandler"),
                                                 field("idmGetApiClientBaseUri", idmBaseUri),
                                                 field("trustedDirectoryService", "trustedDirectoryService"),
                                                 field("jwkSetService", "jwkSetService"),

@@ -51,6 +51,27 @@ import com.forgerock.sapi.gateway.jwks.JwkSetService;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectory;
 import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
 
+/**
+ * Filter to validate that the client's MTLS transport certificate is valid when making a request to the Authorisation
+ * Server's token endpoint.
+ *
+ * This is a specialised version of {@link TransportCertValidationFilter}, it does the same
+ * validation, but has been adapted to do its validation on the response path. By deferring the validation to the response
+ * path, then we can be sure that we have an authenticated client.
+ *
+ * In order to get the resources needed to do the validaiton, the access_token is inspected and the client_id is retrieved
+ * from the configurable accessTokenClientIdClaim. This is used to look up the {@link ApiClient} and their
+ * {@link org.forgerock.json.jose.jwk.JWKSet}.
+ *
+ * A configurable {@link CertificateResolver} is used to resolve the client's MTLS certificate.
+ *
+ * This is then validated against the JWKSet for the ApiClient by using a {@link TransportCertValidator}.
+ *
+ * If the validation is successful the response is passed on along the filter chain. Otherwise, an error response is
+ * returned with 400 BAD_REQUEST error code.
+ *
+ * See {@link Heaplet} for configuration options.
+ */
 public class TokenEndpointTransportCertValidationFilter implements Filter {
 
     static final String DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM = "aud";
@@ -167,11 +188,42 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
         return clientId.asString();
     }
 
+    /**
+     * Heaplet used to create {@link TransportCertValidationFilter} objects
+     *
+     * Mandatory fields:
+     *  - clientTlsCertHeader: the name of the Request Header which contains the client's TLS cert
+     *  - idmClientHandler: the clientHandler to use to call out to IDM (must be configured with the credentials required to query IDM)
+     *  - idmGetApiClientBaseUri: the base uri used to build the IDM query to get the apiClient, the client_id is expected
+     *                            to be appended to this uri (and some query params).
+     *  - trustedDirectoryService: the name of a {@link TrustedDirectoryService} object on the heap
+     *  - jwkSetService: the name of the service (defined in config on the heap) that can obtain JWK Sets from a jwk set url
+     *  - transportCertValidator: the name of a {@link TransportCertValidator} object on the heap to use to validate the certs
+     *
+     *  Optional config:
+     *  - accessTokenClientIdClaim: the name of the claim in the access_token that contains the clientId. The clientId is then used to
+     *  fetch the ApiClient (and ApiClient's JWKS). Defaults to "aud"
+     *
+     * Example config:
+     * {
+     *           "comment": "Validate the MTLS transport cert",
+     *           "name": "TokenEndpointTransportCertValidationFilter",
+     *           "type": "TokenEndpointTransportCertValidationFilter",
+     *           "config": {
+     *             "clientTlsCertHeader": "ssl-client-cert",
+     *             "idmClientHandler": "IDMClientHandler",
+     *             "idmGetApiClientBaseUri": "https://&{identity.platform.fqdn}/openidm/managed/apiClient",
+     *             "trustedDirectoryService": "TrustedDirectoriesService",
+     *             "jwkSetService": "OBJwkSetService",
+     *             "transportCertValidator": "TransportCertValidator"
+     *           }
+     * }
+     */
     public static class Heaplet extends GenericHeaplet {
 
         @Override
         public Object create() throws HeapException {
-            final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
+            final Handler clientHandler = config.get("idmClientHandler").as(requiredHeapObject(heap, Handler.class));
             final Client httpClient = new Client(clientHandler);
 
             String idmGetApiClientBaseUri = config.get("idmGetApiClientBaseUri").required().asString();
