@@ -324,7 +324,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TokenEndpointTransportCertValidationFilter filter = createFilter();
 
             final JsonValue jsonResponseMissingAccessTokenField = json(object(field("someOtherKey", "someOtherValue")));
-            final IllegalStateException illegalStateException = assertThrows(IllegalStateException.class, () -> filter.getClientId(jsonResponseMissingAccessTokenField));
+            final IllegalStateException illegalStateException = assertThrows(IllegalStateException.class, () -> filter.getClientIdFromAccessToken(jsonResponseMissingAccessTokenField));
             assertEquals("Failed to get client_id: access_token is missing", illegalStateException.getMessage());
         }
 
@@ -333,7 +333,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TokenEndpointTransportCertValidationFilter filter = createFilter();
 
             final JsonValue accessTokenInvalidJwt = json(object(field("access_token", "sdfsfsdfsdfsf")));
-            final InvalidJwtException invalidJwtException = assertThrows(InvalidJwtException.class, () -> filter.getClientId(accessTokenInvalidJwt));
+            final InvalidJwtException invalidJwtException = assertThrows(InvalidJwtException.class, () -> filter.getClientIdFromAccessToken(accessTokenInvalidJwt));
             assertEquals("not right number of dots, 1", invalidJwtException.getMessage());
         }
 
@@ -342,7 +342,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TokenEndpointTransportCertValidationFilter filter = createFilter();
 
             final JsonValue accessTokenMissingClientIdClaim = json(object(field("access_token", createAccessToken(Map.of("claim1", "value1")))));
-            final IllegalStateException illegalStateException = assertThrows(IllegalStateException.class, () -> filter.getClientId(accessTokenMissingClientIdClaim));
+            final IllegalStateException illegalStateException = assertThrows(IllegalStateException.class, () -> filter.getClientIdFromAccessToken(accessTokenMissingClientIdClaim));
             assertEquals("Failed to get client_id: access_token claims missing required '" + DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM + "' claim", illegalStateException.getMessage());
         }
 
@@ -352,7 +352,7 @@ class TokenEndpointTransportCertValidationFilterTest {
 
             final String clientId = "clientId123";
             final JsonValue accessTokenClientIdNotString = json(object(field("access_token", createAccessToken(Map.of(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM, clientId)))));
-            assertEquals(clientId, filter.getClientId(accessTokenClientIdNotString));
+            assertEquals(clientId, filter.getClientIdFromAccessToken(accessTokenClientIdNotString));
         }
 
         private TokenEndpointTransportCertValidationFilter createFilter() {

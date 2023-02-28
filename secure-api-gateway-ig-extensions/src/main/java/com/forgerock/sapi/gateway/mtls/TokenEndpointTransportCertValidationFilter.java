@@ -78,18 +78,36 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
+    /**
+     * Name of the access_token JWT claim containing the OAuth 2 client_id
+     */
     private final String accessTokenClientIdClaim;
 
     private final JwtReconstruction jwtReconstruction = new JwtReconstruction();
 
+    /**
+     * Resolver of the client's mTLS certificate
+     */
     private final CertificateResolver certificateResolver;
 
+    /**
+     * Service which retrieves {@link ApiClient} data
+     */
     private final ApiClientService apiClientService;
 
+    /**
+     * Service which retrieves {@link TrustedDirectory} configuration
+     */
     private final TrustedDirectoryService trustedDirectoryService;
 
+    /**
+     * Service which retrieves the {@link org.forgerock.json.jose.jwk.JWKSet} for the {@link ApiClient}
+     */
     private final ApiClientJwkSetService apiClientJwkSetService;
 
+    /**
+     * Validator which ensures that the client's mTLS certificate belongs to the ApiClient's {@link org.forgerock.json.jose.jwk.JWKSet}
+     */
     private final TransportCertValidator transportCertValidator;
 
     public TokenEndpointTransportCertValidationFilter(ApiClientService apiClientService, TrustedDirectoryService trustedDirectoryService,
@@ -128,7 +146,7 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
             } else {
                 return response.getEntity()
                                .getJsonAsync()
-                               .then(this::getClientId)
+                               .then(this::getClientIdFromAccessToken)
                                .thenAsync(apiClientService::getApiClient, io -> {
                                    // Exception handler to keep the generics happy, converts Promise<T, IOException> => Promise<T, Exception>
                                    logger.warn("({}) IOException getting json from response", io);
@@ -148,7 +166,10 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
         });
     }
 
-    private AsyncFunction<ApiClient, Response, NeverThrowsException> validateApiClientTransportCert(String fapiInteractionIdForDisplay, X509Certificate clientCertificate, Response response) {
+    private AsyncFunction<ApiClient, Response, NeverThrowsException> validateApiClientTransportCert(String fapiInteractionIdForDisplay,
+                                                                                                    X509Certificate clientCertificate,
+                                                                                                    Response response) {
+
         return apiClient -> {
             final TrustedDirectory trustedDirectory = trustedDirectoryService.getTrustedDirectoryConfiguration(apiClient);
             if (trustedDirectory == null) {
@@ -167,13 +188,13 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                 logger.debug("({}) transport cert validated successfully", fapiInteractionIdForDisplay);
                 return response;
             }, ex -> {
-                logger.error("({}) Failed to get JWKS for ApiClient", fapiInteractionIdForDisplay, ex);
+                logger.error("({}) Failed to get JWKS for apiClient: {}", fapiInteractionIdForDisplay, apiClient, ex);
                 return new Response(Status.INTERNAL_SERVER_ERROR);
             });
         };
     }
 
-    String getClientId(Object jsonValue) {
+    String getClientIdFromAccessToken(Object jsonValue) {
         final JsonValue json = JsonValue.json(jsonValue);
         final JsonValue accessToken = json.get("access_token");
         if (accessToken == null || accessToken.isNull()) {

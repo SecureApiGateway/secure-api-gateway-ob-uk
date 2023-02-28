@@ -55,7 +55,7 @@
           "type": "TokenEndpointTransportCertValidationFilter",
           "config": {
             "idmGetApiClientBaseUri": "&{urls.idmGetApiClientBaseUri}",
-            "clientHandler": "IDMClientHandler",
+            "idmClientHandler": "IDMClientHandler",
             "trustedDirectoryService": "TrustedDirectoriesService",
             "jwkSetService": "OBJwkSetService",
             "clientTlsCertHeader": "ssl-client-cert",
