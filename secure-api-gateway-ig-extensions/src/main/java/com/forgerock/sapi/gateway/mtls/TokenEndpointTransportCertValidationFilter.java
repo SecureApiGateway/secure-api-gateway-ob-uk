@@ -57,20 +57,19 @@ import com.forgerock.sapi.gateway.trusteddirectories.TrustedDirectoryService;
  *
  * This is a specialised version of {@link TransportCertValidationFilter}, it does the same
  * validation, but has been adapted to do its validation on the response path. By deferring the validation to the response
- * path, then we can be sure that we have an authenticated client.
+ * path then we can be sure that we have an authenticated client.
  *
- * In order to get the resources needed to do the validaiton, the access_token is inspected and the client_id is retrieved
- * from the configurable accessTokenClientIdClaim. This is used to look up the {@link ApiClient} and their
- * {@link org.forgerock.json.jose.jwk.JWKSet}.
+ * The access_token returned by the Authorisation Server is inspected to retrieve the client_id by using the
+ * configurable accessTokenClientIdClaim. Once the client_id has been retrieve, it is used to look up the resources
+ * needed to do validation, namely the {@link ApiClient} and their {@link org.forgerock.json.jose.jwk.JWKSet}.
  *
- * A configurable {@link CertificateResolver} is used to resolve the client's MTLS certificate.
+ * A configurable {@link CertificateResolver} is used to resolve the client's MTLS certificate. This is then validated
+ * against the JWKSet for the ApiClient by using a {@link TransportCertValidator}.
  *
- * This is then validated against the JWKSet for the ApiClient by using a {@link TransportCertValidator}.
+ * If the validation is successful the Authorisation Server Response is passed on along the filter chain. Otherwise,
+ * an error response is returned with 400 BAD_REQUEST status.
  *
- * If the validation is successful the response is passed on along the filter chain. Otherwise, an error response is
- * returned with 400 BAD_REQUEST error code.
- *
- * See {@link Heaplet} for configuration options.
+ * See {@link Heaplet} for filter configuration options.
  */
 public class TokenEndpointTransportCertValidationFilter implements Filter {
 
