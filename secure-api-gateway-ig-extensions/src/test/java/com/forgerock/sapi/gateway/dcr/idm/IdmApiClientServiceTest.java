@@ -59,6 +59,18 @@ public class IdmApiClientServiceTest {
     }
 
     @Test
+    void testThrowsExceptionIfApiClientHasBeenDeleted() {
+        final JsonValue idmClientData = createIdmApiClientDataRequiredFieldsOnly(TEST_CLIENT_ID);
+        idmClientData.put("deleted", Boolean.TRUE);
+        final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(TEST_IDM_BASE_URI, TEST_CLIENT_ID, idmClientData);
+
+        final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
+        final Promise<ApiClient, Exception> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
+        final Exception exception = assertThrows(Exception.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
+        assertEquals("Failed to get ApiClient from IDM, clientId: 9999 has been deleted", exception.getMessage());
+    }
+
+    @Test
     void testThrowsExceptionWhenIdmReturnsErrorResponse() {
         final Handler idmResponse = Handlers.INTERNAL_SERVER_ERROR;
         final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponse), TEST_IDM_BASE_URI, idmApiClientDecoder);

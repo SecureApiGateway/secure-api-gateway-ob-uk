@@ -67,8 +67,13 @@ public class IdmApiClientService implements ApiClientService {
                             throw new Exception("Failed to get ApiClient from IDM, response status: " + response.getStatus());
                         }
                         return response.getEntity().getJsonAsync()
-                                .then(json -> idmApiClientDecoder.decode(JsonValue.json(json)),
-                                        ioe -> { throw new Exception("Failed to decode apiClient response json", ioe); });
+                                .then(json -> {
+                                    final ApiClient apiClient = idmApiClientDecoder.decode(JsonValue.json(json));
+                                    if (apiClient.isDeleted()) {
+                                        throw new Exception("Failed to get ApiClient from IDM, clientId: " + clientId + " has been deleted");
+                                    }
+                                    return apiClient;
+                                }, ioe -> { throw new Exception("Failed to decode apiClient response json", ioe); });
                     }, nte -> Promises.newExceptionPromise(new Exception(nte)));
         } catch (URISyntaxException e) {
             return Promises.newExceptionPromise(new Exception(e));
