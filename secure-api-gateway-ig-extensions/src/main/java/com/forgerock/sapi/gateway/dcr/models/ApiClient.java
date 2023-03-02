@@ -23,6 +23,10 @@ import org.forgerock.util.Reject;
 
 /**
  * Data object which represents a registered OAuth2 client.
+ *
+ * Use {@link ApiClientBuilder} to create an instance
+ *
+ * ApiClient is immutable.
  */
 public class ApiClient {
 
@@ -115,7 +119,8 @@ public class ApiClient {
 
     private final boolean deleted;
 
-    private ApiClient(String oauth2ClientId, String softwareClientId, String clientName, URI jwksUri, SignedJwt softwareStatementAssertion, ApiClientOrganisation organisation, boolean deleted) {
+    private ApiClient(String oauth2ClientId, String softwareClientId, String clientName, URI jwksUri,
+                      SignedJwt softwareStatementAssertion, ApiClientOrganisation organisation, boolean deleted) {
         this.oauth2ClientId = oauth2ClientId;
         this.softwareClientId = softwareClientId;
         this.clientName = clientName;
