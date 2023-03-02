@@ -25,9 +25,8 @@ import org.forgerock.openig.heap.HeapException;
  * For Secure API Gateway we are aliasing this filter as SapiLogAttachedExceptionFilter. We want to control where
  * the filter gets installed in a filter chain.
  *
- * The default installation in the Router causes us to have output which
- * includes an invalid transactionId due to it being before the filter that sets the transactionId for Secure API
- * Gateway.
+ * The default installation in the Router causes us to have output which includes an invalid transactionId due to it
+ * being before the filter that sets the transactionId for Secure API Gateway.
  *
  * The default installation still remains and this will handle any exceptions that are raised in between the 2 filters.
  */
