@@ -80,7 +80,7 @@ public class IdmApiClientService implements ApiClientService {
                                         throw new ApiClientServiceException(ErrorCode.DECODE_FAILED, "Failed to decode apiClient response json", ex);
                                     }
                                     if (apiClient.isDeleted()) {
-                                        throw new ApiClientServiceException(ErrorCode.DELETED, "ApiClient clientId: " + clientId + " not found");
+                                        throw new ApiClientServiceException(ErrorCode.DELETED, "ApiClient clientId: " + clientId + " has been deleted");
                                     }
                                     return apiClient;
                                 }, ioe -> { throw new ApiClientServiceException(ErrorCode.SERVER_ERROR, "Failed to get response json entity", ioe); });

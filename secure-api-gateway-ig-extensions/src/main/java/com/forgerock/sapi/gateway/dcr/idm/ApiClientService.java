@@ -15,6 +15,7 @@
  */
 package com.forgerock.sapi.gateway.dcr.idm;
 
+import org.forgerock.util.Reject;
 import org.forgerock.util.promise.Promise;
 
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
@@ -41,11 +42,17 @@ public interface ApiClientService {
 
         public ApiClientServiceException(ErrorCode errorCode, String message, Throwable cause) {
             super(message, cause);
+            Reject.ifNull(errorCode, "errorCode must be supplied");
             this.errorCode = errorCode;
         }
 
         public ErrorCode getErrorCode() {
             return errorCode;
+        }
+
+        @Override
+        public String getMessage() {
+            return "[" + errorCode.name() + "] " + super.getMessage();
         }
     }
 

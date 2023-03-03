@@ -70,7 +70,7 @@ public class IdmApiClientServiceTest {
         final ApiClientService apiClientService = new IdmApiClientService(new Client(idmResponseHandler), TEST_IDM_BASE_URI, idmApiClientDecoder);
         final Promise<ApiClient, ApiClientServiceException> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final ApiClientServiceException exception = assertThrows(ApiClientServiceException.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
-        assertEquals("ApiClient clientId: 9999 not found", exception.getMessage());
+        assertEquals("[DELETED] ApiClient clientId: 9999 has been deleted", exception.getMessage());
         assertEquals(ErrorCode.DELETED, exception.getErrorCode());
     }
 
@@ -81,7 +81,7 @@ public class IdmApiClientServiceTest {
         final Promise<ApiClient, ApiClientServiceException> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final ApiClientServiceException exception = assertThrows(ApiClientServiceException.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
-        assertEquals("Failed to get ApiClient from IDM, response status: [Status: 500 Internal Server Error]",
+        assertEquals("[SERVER_ERROR] Failed to get ApiClient from IDM, response status: [Status: 500 Internal Server Error]",
                 exception.getMessage());
         assertEquals(ErrorCode.SERVER_ERROR, exception.getErrorCode());
     }
@@ -96,7 +96,7 @@ public class IdmApiClientServiceTest {
         final Promise<ApiClient, ApiClientServiceException> apiClient = apiClientService.getApiClient("123");
         final ApiClientServiceException exception = assertThrows(ApiClientServiceException.class, () -> apiClient.getOrThrow(1, TimeUnit.MILLISECONDS));
 
-        assertEquals("Failed to get response json entity", exception.getMessage());
+        assertEquals("[SERVER_ERROR] Failed to get response json entity", exception.getMessage());
         assertEquals(ErrorCode.SERVER_ERROR, exception.getErrorCode());
     }
 
@@ -110,7 +110,7 @@ public class IdmApiClientServiceTest {
         final Promise<ApiClient, ApiClientServiceException> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final ApiClientServiceException exception = assertThrows(ApiClientServiceException.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
-        assertEquals("Failed to decode apiClient response json", exception.getMessage());
+        assertEquals("[DECODE_FAILED] Failed to decode apiClient response json", exception.getMessage());
         assertEquals(ErrorCode.DECODE_FAILED, exception.getErrorCode());
         assertEquals(JsonValueException.class, exception.getCause().getClass());
         assertEquals("/ssa: is a required field, failed to decode IDM ApiClient", exception.getCause().getMessage());
@@ -124,7 +124,7 @@ public class IdmApiClientServiceTest {
         final Promise<ApiClient, ApiClientServiceException> apiClientPromise = apiClientService.getApiClient(TEST_CLIENT_ID);
         final ApiClientServiceException exception = assertThrows(ApiClientServiceException.class, () -> apiClientPromise.getOrThrow(1, TimeUnit.MILLISECONDS));
 
-        assertEquals("Failed to build request URI", exception.getMessage());
+        assertEquals("[SERVER_ERROR] Failed to build request URI", exception.getMessage());
         assertEquals(ErrorCode.SERVER_ERROR, exception.getErrorCode());
         assertEquals(URISyntaxException.class, exception.getCause().getClass());
     }
