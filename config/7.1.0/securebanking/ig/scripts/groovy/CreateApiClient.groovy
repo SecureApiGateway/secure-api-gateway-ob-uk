@@ -108,8 +108,8 @@ switch(method.toUpperCase()) {
         patchSetApiClientDeleted.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "/" + apiClientId
                 + "?_action=patch")
         patchSetApiClientDeleted.setEntity([["operation": "replace",
-                                      "field"    : "deleted",
-                                      "value"    : true]])
+                                             "field"    : "deleted",
+                                             "value"    : true]])
         logger.info("Marking IDM object: " + routeArgObjApiClient + " as deleted for client_id: " + apiClientId)
         return http.send(patchSetApiClientDeleted).thenAsync(idmResponse -> {
           if (idmResponse.status.isSuccessful()) {
