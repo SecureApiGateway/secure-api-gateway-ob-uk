@@ -24,10 +24,36 @@ import com.forgerock.sapi.gateway.dcr.models.ApiClient;
  */
 public interface ApiClientService {
 
+    class ApiClientServiceException extends Exception {
+
+        public enum ErrorCode {
+            DELETED,
+            NOT_FOUND,
+            DECODE_FAILED,
+            SERVER_ERROR;
+        }
+        private final ErrorCode errorCode;
+
+        public ApiClientServiceException(ErrorCode errorCode, String message) {
+            this(errorCode, message, null);
+
+        }
+
+        public ApiClientServiceException(ErrorCode errorCode, String message, Throwable cause) {
+            super(message, cause);
+            this.errorCode = errorCode;
+        }
+
+        public ErrorCode getErrorCode() {
+            return errorCode;
+        }
+    }
+
+
     /**
      * Gets an {@link ApiClient} by their clientId
      * @param clientId the OAuth2 client_id of the ApiClient
-     * @return Promise which either returns the ApiClient or an Exception if an error occurs.
+     * @return Promise which either returns the ApiClient or an ApiClientServiceException if an error occurs.
      */
-    Promise<ApiClient, Exception> getApiClient(String clientId);
+    Promise<ApiClient, ApiClientServiceException> getApiClient(String clientId);
 }

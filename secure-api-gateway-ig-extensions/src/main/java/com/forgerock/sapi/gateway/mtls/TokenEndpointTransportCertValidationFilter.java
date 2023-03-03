@@ -145,12 +145,9 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
             } else {
                 return response.getEntity()
                                .getJsonAsync()
+                               .thenCatchAsync(ioe -> Promises.newExceptionPromise(new Exception("Failed to get response entity json", ioe)))
                                .then(this::getClientIdFromAccessToken)
-                               .thenAsync(apiClientService::getApiClient, io -> {
-                                   // Exception handler to keep the generics happy, converts Promise<T, IOException> => Promise<T, Exception>
-                                   logger.warn("({}) IOException getting json from response", io);
-                                   return Promises.newExceptionPromise(io);
-                               })
+                               .thenAsync(this::getApiClient)
                                .thenAsync(validateApiClientTransportCert(fapiInteractionIdForDisplay, clientCertificate, response),
                                           ex -> {
                                             // Top level exception handler
@@ -163,6 +160,11 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                                           });
             }
         });
+    }
+
+    private Promise<ApiClient, Exception> getApiClient(String clientId) {
+        return apiClientService.getApiClient(clientId)
+                               .thenCatchAsync(ae -> Promises.newExceptionPromise(new Exception("Failed to get ApiClient due to exception", ae)));
     }
 
     private AsyncFunction<ApiClient, Response, NeverThrowsException> validateApiClientTransportCert(String fapiInteractionIdForDisplay,
