@@ -101,13 +101,19 @@ switch(method.toUpperCase()) {
       if (response.status.isSuccessful()) {
         // ProcessRegistration filter will have added the client_id param
         def apiClientId = request.getQueryParams().getFirst("client_id")
-        Request deleteApiClientReq = new Request()
-        deleteApiClientReq.setMethod('DELETE')
-        deleteApiClientReq.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "/" + apiClientId)
-        logger.info("Deleting IDM object: " + routeArgObjApiClient + " for client_id: " + apiClientId)
-        return http.send(deleteApiClientReq).thenAsync(idmResponse -> {
+
+        // Submit a patch request to set the apiClient.deleted field to true
+        Request patchSetApiClientDeleted = new Request()
+        patchSetApiClientDeleted.setMethod('POST')
+        patchSetApiClientDeleted.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjApiClient + "/" + apiClientId
+                + "?_action=patch")
+        patchSetApiClientDeleted.setEntity([["operation": "replace",
+                                      "field"    : "deleted",
+                                      "value"    : true]])
+        logger.info("Marking IDM object: " + routeArgObjApiClient + " as deleted for client_id: " + apiClientId)
+        return http.send(patchSetApiClientDeleted).thenAsync(idmResponse -> {
           if (idmResponse.status.isSuccessful()) {
-            logger.debug("IDM object successfully deleted for client_id: " + apiClientId)
+            logger.debug("IDM object successfully marked as deleted client_id: " + apiClientId)
             return newResultPromise(new Response(Status.NO_CONTENT))
           }
           return newResultPromise(errorResponse(Status.BAD_REQUEST, "Failed to delete registration"))
