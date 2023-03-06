@@ -56,25 +56,10 @@ def getErrorResponse() {
     logger.error(SCRIPT_NAME + "Message: " + message + ". ErrorCode:" + errorCode)
 
     response = new Response(Status.BAD_REQUEST)
-
-    Map<String,String> newBody = [
-            Code: Status.BAD_REQUEST.toString()
-    ]
-
-    requestIds = request.headers.get("x-request-id")
-    if (requestIds) {
-        newBody.put("Id", requestIds.firstValue)
-    }
-    newBody.put("Message",  Status.BAD_REQUEST.toString())
-
-    Map<String,String> errorList =[
-            ErrorCode: errorCode,
-            Message: message
-    ]
-
-    newBody.put("Errors", errorList)
-    response.setEntity(newBody)
-    return response;
+    response.setEntity(json(object(field("code", Status.BAD_REQUEST.toString()),
+                                   field("errors", array(object(field("ErrorCode", errorCode),
+                                                                field("Message", message)))))))
+    return response
 }
 /**
  * End definitions
@@ -151,18 +136,18 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
             logger.error(SCRIPT_NAME + message)
             response.status = intentResponseStatus
             response.entity = "{ \"error\":\"" + message + "\"}"
-            return response
+            return newResultPromise(response)
         }
 
         def intentResponseContent = intentResponse.getEntity();
         def intentResponseObject = intentResponseContent.getJson();
 
         if (intentResponseObject.apiClient == null) {
-            message = "Orfan consent, The consent requested to get with id [" + intentResponseObject._id + "] doesn't have a apiClient related."
+            message = "Orphan consent, The consent requested to get with id [" + intentResponseObject._id + "] doesn't have a apiClient related."
             logger.error(SCRIPT_NAME + message)
             response.status = Status.BAD_REQUEST
             response.entity = "{ \"error\":\"" + message + "\"}"
-            return response
+            return newResultPromise(response)
         }
 
         attributes.put("resourceOwnerUsername", intentResponseObject.user ? intentResponseObject.user._id : null)
@@ -197,6 +182,7 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
             logger.error(SCRIPT_NAME + message + e)
             response = new Response(Status.BAD_REQUEST)
             response.entity = "{ \"error\":\"" + message + "\"}"
+            return newResultPromise(response)
         }
         return next.handle(context, request)
     })
