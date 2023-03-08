@@ -138,7 +138,7 @@ public class ApiClient {
     private final ApiClientOrganisation organisation;
 
     /**
-     * The roles allowed by this client
+     * The roles allowed to be performed by this apiClient.
      */
     private final List<String> roles;
 
@@ -192,6 +192,13 @@ public class ApiClient {
 
     public boolean isDeleted() {
         return deleted;
+    }
+
+    /**
+     * @return The roles allowed to be performed by this client
+     */
+    public List<String> getAllowedRoles(){
+        return this.roles;
     }
 
     @Override

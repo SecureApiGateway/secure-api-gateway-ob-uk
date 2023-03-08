@@ -7,44 +7,32 @@ if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
 SCRIPT_NAME = "[CertificateRoleCheck] (" + fapiInteractionId + ") - ";
 
 logger.debug(SCRIPT_NAME + "Running...")
-
 logger.debug(SCRIPT_NAME + "Checking certificate roles for {} request",routeArgRole)
+
+if ( !attributes.apiClient ){
+  logger.error("FetchApiClientFilter must be run before this script. apiClient needs to exist in the attributes context");
+  return new Response(Status.INTERNAL_SERVER_ERROR)
+}
 
 // response object
 response = new Response(Status.OK)
 response.headers['Content-Type'] = "application/json"
 
-def ROLE_PAYMENT_INITIATION             = "0.4.0.19495.1.2"
-def ROLE_ACCOUNT_INFORMATION            = "0.4.0.19495.1.3"
-def ROLE_CARD_BASED_PAYMENT_INSTRUMENTS = "0.4.0.19495.1.4"
 
-
-// Check we have everything we need from the client certificate
-
-if (!attributes.clientCertificate) {
-  message = "No client certificate for TPP role check"
-  logger.error(SCRIPT_NAME + message)
-  response.status = Status.BAD_REQUEST
-  response.entity = "{ \"error\":\"" + message + "\"}"
-  return response
-}
-
+List<String> apiClientAllowedRoles = attributes.apiClient.getAllowedRoles()
 
 def roles = attributes.clientCertificate.roles
 if (!roles) {
-  message = "No roles in client certificate for TPP role check"
+  message = "No roles in apiClient for TPP role check"
   logger.error(SCRIPT_NAME + message)
   response.status = Status.BAD_REQUEST
   response.entity = "{ \"error\":\"" + message + "\"}"
   return response
 }
 
-// Check certificate role based on request type
 
-
-
-if (routeArgRole == "AISP" && !(roles.contains(ROLE_ACCOUNT_INFORMATION))) {
-  message = "Role AISP requires certificate role " + ROLE_ACCOUNT_INFORMATION
+if (!allowedRoles.contains(routeArgRole)) {
+  message = "client is not authorized to perform role " + routeArgRole
   logger.error(SCRIPT_NAME + message)
   response.status = Status.FORBIDDEN
   response.entity = "{ \"error\":\"" + message + "\"}"
