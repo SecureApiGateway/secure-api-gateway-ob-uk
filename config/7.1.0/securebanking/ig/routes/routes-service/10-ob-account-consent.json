@@ -9,7 +9,15 @@
     "config": {
       "filters": [
         "SBATFapiInteractionFilterChain",
-        "FetchApiClientResourcesChain",
+        {
+          "comment": "Add ApiClient data to the context attributes.apiClient",
+          "name": "FetchApiClientFilter",
+          "type": "FetchApiClientFilter",
+          "config": {
+            "idmGetApiClientBaseUri": "&{urls.idmGetApiClientBaseUri}",
+            "clientHandler": "IDMClientHandler"
+          }
+        },
         {
           "comment": "Add x-fapi-interaction-id header if one was not present in the request",
           "name": "FapiInteractionIdFilter",
