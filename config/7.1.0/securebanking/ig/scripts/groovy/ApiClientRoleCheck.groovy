@@ -4,7 +4,7 @@ import org.forgerock.json.jose.*
 // Check transport certificate for roles appropriate to request
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
-SCRIPT_NAME = "[CertificateRoleCheck] (" + fapiInteractionId + ") - ";
+SCRIPT_NAME = "[ApiClientRoleCheck] (" + fapiInteractionId + ") - ";
 
 logger.debug(SCRIPT_NAME + "Running...")
 logger.debug(SCRIPT_NAME + "Checking certificate roles for {} request",routeArgRole)
@@ -31,22 +31,13 @@ if (!roles) {
 }
 
 
-if (!allowedRoles.contains(routeArgRole)) {
+if (!apiClientAllowedRoles.contains(routeArgRole)) {
   message = "client is not authorized to perform role " + routeArgRole
   logger.error(SCRIPT_NAME + message)
   response.status = Status.FORBIDDEN
   response.entity = "{ \"error\":\"" + message + "\"}"
   return response
 }
-else if (routeArgRole == "PISP" && !(roles.contains(ROLE_PAYMENT_INITIATION))) {
-  message = "Role PISP requires certificate role " + ROLE_PAYMENT_INITIATION
-  logger.error(SCRIPT_NAME + message)
-  response.status = Status.FORBIDDEN
-  response.entity = "{ \"error\":\"" + message + "\"}"
-  return response
-}
-
-
 next.handle(context, request)
 
 

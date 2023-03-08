@@ -65,11 +65,11 @@
         "FetchApiClientResourcesChain",
         {
           "comment": "Make sure client certificate includes AISP role",
-          "name": "CertificateRoleCheck",
+          "name": "ApiClientRoleCheck",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "CertificateRoleCheck.groovy",
+            "file": "ApiClientRoleCheck.groovy",
             "args": {
               "routeArgRole": "AISP"
             }

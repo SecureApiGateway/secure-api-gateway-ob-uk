@@ -53,12 +53,12 @@
           }
         },
         {
-          "comment": "Ensure client certificate includes PISP role",
-          "name": "CertificateRoleCheck",
+          "comment": "Ensure ApiClient includesPISP role",
+          "name": "ApiClientRoleCheck",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
-            "file": "CertificateRoleCheck.groovy",
+            "file": "ApiClientRoleCheck.groovy",
             "args": {
               "routeArgRole": "PISP"
             }
