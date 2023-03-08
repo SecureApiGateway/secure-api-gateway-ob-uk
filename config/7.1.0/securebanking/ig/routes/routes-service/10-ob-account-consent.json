@@ -10,15 +10,6 @@
       "filters": [
         "SBATFapiInteractionFilterChain",
         {
-          "comment": "Add ApiClient data to the context attributes.apiClient",
-          "name": "FetchApiClientFilter",
-          "type": "FetchApiClientFilter",
-          "config": {
-            "idmGetApiClientBaseUri": "&{urls.idmGetApiClientBaseUri}",
-            "clientHandler": "IDMClientHandler"
-          }
-        },
-        {
           "comment": "Add x-fapi-interaction-id header if one was not present in the request",
           "name": "FapiInteractionIdFilter",
           "type": "FapiInteractionIdFilter"
@@ -41,33 +32,6 @@
             "file": "ParseCertificate.groovy",
             "args": {
               "routeArgCertificateHeader": "ssl-client-cert"
-            }
-          }
-        },
-        {
-          "comment": "Make sure client certificate includes AISP role",
-          "name": "CertificateRoleCheck",
-          "type": "ScriptableFilter",
-          "config": {
-            "type": "application/x-groovy",
-            "file": "CertificateRoleCheck.groovy",
-            "args": {
-              "routeArgRole": "AISP"
-            }
-          }
-        },
-        {
-          "comment": "Extract client certificate thumbprint for cert bound access tokens",
-          "name": "CertificateThumbprintFilter-1",
-          "type": "CertificateThumbprintFilter",
-          "config": {
-            "certificate": "${pemCertificate(urlDecode(request.headers['ssl-client-cert'][0]))}",
-            "failureHandler": {
-              "type": "ScriptableHandler",
-              "config": {
-                "type": "application/x-groovy",
-                "file": "ReturnInvalidCnfKeyError.groovy"
-              }
             }
           }
         },
@@ -99,6 +63,33 @@
           }
         },
         "FetchApiClientResourcesChain",
+        {
+          "comment": "Make sure client certificate includes AISP role",
+          "name": "CertificateRoleCheck",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "CertificateRoleCheck.groovy",
+            "args": {
+              "routeArgRole": "AISP"
+            }
+          }
+        },
+        {
+          "comment": "Extract client certificate thumbprint for cert bound access tokens",
+          "name": "CertificateThumbprintFilter-1",
+          "type": "CertificateThumbprintFilter",
+          "config": {
+            "certificate": "${pemCertificate(urlDecode(request.headers['ssl-client-cert'][0]))}",
+            "failureHandler": {
+              "type": "ScriptableHandler",
+              "config": {
+                "type": "application/x-groovy",
+                "file": "ReturnInvalidCnfKeyError.groovy"
+              }
+            }
+          }
+        },
         {
           "comment": "Check grant type",
           "name": "Grant Type Verifier",
