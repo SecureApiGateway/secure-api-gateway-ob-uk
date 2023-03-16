@@ -34,6 +34,9 @@ jobs:
           java-version: '17'
           architecture: x64
           cache: 'maven'
+          server-id: forgerock-private-releases # Value of the distributionManagement/repository/id field of the pom.xml
+          server-username: MAVEN_USERNAME # env variable for username in deploy
+          server-password: MAVEN_CENTRAL_TOKEN # env variable for token in deploy
 
       - name: Build maven
         run: |
