@@ -26,33 +26,25 @@ jobs:
       - run: |
           gcloud auth configure-docker
 
-      - name: Setup defaults action java and maven properties
-        uses: actions/setup-java@v1
+      - uses: actions/setup-java@v3
+        id: maven
+        name: set java and maven cache
         with:
-          java-version: "17"
+          distribution: 'adopt'
+          java-version: '17'
           architecture: x64
-          server-id: forgerock-private-releases # Value of the distributionManagement/repository/id field of the pom.xml
-          server-username: MAVEN_USERNAME # env variable for username in deploy
-          server-password: MAVEN_CENTRAL_TOKEN # env variable for token in deploy
-
-      - name: Cache Maven packages
-        uses: actions/cache@v1
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven2-${{ hashFiles('**/pom.xml') }}
+          cache: 'maven'
 
       - name: Build maven
         run: |
-          mvn clean install
-        env:
-          MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
-          MAVEN_CENTRAL_TOKEN: ${{ secrets.FR_ARTIFACTORY_TOKEN }}
+          mvn clean deploy -DaltDeploymentRepository=release::default::"https://${{ secrets.FR_ARTIFACTORY_USER }}:${{ secrets.FR_ARTIFACTORY_TOKEN }}@maven.forgerock.org/artifactory/community/"
 
       - name: docker build
         run: |
           make build-docker-ig tag=${{ env.GIT_SHA_SHORT }} env="prod"
-          docker tag eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
-          docker push eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
+          docker tag eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} \
+          eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
+          docker push --all-tags eu.gcr.io/${{ secrets.DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}
 
       - name: 'run functional tests'
         uses: codefresh-io/codefresh-pipeline-runner@master

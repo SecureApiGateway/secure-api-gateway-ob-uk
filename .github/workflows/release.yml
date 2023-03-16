@@ -1,16 +1,159 @@
-name: Publish package to the ForgeRock artifactory
+name: create_release_workflow
+run-name: Create release final::${{ inputs.is_final_release }} candidate::${{ inputs.candidate_number }}
+# **What it does**:
+# Reuse workflow 'prepare-release' from parent: update versions, create tag and release branch with release versions
+# Build the maven project as release version and publish the artifact in forgerock maven repo
+# **Artifacts**: java libraries and bill of materials
+# **Artifact repository**: https://maven.forgerock.org/artifactory/community/com/forgerock/sapi/gateway/
 on:
-  release:
-    types: [published]
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    name: Deploy release
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Release notes"
+        required: false
+        type: string
+        default: ''
+      is_final_release:
+        description: "Is a final release, otherwise will be a 'rc' (release candidate)"
+        required: false
+        type: boolean
+        default: false
+      candidate_number:
+        description: "Provide the candidate sequence number (default: 1)"
+        required: false
+        type: string
+        default: 1
+env:
+  GH_TOKEN: ${{ github.token }}
+  GIT_AUTHOR_NAME: ${{ secrets.GIT_COMMIT_USERNAME_BOT }}
+  GIT_AUTHOR_EMAIL: ${{ secrets.GIT_COMMIT_AUTHOR_EMAIL_BOT }}
+  GIT_COMMITTER_NAME: ${{ secrets.GIT_COMMIT_USERNAME_BOT }}
+  GIT_COMMITTER_EMAIL: ${{ secrets.GIT_COMMIT_AUTHOR_EMAIL_BOT }}
+  GIT_SHA_SHORT: $(echo ${{ github.sha }} | cut -c1-7)
 
-      - name: Build Docker Image
+jobs:
+
+  release_prepare: # prepare for a release in scm, creates the tag and release branch with the proper release versions
+    name: Call release prepare
+    # uses: ./.github/workflows/release-prepare.yml # same repository
+    uses: SecureApiGateway/secure-api-gateway-parent/.github/workflows/release-prepare.yml@issue/812-action-release-prepare-workflow
+    with:
+      is_final_release: ${{ inputs.is_final_release }}
+      candidate_number: ${{ inputs.candidate_number }}
+    secrets: # inherit only when is the same repository
+      GPG_PRIVATE_KEY_BOT: ${{ secrets.GPG_PRIVATE_KEY_BOT }}
+      GPG_KEY_PASSPHRASE_BOT: ${{ secrets.GPG_KEY_PASSPHRASE_BOT }}
+      GIT_COMMIT_USERNAME_BOT: ${{ secrets.GIT_COMMIT_USERNAME_BOT }}
+      GIT_COMMIT_AUTHOR_EMAIL_BOT: ${{ secrets.GIT_COMMIT_AUTHOR_EMAIL_BOT }}
+
+  release_perform:
+    runs-on: ubuntu-latest
+    name: Build and publish the release
+    needs: release_prepare
+    steps:
+      - name: outputs context
         run: |
-          make docker tag=${{ github.event.release.tag_name }} env="prod" gcr-repo=${{ secrets.RELEASE_REPO }}
+          echo "release ref: ${{ needs.release_prepare.outputs.release_ref }}"
+          echo "release_branch: ${{ needs.release_prepare.outputs.release_branch }}"
+          echo "tag_ref: ${{ needs.release_prepare.outputs.tag_ref }}"
+
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v3
+        id: checkout
+        name: checkout master
+        with:
+          ref: ${{ needs.release_prepare.outputs.release_branch }}
+
+      # https://github.com/crazy-max/ghaction-import-gpg
+      # https://httgp.com/signing-commits-in-github-actions/
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY_BOT }}
+          passphrase: ${{ secrets.GPG_KEY_PASSPHRASE_BOT }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - uses: actions/setup-java@v3
+        id: maven
+        name: set java and maven cache
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+          architecture: x64
+          cache: 'maven'
+
+      # Sets include properties to the latest release versions of specific artifacts (no snapshot)
+      - name: Update dependencies properties version
+        id: update_dependencies_properties_version
+        run: |
+          mvn versions:update-properties -DincludeParent=false -DincludeProperties=uk.bom.version
+
+      - name: Deploy release
+        id: deploy
+        run: |
+          mvn clean deploy -DaltDeploymentRepository=release::default::"https://${{ secrets.FR_ARTIFACTORY_USER }}:${{ secrets.FR_ARTIFACTORY_TOKEN }}@maven.forgerock.org/artifactory/community/"
+
+      - name: Create github release
+        id: release
+        if: ${{ steps.deploy.outcome }} == 'success'
+        run: |
+          # Create a release from input tag
+          gh release create --draft --verify-tag ${{ needs.release_prepare.outputs.tag_ref }} -t "${{ needs.release_prepare.outputs.release_ref }}" --notes "${{ inputs.notes }}"
+
+      ###############
+      # docker image
+      ##############
+      - uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCR_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+
+      # Configure docker to use the gcloud command-line tool as a credential helper
+      - run: |
+          gcloud auth configure-docker
+
+      # Build, tag and push docker release image
+      # - Build image prod env
+      # - Tag image with release reference
+      # - Tag image with tag reference
+      # - Tag image as latest
+      # - Push image with all tags
+      - name: docker build
+        run: |
+          make build-docker-ig tag=${{ env.GIT_SHA_SHORT }} env="prod"
+          docker tag eu.gcr.io/${{ secrets.RELEASE_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} \
+          eu.gcr.io/${{ secrets.RELEASE_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ needs.release_prepare.outputs.release_ref }} \
+          eu.gcr.io/${{ secrets.RELEASE_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ needs.release_prepare.outputs.tag_ref }} \
+          eu.gcr.io/${{ secrets.RELEASE_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
+          docker push --all-tags eu.gcr.io/${{ secrets.RELEASE_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}
+
+      # Set:
+      # - The next snapshot version
+      # - The latest parent snapshot version
+      # - The latest properties dependencies snapshot version
+      # - Commit to confirm the changes and delete the pom backups
+      - name: update snapshots
+        id: update_snapshots
+        if: ${{ steps.release.outcome }] == 'success'
+        run: |
+          mvn versions:set -DnextSnapshot
+          mvn versions:update-parent -DallowSnapshots
+          mvn versions:update-properties -DincludeParent=false -DincludeProperties=uk.bom.version -DallowSnapshots 
+          mvn versions:commit
+
+      - name: Prepare next development iteration
+        id: prepare_next_dev
+        if: ${{ steps.update_snapshots.outcome }} == 'success'
+        run: |
+          git add .
+          git commit -m "Prepare the next development iteration"
+          git push origin HEAD:${{ needs.release_prepare.outputs.release_branch }}
+
+      - name: create pull request
+        if: ${{ steps.prepare_next_dev.outcome }} == 'success'
+        run: |
+          gh pr create -H ${{ needs.release_prepare.outputs.release_branch }} -B master --title "Release ${{ needs.release_prepare.outputs.release_ref }} created" --body "- Prepare the next development iteration"

@@ -80,27 +80,6 @@
 
         </dependencies>
     </dependencyManagement>
-    <scm>
-        <connection>scm:git:git@github.com:SecureApiGateway/secure-api-gateway-ob-uk.git
-        </connection>
-        <developerConnection>scm:git:git@github.com:SecureApiGateway/secure-api-gateway-ob-uk.git
-        </developerConnection>
-        <url>https://github.com/SecureApiGateway/secure-api-gateway-ob-uk.git</url>
-        <tag>HEAD</tag>
-    </scm>
-
-    <distributionManagement>
-        <repository>
-            <id>maven.forgerock.org-community</id>
-            <name>maven.forgerock.org-releases</name>
-            <url>https://maven.forgerock.org/artifactory/community</url>
-        </repository>
-        <snapshotRepository>
-            <id>maven.forgerock.org-community-snapshots</id>
-            <name>maven.forgerock.org-snapshots</name>
-            <url>https://maven.forgerock.org/artifactory/community</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <repositories>
         <repository>
