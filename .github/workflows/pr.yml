@@ -41,6 +41,9 @@ jobs:
       - name: Build maven
         run: |
           mvn clean install
+        env:
+          MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.FR_ARTIFACTORY_TOKEN }}
 
       - name: Build Docker Image
         run: |

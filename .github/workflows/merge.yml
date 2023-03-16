@@ -38,6 +38,9 @@ jobs:
       - name: Build maven
         run: |
           mvn clean deploy -DaltDeploymentRepository=release::default::"https://${{ secrets.FR_ARTIFACTORY_USER }}:${{ secrets.FR_ARTIFACTORY_TOKEN }}@maven.forgerock.org/artifactory/community/"
+        env:
+          MAVEN_USERNAME: ${{ secrets.FR_ARTIFACTORY_USER }}
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.FR_ARTIFACTORY_TOKEN }}
 
       - name: docker build
         run: |
