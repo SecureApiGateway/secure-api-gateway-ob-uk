@@ -16,7 +16,7 @@ if (!attributes.apiClient){
 
 if (!attributes.apiClient.getRoles().contains(routeArgRole)) {
   def errorMessage = "client is not authorized to perform role: " + routeArgRole
-  logger.warn(SCRIPT_NAME + "ApiClient.id=" + attributes.apiClient.getOauth2ClientId() +  errorMessage)
+  logger.warn(SCRIPT_NAME + "ApiClient.id=" + attributes.apiClient.getOauth2ClientId() + " " + errorMessage)
   
   def response = new Response(Status.FORBIDDEN)
   response.entity = json(object(field("error", errorMessage)))
