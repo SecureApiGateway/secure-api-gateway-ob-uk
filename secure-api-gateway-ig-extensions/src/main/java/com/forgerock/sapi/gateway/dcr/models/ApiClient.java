@@ -194,13 +194,6 @@ public class ApiClient {
         return deleted;
     }
 
-    /**
-     * @return The roles allowed to be performed by this client
-     */
-    public List<String> getAllowedRoles(){
-        return this.roles;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -9,7 +9,7 @@ SCRIPT_NAME = "[ApiClientRoleCheck] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 logger.debug(SCRIPT_NAME + "Checking certificate roles for {} request",routeArgRole)
 
-if ( !attributes.apiClient ){
+if (!attributes.apiClient){
   logger.error("FetchApiClientFilter must be run before this script. apiClient needs to exist in the attributes context");
   return new Response(Status.INTERNAL_SERVER_ERROR)
 }
@@ -17,9 +17,6 @@ if ( !attributes.apiClient ){
 // response object
 response = new Response(Status.OK)
 response.headers['Content-Type'] = "application/json"
-
-
-List<String> apiClientAllowedRoles = attributes.apiClient.getAllowedRoles()
 
 def roles = attributes.clientCertificate.roles
 if (!roles) {
@@ -30,8 +27,7 @@ if (!roles) {
   return response
 }
 
-
-if (!apiClientAllowedRoles.contains(routeArgRole)) {
+if (!attributes.apiClient.getRoles().contains(routeArgRole)) {
   message = "client is not authorized to perform role " + routeArgRole
   logger.error(SCRIPT_NAME + message)
   response.status = Status.FORBIDDEN
@@ -39,9 +35,3 @@ if (!apiClientAllowedRoles.contains(routeArgRole)) {
   return response
 }
 next.handle(context, request)
-
-
-
-
-
-
