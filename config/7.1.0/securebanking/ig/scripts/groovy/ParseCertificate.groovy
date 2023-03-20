@@ -1,21 +1,7 @@
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
-import java.net.URLDecoder
 import javax.naming.ldap.LdapName
 import javax.naming.ldap.Rdn
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Sequence
-import org.bouncycastle.asn1.ASN1ObjectIdentifier
-import org.bouncycastle.asn1.ASN1Primitive
-import org.bouncycastle.asn1.DEROctetString
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
-import javax.crypto.SecretKey;
-import org.bouncycastle.asn1.ASN1OctetString
-import java.security.KeyFactory
-import java.security.PrivateKey
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.interfaces.RSAPublicKey;
 
 
 /*
@@ -29,47 +15,11 @@ SCRIPT_NAME = "[ParseCertificate] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 
 class CertificateParserHelper {
-    private static final EXTENDED_KEY_USAGE_OID_STRINGS = [
-            "2.5.29.37.0",
-            "1.3.6.1.5.5.7.3.0",
-            "1.3.6.1.5.5.7.3.1",
-            "1.3.6.1.5.5.7.3.2",
-            "1.3.6.1.5.5.7.3.3",
-            "1.3.6.1.5.5.7.3.4",
-            "1.3.6.1.5.5.7.3.5",
-            "1.3.6.1.5.5.7.3.6",
-            "1.3.6.1.5.5.7.3.7",
-            "1.3.6.1.5.5.7.3.8",
-            "1.3.6.1.4.1.311.20.2.2",
-            "1.3.6.1.5.5.7.3.9"
-    ];
-
-    private static final EXTENDED_KEY_USAGE_TEXTS = [
-            "All Usages",
-            "All Usages",
-            "Server Authentication",
-            "Client Authentication",
-            "Code Signing",
-            "Email Protection",
-            "IPSec end system",
-            "IPSec tunnel",
-            "IPSec user",
-            "Timestamping",
-            "Smartcard Logon",
-            "OCSP signer"
-    ];
-
-    private static final OID_QC_STATEMENTS = "1.3.6.1.5.5.7.1.3"
-
-    private static final OID_PSD2_QC_STATEMENT = "0.4.0.19495.2"
-
     private static final OID_ORGANIZATIONAL_IDENTIFIER = "2.5.4.97"
     private static final TYPE_ORGANIZATIONAL_IDENTIFIER = "OI"
 
     public static parseDN(String dn) {
         def result = [:]
-
-
         LdapName ln = new LdapName(dn);
 
         for(Rdn rdn : ln.getRdns()) {
@@ -80,8 +30,6 @@ class CertificateParserHelper {
             }
             result.put(rdnType,rdn.getValue());
         }
-
-
         return result;
     }
 }
