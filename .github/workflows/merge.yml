@@ -18,17 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version
-        id: get_version
-        run: |
-          echo "VERSION=$( mvn help:evaluate -Dexpression=project.version -q -DforceStdout )" >> $GITHUB_ENV
-          echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community" >> $GITHUB_ENV
-
-      - name: Set up snapshot forgerock maven repository
-        if: contains( env.VERSION, 'SNAPSHOT')
-        run: |
-          echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community-snapshots" >> $GITHUB_ENV
-
       - uses: actions/setup-java@v3
         name: set java and maven cache
         with:
@@ -39,6 +28,21 @@ jobs:
           server-id: MAVEN_SERVER_ID
           server-username: FR_ARTIFACTORY_USER # env variable for username in deploy
           server-password: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD # env variable for token in deploy
+
+      - name: Get version
+        id: get_version
+        run: |
+          echo "VERSION=$( mvn help:evaluate -Dexpression=project.version -q -DforceStdout )" >> $GITHUB_ENV
+          echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community" >> $GITHUB_ENV
+        env:
+          MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
+          FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
+          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
+
+      - name: Set up snapshot forgerock maven repository
+        if: contains( env.VERSION, 'SNAPSHOT')
+        run: |
+          echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community-snapshots" >> $GITHUB_ENV
 
       - name: Build maven
         run: |
