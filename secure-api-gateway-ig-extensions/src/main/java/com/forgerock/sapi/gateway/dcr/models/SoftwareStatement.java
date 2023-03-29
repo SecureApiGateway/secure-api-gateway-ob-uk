@@ -99,7 +99,7 @@ public class SoftwareStatement extends SapiJwt {
     }
 
     /**
-     * @return the name of the
+     * @return the name of the software client, this is a human-readable name representing the piece of software that is registered
      */
     public String getClientName() {
         return clientName;
