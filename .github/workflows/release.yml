@@ -2,7 +2,7 @@ name: create-release
 run-name: Create release '${{ inputs.release_version_number }}'
 # What it does:
 # - Call release-prepare workflow
-# - Call release-publish-java workflow
+# - Call local repository release-publish-java workflow
 # - Call release-publish-docker workflow
 # - Call release-publish-draft-and-pr
 on:
@@ -34,7 +34,7 @@ jobs:
   release_java:
     name: Call publish java
     needs: [ release_prepare ]
-    uses: SecureApiGateway/secure-api-gateway-parent/.github/workflows/release-publish-java.yml@master
+    uses: ./.github/workflows/release-publish-java.yml
     with:
       release_version_number: ${{ inputs.release_version_number }}
       release_tag_ref: ${{ needs.release_prepare.outputs.release_tag_ref }}
