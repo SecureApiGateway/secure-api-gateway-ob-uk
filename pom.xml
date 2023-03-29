@@ -46,7 +46,7 @@
         <!-- https://maven.apache.org/plugins/maven-compiler-plugin/examples/set-compiler-release.html -->
         <release.java.version>11</release.java.version>
         <copyright-current-year>2022</copyright-current-year>
-        <uk.bom.version>0.9.0-SNAPSHOT</uk.bom.version>
+        <uk.bom.version>0.9.0</uk.bom.version>
         <openig.version>7.1.0</openig.version>
         <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
@@ -80,11 +80,10 @@
 
         </dependencies>
     </dependencyManagement>
+
     <scm>
-        <connection>scm:git:git@github.com:SecureApiGateway/secure-api-gateway-ob-uk.git
-        </connection>
-        <developerConnection>scm:git:git@github.com:SecureApiGateway/secure-api-gateway-ob-uk.git
-        </developerConnection>
+        <connection>scm:git:${project.scm.url}</connection>
+        <developerConnection>scm:git:${project.scm.url}</developerConnection>
         <url>https://github.com/SecureApiGateway/secure-api-gateway-ob-uk.git</url>
         <tag>HEAD</tag>
     </scm>
