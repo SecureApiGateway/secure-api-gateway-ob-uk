@@ -36,8 +36,8 @@ jobs:
           echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community" >> $GITHUB_ENV
         env:
           MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
-          FR_ARTIFACTORY_USER: FR_ARTIFACTORY_USER
-          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD
+          FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
+          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 
       - name: Set up snapshot forgerock maven repository
         if: contains( env.VERSION, 'SNAPSHOT')
