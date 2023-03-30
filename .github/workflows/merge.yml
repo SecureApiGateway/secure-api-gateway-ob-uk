@@ -1,20 +1,13 @@
-name: merge-master
+name: merge-master-manual
+run-name: Release Helm '${{ inputs.release_version_number }}' tag '${{ inputs.release_tag_ref }}'
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - README.md
-
-env:
-  SERVICE_NAME: ig
-  GIT_SHA_SHORT: $(echo ${{ github.sha }} | cut -c1-7)
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
+    name: Check Master integrity
     steps:
       - uses: actions/checkout@v3
 
@@ -22,7 +15,7 @@ jobs:
         name: set java and maven cache
         with:
           distribution: 'adopt'
-          java-version: '17'
+          java-version: '14'
           architecture: x64
           cache: 'maven'
           server-id: MAVEN_SERVER_ID
@@ -36,52 +29,32 @@ jobs:
           echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community" >> $GITHUB_ENV
         env:
           MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
-          FR_ARTIFACTORY_USER: FR_ARTIFACTORY_USER
-          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD
+          FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
+          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 
       - name: Set up snapshot forgerock maven repository
         if: contains( env.VERSION, 'SNAPSHOT')
         run: |
+          ls -al
+          cat ~/.m2/settings.xml
           echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community-snapshots" >> $GITHUB_ENV
 
       - name: Build maven
         run: |
+          ls -al
+          cat ~/.m2/settings.xml
           mvn clean install
         env:
-          MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
+          MAVEN_SERVER_ID: ${{ env.MAVEN_SERVER_COMMUNITY }}
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 
-      - name: Deploy artifact package
-        run: mvn -B deploy -DskipTests -DskipITs -DdockerCompose.skip -Ddockerfile.skip
-        env:
-          MAVEN_SERVER_ID: ${{ env.MAVEN_SERVER_COMMUNITY }} # community repo to publish the java artifact
-          FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
-          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
-
-      - uses: google-github-actions/auth@v0
-        with:
-          credentials_json: ${{ secrets.GCR_CREDENTIALS_JSON }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0
-
-      # Configure docker to use the gcloud command-line tool as a credential helper
-      - run: |
-          gcloud auth configure-docker
-
-      - name: docker build
+      - name: Release snapshot package to forgerock maven snapshot repository
         run: |
-          make docker tag=${{ env.GIT_SHA_SHORT }}
-          docker tag eu.gcr.io/${{ secrets.GCR_DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} eu.gcr.io/${{ secrets.GCR_DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}:latest
-          docker push --all-tags eu.gcr.io/${{ secrets.GCR_DEV_REPO }}/securebanking/gate/${{ env.SERVICE_NAME }}
-
-      - name: 'run functional tests'
-        uses: codefresh-io/codefresh-pipeline-runner@master
-        with:
-          args: '-v SERVICE_NAME=${{ env.SERVICE_NAME }}'
+          ls -al
+          cat ~/.m2/settings.xml 
+          mvn -B deploy --file pom.xml
         env:
-          PIPELINE_NAME: 'ForgeCloud/sbat-infra/service-build'
-          CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          TRIGGER_NAME: github-actions-trigger-gateway
-        id: run-pipeline
+          MAVEN_SERVER_ID: ${{ env.MAVEN_SERVER_COMMUNITY }}
+          FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
+          FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
