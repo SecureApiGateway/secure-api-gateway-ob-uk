@@ -20,7 +20,7 @@ on:
 jobs:
 
   release_prepare: # prepare for a release in scm, creates the tag and release branch with the proper release versions
-    name: Call release prepare
+    name: Call local release prepare
     uses: ./.github/workflows/release-prepare.yml
     with:
       release_version_number: ${{ inputs.release_version_number }}
@@ -33,7 +33,7 @@ jobs:
       GIT_COMMIT_AUTHOR_EMAIL_BOT: ${{ secrets.GIT_COMMIT_AUTHOR_EMAIL_BOT }}
 
   release_java_and_docker:
-    name: Call publish java and docker
+    name: Call local publish java and docker
     needs: [ release_prepare ]
     uses: ./.github/workflows/release-publish-java-and-docker.yml
     with:

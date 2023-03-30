@@ -29,7 +29,7 @@ on:
 
 jobs:
   build_deploy_java_and_docker:
-    name: Build and deploy java artifact
+    name: Build and deploy java artifact and docker
     runs-on: ubuntu-latest
     steps:
       # https://github.com/actions/checkout
@@ -61,6 +61,7 @@ jobs:
 
       # Override maven settings
       - uses: actions/setup-java@v3
+        id: override_maven_settings
         name: set java and maven cache with protected repository
         with:
           distribution: 'adopt'
