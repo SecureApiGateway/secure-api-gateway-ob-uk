@@ -18,14 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Java version and maven settings with protected repository id
       - uses: actions/setup-java@v3
-        name: set java and maven cache
+        name: set java and maven cache with protected repository
         with:
           distribution: 'adopt'
           java-version: '17'
           architecture: x64
           cache: 'maven'
-          server-id: MAVEN_SERVER_ID
+          server-id: forgerock-private-releases # protected repo id to get the protected dependencies
           server-username: FR_ARTIFACTORY_USER # env variable for username in deploy
           server-password: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD # env variable for token in deploy
 
@@ -35,11 +36,10 @@ jobs:
           echo "VERSION=$( mvn help:evaluate -Dexpression=project.version -q -DforceStdout )" >> $GITHUB_ENV
           echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community" >> $GITHUB_ENV
         env:
-          MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 
-      - name: Set up snapshot forgerock maven repository
+      - name: Context forgerock maven community repository
         if: contains( env.VERSION, 'SNAPSHOT')
         run: |
           echo "MAVEN_SERVER_COMMUNITY=maven.forgerock.org-community-snapshots" >> $GITHUB_ENV
@@ -48,14 +48,24 @@ jobs:
         run: |
           mvn clean install
         env:
-          MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 
+      # Override maven settings
+      - uses: actions/setup-java@v3
+        name: set java and maven cache with protected repository
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+          architecture: x64
+          cache: 'maven'
+          server-id: ${{ env.MAVEN_SERVER_COMMUNITY }} # community repo to publish the java artifact
+          server-username: FR_ARTIFACTORY_USER # env variable for username in deploy
+          server-password: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD # env variable for token in deploy
+
       - name: Deploy artifact package
-        run: mvn -B deploy -DskipTests -DskipITs -DdockerCompose.skip -Ddockerfile.skip
+        run: mvn -B deploy -DskipTests -Ddockerfile.skip
         env:
-          MAVEN_SERVER_ID: ${{ env.MAVEN_SERVER_COMMUNITY }} # community repo to publish the java artifact
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
 

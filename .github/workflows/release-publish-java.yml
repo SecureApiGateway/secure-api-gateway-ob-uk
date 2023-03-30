@@ -30,7 +30,7 @@ jobs:
         with:
           ref: ${{ inputs.release_tag_ref }} # tag created by maven release plugin prepare goal
 
-      # set java and cache
+      # Java version and maven settings with protected repository id
       - uses: actions/setup-java@v3
         id: set_java_maven
         name: set java and maven cache
@@ -39,7 +39,7 @@ jobs:
           java-version: ${{ inputs.java_version }}
           architecture: x64
           cache: 'maven'
-          server-id: MAVEN_SERVER_ID
+          server-id: forgerock-private-releases # protected repo id to get the protected dependencies
           server-username: FR_ARTIFACTORY_USER # env variable for username in deploy
           server-password: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD # env variable for token in deploy
 
@@ -47,16 +47,26 @@ jobs:
         run: |
           mvn clean install
         env:
-          MAVEN_SERVER_ID: forgerock-private-releases # protected repo id to get the protected dependencies
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
+
+      # Override maven settings
+      - uses: actions/setup-java@v3
+        name: set java and maven cache with protected repository
+        with:
+          distribution: 'adopt'
+          java-version: ${{ inputs.java_version }}
+          architecture: x64
+          cache: 'maven'
+          server-id: maven.forgerock.org-community # community repo to publish the java artifact
+          server-username: FR_ARTIFACTORY_USER # env variable for username in deploy
+          server-password: FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD # env variable for token in deploy
 
       # Deploy the java artifact
       - name: Deploy release
         id: deploy
         run: |
-          mvn clean deploy -Ddockerfile.skip=true
+          mvn -B deploy -DskipTests -Ddockerfile.skip
         env:
-          MAVEN_SERVER_ID: maven.forgerock.org-community
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
