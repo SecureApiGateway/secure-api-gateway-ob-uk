@@ -2,8 +2,7 @@ name: create-release
 run-name: Create release '${{ inputs.release_version_number }}'
 # What it does:
 # - Call release-prepare workflow
-# - Call local repository release-publish-java workflow
-# - Call release-publish-docker workflow
+# - Call local repository release-publish-java-and-docker workflow
 # - Call release-publish-draft-and-pr
 on:
   workflow_dispatch:
@@ -31,8 +30,8 @@ jobs:
       GIT_COMMIT_USERNAME_BOT: ${{ secrets.GIT_COMMIT_USERNAME_BOT }}
       GIT_COMMIT_AUTHOR_EMAIL_BOT: ${{ secrets.GIT_COMMIT_AUTHOR_EMAIL_BOT }}
 
-  release_java:
-    name: Call publish java
+  release_java_and_docker:
+    name: Call publish java and docker
     needs: [ release_prepare ]
     uses: ./.github/workflows/release-publish-java-and-docker.yml
     with:
@@ -46,7 +45,7 @@ jobs:
 
   release_draft_and_pr:
     name: Call publish draft and PR
-    needs: [ release_prepare, release_java, release_docker ]
+    needs: [ release_prepare, release_java_and_docker ]
     uses: SecureApiGateway/secure-api-gateway-parent/.github/workflows/release-publish-draft-and-pr.yml@master
     with:
       release_version_number: ${{ inputs.release_version_number }}

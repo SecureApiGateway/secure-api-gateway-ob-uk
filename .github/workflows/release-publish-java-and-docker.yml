@@ -1,5 +1,5 @@
-name: release-publish-java
-run-name: Java Release '${{ inputs.release_version_number }}'
+name: release-publish-java-and-docker
+run-name: Java and docker Release '${{ inputs.release_version_number }}'
 on:
   workflow_call:
     inputs:
