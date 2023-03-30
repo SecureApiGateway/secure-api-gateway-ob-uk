@@ -13,13 +13,22 @@ on:
         required: false
         type: string
         default: '17'
+      SERVICE_NAME:
+        required: false
+        type: string
+        default: 'gate/ig'
     secrets:
       FR_ARTIFACTORY_USER:
         required: true
       FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD:
         required: true
+      GCR_CREDENTIALS_JSON:
+        required: true
+      GCR_RELEASE_REPO:
+        required: true
+
 jobs:
-  build_deploy_java:
+  build_deploy_java_and_docker:
     name: Build and deploy java artifact
     runs-on: ubuntu-latest
     steps:
@@ -28,7 +37,7 @@ jobs:
         id: checkout_tag
         name: checkout release tag
         with:
-          ref: ${{ inputs.release_tag_ref }} # tag created by maven release plugin prepare goal
+          ref: ${{ inputs.release_tag_ref }} # branch created by maven release plugin prepare goal
 
       # Java version and maven settings with protected repository id
       - uses: actions/setup-java@v3
@@ -70,3 +79,30 @@ jobs:
         env:
           FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
           FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
+
+      - uses: google-github-actions/auth@v0
+        id: gcloud_auth
+        with:
+          credentials_json: ${{ secrets.GCR_CREDENTIALS_JSON }}
+
+      - name: Set up Cloud SDK
+        id: gcloud_sdk
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: Set up docker auth
+        id: gcloud_docker_auth
+        run: |
+          gcloud auth configure-docker
+
+      - name: prepare context
+        id: prepare_context
+        run: |
+          echo "GIT_SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        id: build_docker
+        run: |
+          make docker tag=${{ env.GIT_SHA_SHORT }} repo=${{ secrets.GCR_RELEASE_REPO }}
+          docker tag eu.gcr.io/${{ secrets.GCR_RELEASE_REPO }}/securebanking/${{ inputs.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} eu.gcr.io/${{ secrets.GCR_RELEASE_REPO }}/securebanking/${{ inputs.SERVICE_NAME }}:latest
+          docker tag eu.gcr.io/${{ secrets.GCR_RELEASE_REPO }}/securebanking/${{ inputs.SERVICE_NAME }}:${{ env.GIT_SHA_SHORT }} eu.gcr.io/${{ secrets.GCR_RELEASE_REPO }}/securebanking/${{ inputs.SERVICE_NAME }}:${{ inputs.release_version_number }}
+          docker push --all-tags eu.gcr.io/${{ secrets.GCR_RELEASE_REPO }}/securebanking/${{ inputs.SERVICE_NAME }}

@@ -34,24 +34,13 @@ jobs:
   release_java:
     name: Call publish java
     needs: [ release_prepare ]
-    uses: ./.github/workflows/release-publish-java.yml
+    uses: ./.github/workflows/release-publish-java-and-docker.yml
     with:
       release_version_number: ${{ inputs.release_version_number }}
       release_tag_ref: ${{ needs.release_prepare.outputs.release_tag_ref }}
     secrets:
       FR_ARTIFACTORY_USER: ${{ secrets.FR_ARTIFACTORY_USER }}
       FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD: ${{ secrets.FR_ARTIFACTORY_USER_ENCRYPTED_PASSWORD }}
-
-  release_docker:
-    name: Call publish docker
-    needs: [ release_prepare, release_java ]
-    uses: SecureApiGateway/secure-api-gateway-parent/.github/workflows/release-publish-docker.yml@master
-    with:
-      release_version_number: ${{ inputs.release_version_number }}
-      release_tag_ref: ${{ needs.release_prepare.outputs.release_tag_ref }}
-      with_maven: false
-      SERVICE_NAME: securebanking-openbanking-uk-rcs
-    secrets:
       GCR_CREDENTIALS_JSON: ${{ secrets.GCR_CREDENTIALS_JSON }}
       GCR_RELEASE_REPO: ${{ secrets.GCR_RELEASE_REPO }}
 
