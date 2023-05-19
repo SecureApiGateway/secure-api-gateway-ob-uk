@@ -16,7 +16,7 @@ logger.debug(SCRIPT_NAME + 'Running...')
 def accessTokenIntentId = attributes.openbanking_intent_id
 
 if (!accessTokenIntentId) {
-    throw new IllegalStateException("openbanking_intent_id claim is missing from the access token");
+    throw new IllegalStateException("openbanking_intent_id claim is missing from the attributes context");
 }
 
 // Get the intent Id from the request body
