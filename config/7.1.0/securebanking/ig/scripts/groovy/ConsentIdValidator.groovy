@@ -15,19 +15,23 @@ logger.debug(SCRIPT_NAME + 'Running...')
 // Get the intent id from the access token
 def accessTokenIntentId = attributes.openbanking_intent_id
 
+if (!accessTokenIntentId) {
+    throw new IllegalStateException("openbanking_intent_id claim is missing from the access token");
+}
+
 // Get the intent Id from the request body
 def requestIntentId = request.entity.getJson().Data.ConsentId
 
 logger.debug(SCRIPT_NAME + 'Comparing token intent id {} with request intent id {}', accessTokenIntentId, requestIntentId)
 
 // Compare the id's and only allow the filter chain to proceed if they exists and they match
-if (accessTokenIntentId && requestIntentId && accessTokenIntentId == requestIntentId) {
+if (requestIntentId && accessTokenIntentId == requestIntentId) {
     // Request is valid, allow it to pass
     return next.handle(context, request)
 } else {
     Response response = new Response(Status.UNAUTHORIZED)
-    String message = 'invalid_request'
-    logger.error(SCRIPT_NAME + message + ' consentIds are not matching')
+    String message = 'consentId from the request does not match the openbanking_intent_id claim from the access token'
+    logger.error(SCRIPT_NAME + message)
     response.headers['Content-Type'] = 'application/json'
     response.entity = "{ \"error\":\"" + message + "\"}"
     return response
