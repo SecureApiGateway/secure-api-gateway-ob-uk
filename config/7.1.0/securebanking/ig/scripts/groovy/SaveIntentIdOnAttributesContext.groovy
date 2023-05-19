@@ -14,7 +14,12 @@ def intentId = JsonValue.json(Json.readJson(contexts.oauth2.accessToken.info.cla
 logger.info(SCRIPT_NAME + "Intent Id value: " + intentId)
 
 if (!intentId) {
-    throw new IllegalStateException("openbanking_intent_id claim could not be extracted from the access token");
+    Response response = new Response(Status.BAD_REQUEST)
+    response.headers['Content-Type'] = "application/json"
+    String message = 'Cannot parse openbanking_intent_id claim from the provided access token'
+    logger.error(SCRIPT_NAME + message)
+    response.entity = "{ \"error\":\"" + message + "\"}"
+    return response
 }
 
 attributes.put('openbanking_intent_id', intentId)

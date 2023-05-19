@@ -1,6 +1,5 @@
 import org.forgerock.http.protocol.*
 import com.forgerock.sapi.gateway.rest.HttpHeaderNames
-import groovy.json.JsonSlurper
 
 /**
  * This script is comparing the consentId from the request payload versus the consentId from the provided access token.
