@@ -1,5 +1,4 @@
 import groovy.json.JsonOutput
-import org.forgerock.http.MutableUri
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
@@ -15,9 +14,9 @@ response = new Response(Status.OK)
 response.headers['Content-Type'] = "application/json"
 
 // get raw uri query filter, encoded to avoid illegal character in query
-def uriQuery = new MutableUri(request.uri).getRawQuery()
+def uriQuery = request.uri.getRawQuery()
 // get uri path elements
-def uriPathElements =  new MutableUri(request.uri).getPathElements()
+def uriPathElements =  request.uri.getPathElements()
 logger.debug(SCRIPT_NAME + "uriFilter: {}, splitUriPath: {}", uriQuery, uriPathElements)
 // validate uri path
 if (uriPathElements.isEmpty()) {
