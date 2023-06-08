@@ -1,5 +1,5 @@
 import groovy.json.JsonOutput
-
+import org.forgerock.http.MutableUri
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
@@ -14,13 +14,13 @@ userRequest.setMethod('GET');
 response = new Response(Status.OK)
 response.headers['Content-Type'] = "application/json"
 
-// split uri by filter request param
-def uriFilter = request.uri.toString().split("\\?")
-// split uri path to validate it
-def splitUriPath =  request.uri.path.split("/")
-
+// get uri query filter
+def uriQuery = new MutableUri(request.uri).getQuery()
+// get uri path elements
+def uriPathElements =  new MutableUri(request.uri).getPathElements()
+logger.debug(SCRIPT_NAME + "uriFilter: {}, splitUriPath: {}", uriQuery, uriPathElements)
 // validate uri path
-if (splitUriPath.length == 0) {
+if (uriPathElements.length == 0) {
     message = "Can't parse URI from inbound request"
     logger.error(SCRIPT_NAME + message)
     response.status = Status.BAD_REQUEST
@@ -30,13 +30,13 @@ if (splitUriPath.length == 0) {
 
 Boolean queryFilter = false
 // condition IDM request to retrieve the user data by user name or by user ID
-if(uriFilter.length == 2){
-    logger.debug(SCRIPT_NAME + "Looking up API User by filter {}", uriFilter[uriFilter.length -1])
-    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "?" + uriFilter[uriFilter.length -1])
+if(uriQuery.length == 2){
+    logger.debug(SCRIPT_NAME + "Looking up API User by filter {}", uriQuery[uriQuery.length -1])
+    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "?" + uriQuery[uriQuery.length -1])
     queryFilter = true
 } else {
-    logger.debug(SCRIPT_NAME + "Looking up API User by user ID {}", splitUriPath[splitUriPath.length - 1])
-    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "/" + splitUriPath[splitUriPath.length - 1])
+    logger.debug(SCRIPT_NAME + "Looking up API User by user ID {}", uriPathElements[uriPathElements.length - 1])
+    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "/" + uriPathElements[uriPathElements.length - 1])
 }
 
 /*
