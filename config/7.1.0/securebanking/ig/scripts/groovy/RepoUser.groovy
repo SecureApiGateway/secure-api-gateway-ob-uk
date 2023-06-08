@@ -14,29 +14,25 @@ userRequest.setMethod('GET');
 response = new Response(Status.OK)
 response.headers['Content-Type'] = "application/json"
 
-// get uri query filter
-def uriQuery = new MutableUri(request.uri).getQuery()
+// get raw uri query filter, encoded to avoid illegal character in query
+def uriQuery = new MutableUri(request.uri).getRawQuery()
 // get uri path elements
 def uriPathElements =  new MutableUri(request.uri).getPathElements()
 logger.debug(SCRIPT_NAME + "uriFilter: {}, splitUriPath: {}", uriQuery, uriPathElements)
 // validate uri path
-if (uriPathElements.length == 0) {
-    message = "Can't parse URI from inbound request"
-    logger.error(SCRIPT_NAME + message)
-    response.status = Status.BAD_REQUEST
-    response.entity = "{ \"error\":\"" + message + "\"}"
-    return response
+if (uriPathElements.isEmpty()) {
+    errorResponse("Not elements found in the uri path, uri path elements is empty from inbound request", Status.BAD_REQUEST)
 }
 
 Boolean queryFilter = false
 // condition IDM request to retrieve the user data by user name or by user ID
-if(uriQuery.length == 2){
-    logger.debug(SCRIPT_NAME + "Looking up API User by filter {}", uriQuery[uriQuery.length -1])
-    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "?" + uriQuery[uriQuery.length -1])
+if(Objects.nonNull(uriQuery)){
+    logger.debug(SCRIPT_NAME + "Looking up API User by filter {}", uriQuery)
+    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "?" + uriQuery)
     queryFilter = true
 } else {
-    logger.debug(SCRIPT_NAME + "Looking up API User by user ID {}", uriPathElements[uriPathElements.length - 1])
-    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "/" + uriPathElements[uriPathElements.length - 1])
+    logger.debug(SCRIPT_NAME + "Looking up API User by user ID {}", uriPathElements[uriPathElements.size() - 1])
+    userRequest.setUri(routeArgIdmBaseUri + "/openidm/managed/" + routeArgObjUser + "/" + uriPathElements[uriPathElements.size() - 1])
 }
 
 /*
