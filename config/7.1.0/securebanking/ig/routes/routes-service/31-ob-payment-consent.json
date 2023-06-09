@@ -156,7 +156,7 @@
           "config": {
             "messageType": "REQUEST",
             "add": {
-              "x-ob-client-id": [
+              "x-api-client-id": [
                 "${contexts.oauth2.accessToken.info.sub}"
               ],
               "X-Forwarded-Host": [

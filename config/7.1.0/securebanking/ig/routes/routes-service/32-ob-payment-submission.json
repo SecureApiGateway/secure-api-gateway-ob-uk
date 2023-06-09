@@ -207,7 +207,7 @@
               "X-Forwarded-Prefix"
             ],
             "add": {
-              "x-ob-client-id": [
+              "x-api-client-id": [
                 "${contexts.oauth2.accessToken.info.aud}"
               ],
               "X-Forwarded-Host": [
