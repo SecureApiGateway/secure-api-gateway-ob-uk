@@ -155,6 +155,12 @@
           "type": "HeaderFilter",
           "config": {
             "messageType": "REQUEST",
+            "remove": [
+              "host",
+              "X-Forwarded-Host",
+              "X-Forwarded-Prefix",
+              "x-api-client-id"
+            ],
             "add": {
               "x-api-client-id": [
                 "${contexts.oauth2.accessToken.info.sub}"
@@ -165,12 +171,7 @@
               "X-Forwarded-Prefix": [
                 "/rs"
               ]
-            },
-            "remove": [
-              "host",
-              "X-Forwarded-Host",
-              "X-Forwarded-Prefix"
-            ]
+            }
           }
         }
       ],
