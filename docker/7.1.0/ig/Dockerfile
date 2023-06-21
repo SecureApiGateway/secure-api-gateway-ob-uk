@@ -3,7 +3,7 @@ FROM gcr.io/forgerock-io/ig:7.1.0
 # Base image is using the forgerock user, switch to root for priviledged tasks
 USER root
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
-RUN apt-get update && apt-get install nano
+RUN apt-get update && apt-get install nano -y
 RUN apt update && apt install vim -y
 # test docker build from master
 # Switching back to forgerock user, app will run as this
