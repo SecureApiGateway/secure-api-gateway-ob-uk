@@ -2,7 +2,7 @@ import groovy.json.JsonSlurper
 
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
-if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
+if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
 SCRIPT_NAME = "[GetResourceOwnerIdFromConsent] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 /**
@@ -57,8 +57,8 @@ def getErrorResponse() {
 
     response = new Response(Status.BAD_REQUEST)
     response.setEntity(json(object(field("Code", Status.BAD_REQUEST.toString()),
-                                   field("Errors", array(object(field("ErrorCode", errorCode),
-                                                                field("Message", message)))))))
+            field("Errors", array(object(field("ErrorCode", errorCode),
+                    field("Message", message)))))))
     return response
 }
 /**
@@ -159,28 +159,27 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
 
             splitUri = request.uri.path.split("/")
             if (splitUri.size() == 7 && splitUri[6] != null && splitUri[6] == "funds-confirmation") {
-                if(intentResponseObject.OBIntentObject.Data.Status == "Consumed")
-                {
-                    logger.debug(SCRIPT_NAME + "The consent status is Consumed")
-                    return newResultPromise(getErrorResponse())
-                }
+                logger.debug(SCRIPT_NAME + "The consent status is {}", intentResponseObject.OBIntentObject.Data.Status)
+                if (intentResponseObject.OBIntentObject.Data.Status == "Authorised") {
+                    def paymentAmount
+                    if (intentType == IntentType.DOMESTIC_VRP_PAYMENT_CONSENT) {
+                        // For VRP, checking the max individual amount to confirm that the debtor accounts has funds for the payment
+                        paymentAmount = intentResponseObject.OBIntentObject.Data.ControlParameters.MaximumIndividualAmount.Amount
+                    } else {
+                        paymentAmount = intentResponseObject.OBIntentObject.Data.Initiation.InstructedAmount.Amount
+                    }
+                    logger.debug(SCRIPT_NAME + "Payment Amount: " + paymentAmount)
+                    attributes.put("amount", paymentAmount)
 
-                def paymentAmount
-                if (intentType == IntentType.DOMESTIC_VRP_PAYMENT_CONSENT) {
-                    // For VRP, checking the max individual amount to confirm that the debtor accounts has funds for the payment
-                    paymentAmount = intentResponseObject.OBIntentObject.Data.ControlParameters.MaximumIndividualAmount.Amount
-                } else {
-                    paymentAmount = intentResponseObject.OBIntentObject.Data.Initiation.InstructedAmount.Amount
+                    attributes.put("version", splitUri[2])
+                    logger.debug(SCRIPT_NAME + "version: " + splitUri[2])
                 }
-                logger.debug(SCRIPT_NAME + "Payment Amount: " + paymentAmount)
-                attributes.put("amount", paymentAmount)
-
-                attributes.put("version", splitUri[2])
-                logger.debug(SCRIPT_NAME + "version: " + splitUri[2])
+                return next.handle(context, request)
+            } else {
+                return newResultPromise(getErrorResponse())
             }
-            return next.handle(context, request)
-
-        } catch (java.lang.Exception e) {
+        }
+        catch (java.lang.Exception e) {
             message = "Missing required parameters or headers"
             logger.error(SCRIPT_NAME + message, e)
             response = new Response(Status.BAD_REQUEST)
