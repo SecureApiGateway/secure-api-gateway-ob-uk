@@ -5,8 +5,8 @@ USER root
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
 # RUN perl -v
 RUN apt-get update -y
-# RUN apt-get install libcrypt1 -y
-RUN apt-get -y --no-install-recommends install nano vim -y
+RUN apt-get install libcrypt1 -y
+RUN apt-get install nano vim -y
 # test docker build from master
 # Switching back to forgerock user, app will run as this
 USER forgerock
