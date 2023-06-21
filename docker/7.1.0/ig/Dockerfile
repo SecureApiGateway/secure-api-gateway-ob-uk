@@ -2,11 +2,11 @@ FROM gcr.io/forgerock-io/ig:7.1.0
 
 # Base image is using the forgerock user, switch to root for priviledged tasks
 USER root
-RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
+# RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
 RUN cat /etc/apt/sources.list
 RUN apt-get update -y
 # install first libcrypt1 fix post-installation error and avoid fails docker build
-RUN apt-get install libcrypt1 -y
+# RUN apt-get install libcrypt1 -y
 ## install tools to edit the files in the container
 RUN apt-get install nano vim -y
 # test docker build from master
