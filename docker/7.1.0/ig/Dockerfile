@@ -1,10 +1,13 @@
 FROM gcr.io/forgerock-io/ig:7.1.0
 
-# Base image is using the forgerock user, switch to root for priviledged tasks
+# Base image is using the forgerock user, switch to root for privileged tasks
 USER root
-RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
-RUN apt-get update && apt-get install nano
-RUN apt update && apt install vim -y
+# RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+# ARG DEBIAN_FRONTEND noninteractive
+# RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
+# ARG DEBIAN_FRONTEND=noninteractive
+# RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+RUN apt-get update && apt-get install -y nano vim
 
 # Switching back to forgerock user, app will run as this
 USER forgerock
