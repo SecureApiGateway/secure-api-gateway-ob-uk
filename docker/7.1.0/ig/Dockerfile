@@ -5,7 +5,7 @@ USER root
 RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
 RUN apt-get update && apt-get install nano
 RUN apt update && apt install vim -y
-
+# test docker build from master
 # Switching back to forgerock user, app will run as this
 USER forgerock
 # Create dir where secrets can be mounted into
