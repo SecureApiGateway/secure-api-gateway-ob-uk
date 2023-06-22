@@ -10,16 +10,13 @@ RUN apt-get update
 #   /usr/bin/perl: error while loading shared libraries: libcrypt.so.1: cannot
 #     open shared object file: No such file or directory
 #   dpkg: error processing package libc6:amd64 (--configure):
-RUN apt-get install -y apt || true
+# RUN apt-get install -y apt || true
 # Apply workaround
 RUN cd $(mktemp -d)
-RUN apt-get -y download libcrypt1
-RUN dpkg-deb -x libcrypt1_*.deb .
-RUN cp -ra lib/* /lib/
-RUN find /lib/*/libcrypt.* -ls
-RUN apt-get -y --fix-broken install
-# Complete upgrade of minimal stack
-RUN apt-get install -y apt
+RUN apt -y download libcrypt1
+RUN dpkg-deb -x libcrypt1_1%3a4.4.25-2_amd64.deb  .
+RUN cp -av lib/x86_64-linux-gnu/* /lib/x86_64-linux-gnu/
+RUN apt -y --fix-broken install
 ## install tools to edit the files in the container
 RUN apt install nano vim -y
 # test docker build from master
