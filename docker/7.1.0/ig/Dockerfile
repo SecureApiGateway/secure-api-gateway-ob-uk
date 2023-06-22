@@ -2,13 +2,26 @@ FROM gcr.io/forgerock-io/ig:7.1.0
 
 # Base image is using the forgerock user, switch to root for priviledged tasks
 USER root
-# RUN sed -i 's/stable\/updates/stable-security\/updates/' /etc/apt/sources.list
-RUN cat /etc/apt/sources.list
-RUN apt-get update -y
-# install first libcrypt1 fix post-installation error and avoid fails docker build
-# RUN apt-get install libcrypt1 -y
+# Replace any old repos with just Sid
+RUN echo 'deb http://deb.debian.org/debian sid main' > /etc/apt/sources.list
+# Upgrade minimal stack first
+RUN apt-get update
+# Next step will fail on https://bugs.debian.org/993755
+#   /usr/bin/perl: error while loading shared libraries: libcrypt.so.1: cannot
+#     open shared object file: No such file or directory
+#   dpkg: error processing package libc6:amd64 (--configure):
+RUN apt-get install -y apt || true
+# Apply workaround
+RUN cd $(mktemp -d)
+RUN apt -y download libcrypt1
+RUN dpkg-deb -x libcrypt1_*.deb .
+RUN cp -ra lib/* /lib/
+RUN find /lib/*/libcrypt.* -ls
+RUN apt -y --fix-broken install
+# Complete upgrade of minimal stack
+RUN apt-get install -y apt
 ## install tools to edit the files in the container
-RUN apt-get install nano vim -y
+RUN apt install nano vim -y
 # test docker build from master
 # Switching back to forgerock user, app will run as this
 USER forgerock
