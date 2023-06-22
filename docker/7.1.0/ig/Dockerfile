@@ -1,7 +1,7 @@
 FROM gcr.io/forgerock-io/ig:7.1.0
 
 # Base image is using the forgerock user, switch to root for priviledged tasks
-USER root
+USER forgerock
 # Replace any old repos with just Sid
 RUN echo 'deb http://deb.debian.org/debian sid main' > /etc/apt/sources.list
 # Upgrade minimal stack first
