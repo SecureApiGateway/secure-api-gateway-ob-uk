@@ -15,6 +15,7 @@ RUN apt-get update
 USER forgerock
 RUN cd $(mktemp -d)
 RUN apt -y download libcrypt1
+USER root
 RUN dpkg-deb -x libcrypt1_1%3a4.4.25-2_amd64.deb  .
 RUN cp -av lib/x86_64-linux-gnu/* /lib/x86_64-linux-gnu/
 RUN apt -y --fix-broken install
