@@ -1,7 +1,7 @@
 FROM gcr.io/forgerock-io/ig:7.1.0
 
 # Base image is using the forgerock user, switch to root for priviledged tasks
-USER forgerock
+USER root
 # Replace any old repos with just Sid
 RUN echo 'deb http://deb.debian.org/debian sid main' > /etc/apt/sources.list
 # Upgrade minimal stack first
@@ -12,6 +12,7 @@ RUN apt-get update
 #   dpkg: error processing package libc6:amd64 (--configure):
 # RUN apt-get install -y apt || true
 # Apply workaround
+USER forgerock
 RUN cd $(mktemp -d)
 RUN apt -y download libcrypt1
 RUN dpkg-deb -x libcrypt1_1%3a4.4.25-2_amd64.deb  .
