@@ -13,11 +13,11 @@ RUN apt-get update
 RUN apt-get install -y apt || true
 # Apply workaround
 RUN cd $(mktemp -d)
-RUN apt -y download libcrypt1
+RUN apt-get -y download libcrypt1
 RUN dpkg-deb -x libcrypt1_*.deb .
 RUN cp -ra lib/* /lib/
 RUN find /lib/*/libcrypt.* -ls
-RUN apt -y --fix-broken install
+RUN apt-get -y --fix-broken install
 # Complete upgrade of minimal stack
 RUN apt-get install -y apt
 ## install tools to edit the files in the container
