@@ -112,10 +112,15 @@ String intentIdFromAccessToken = getIntentIdFromAccessToken()
 
 // Funds confirmation request condition
 boolean isFundsConfirmation = uriPathElements.contains("funds-confirmation")
-// consentId default value retrieved from the access token or uri Path (../../{{consent ID}}
-String intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken : getIntentIdFromUri(uriPathElements, uriPathElements.size() - 1)
 
-// check if is funds-confirmation to validate the request and set the intentId from the Uri path
+// consentId default value retrieved from the access token or uri Path (../../{{consent ID}} or ../../{{consent ID}}/payment-details)
+String intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken :
+        (
+                uriPathElements.contains("payment-details") ? getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2) :
+                getIntentIdFromUri(uriPathElements, uriPathElements.size() - 1)
+        )
+
+// check if is funds-confirmation to validate the request and set the intentId from Uri path
 logger.debug("{} funds confirmation request: {}", SCRIPT_NAME, isFundsConfirmation)
 if (isFundsConfirmation) {
     // funds confirmation request '../{{consent ID}}/funds-confirmation'
@@ -133,7 +138,6 @@ if (isFundsConfirmation) {
     intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken : intentIdFromUri
 }
 
-
 // validates the intentId has been set
 if (intentId == null) {
     return getErrorResponse(
@@ -141,7 +145,6 @@ if (intentId == null) {
             "Can't parse consent id from inbound request"
     )
 }
-
 
 logger.debug(SCRIPT_NAME + "The intent id is: " + intentId)
 
