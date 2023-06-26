@@ -116,7 +116,8 @@ boolean isFundsConfirmation = uriPathElements.contains("funds-confirmation")
 // consentId default value retrieved from the access token or uri Path (../../{{consent ID}} or ../../{{consent ID}}/payment-details)
 String intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken :
         (
-                uriPathElements.contains("payment-details") ? getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2) :
+                uriPathElements.contains("payment-details") ?
+                        getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2) :
                         getIntentIdFromUri(uriPathElements, uriPathElements.size() - 1)
         )
 
