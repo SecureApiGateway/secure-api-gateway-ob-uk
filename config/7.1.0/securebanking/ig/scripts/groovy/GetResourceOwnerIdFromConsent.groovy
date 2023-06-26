@@ -106,9 +106,11 @@ private boolean doTheConsentIdsMatch(String compareFrom, String compareTo) {
  * start script
  */
 List<String> uriPathElements = request.uri.getPathElements()
-String intentIdFromAccessToken = getIntentIdFromAccessToken() // will be null when is a payment submission
-// default consentId from payment submission request '../../{{consent Id}}'
-String intentIdFromUri = getIntentIdFromUri(uriPathElements, uriPathElements.size() - 1)
+
+// Will be null when the access_token doesn't contains the intentId:
+// - Any GET (consent or payment access)
+// - POST payment submission
+String intentIdFromAccessToken = getIntentIdFromAccessToken()
 
 // Funds confirmation request condition
 boolean isFundsConfirmation = uriPathElements.contains("funds-confirmation")
