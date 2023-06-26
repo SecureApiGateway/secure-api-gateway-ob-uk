@@ -121,10 +121,6 @@ logger.debug("{} funds confirmation request: {}", SCRIPT_NAME, isFundsConfirmati
 if (isFundsConfirmation) {
     // funds confirmation request '../{{consent ID}}/funds-confirmation'
     intentIdFromUri = getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2)
-}
-
-// if intentId from access token and intent Id from uri both are not null, validate that them match
-if (intentIdFromAccessToken != null && intentIdFromUri != null) {
     if (!doTheConsentIdsMatch(intentIdFromAccessToken, intentIdFromUri)) {
         return getErrorResponse(
                 "UK.OBIE.Resource.ConsentMismatch",
@@ -135,9 +131,10 @@ if (intentIdFromAccessToken != null && intentIdFromUri != null) {
                 )
         )
     }
+    intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken : intentIdFromUri
 }
 
-intentId = intentIdFromUri != null ? intentIdFromUri : intentIdFromAccessToken
+
 // validates the intentId has been set
 if (intentId == null) {
     return getErrorResponse(
