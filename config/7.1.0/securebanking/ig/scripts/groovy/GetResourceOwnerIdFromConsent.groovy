@@ -218,7 +218,7 @@ if (request.getMethod() == "GET" || request.getMethod() == "POST") {
                     return newResultPromise(
                             getErrorResponse(
                                     "UK.OBIE.Resource.InvalidConsentStatus",
-                                    "Invalid Consent Status"
+                                    String.format("Invalid Consent Status: %s", intentResponseObject.OBIntentObject.Data.Status)
                             )
                     )
                 }
