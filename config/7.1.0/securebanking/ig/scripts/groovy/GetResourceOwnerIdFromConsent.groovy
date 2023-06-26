@@ -107,22 +107,19 @@ private boolean doTheConsentIdsMatch(String compareFrom, String compareTo) {
  */
 List<String> uriPathElements = request.uri.getPathElements()
 
-// Will be null when the access_token doesn't contains the intentId:
-// - Any GET (consent or payment access)
-// - POST payment submission
+// Will be null when the access_token doesn't contains the intentId
 String intentIdFromAccessToken = getIntentIdFromAccessToken()
 
 // Funds confirmation request condition
 boolean isFundsConfirmation = uriPathElements.contains("funds-confirmation")
-
-// consentId default value retrieved from the access token
-String intentId = intentIdFromAccessToken
+// consentId default value retrieved from the access token or uri Path (../../{{consent ID}}
+String intentId = intentIdFromAccessToken != null ? intentIdFromAccessToken : getIntentIdFromUri(uriPathElements, uriPathElements.size() - 1)
 
 // check if is funds-confirmation to validate the request and set the intentId from the Uri path
 logger.debug("{} funds confirmation request: {}", SCRIPT_NAME, isFundsConfirmation)
 if (isFundsConfirmation) {
     // funds confirmation request '../{{consent ID}}/funds-confirmation'
-    intentIdFromUri = getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2)
+    def intentIdFromUri = getIntentIdFromUri(uriPathElements, uriPathElements.size() - 2)
     if (!doTheConsentIdsMatch(intentIdFromAccessToken, intentIdFromUri)) {
         return getErrorResponse(
                 "UK.OBIE.Resource.ConsentMismatch",
