@@ -155,6 +155,9 @@
               ],
               "X-Forwarded-Prefix": [
                 "/rs"
+              ],
+              "x-intent-id": [
+                "${attributes.openbanking_intent_id}"
               ]
             }
           }
