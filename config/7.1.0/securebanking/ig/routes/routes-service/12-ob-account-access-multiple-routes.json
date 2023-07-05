@@ -144,7 +144,8 @@
               "host",
               "X-Forwarded-Host",
               "X-Forwarded-Prefix",
-              "x-api-client-id"
+              "x-api-client-id",
+              "x-intent-id"
             ],
             "add": {
               "x-api-client-id": [
