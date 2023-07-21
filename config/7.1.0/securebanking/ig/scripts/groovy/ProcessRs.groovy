@@ -2,7 +2,7 @@ import org.forgerock.http.protocol.*
 
 
 def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
-if(fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
+if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id";
 SCRIPT_NAME = "[ProcessRs] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 
@@ -21,6 +21,9 @@ next.handle(context, request).thenOnResult(response -> {
             value.Links.links.add("DeleteAccountAccessConsent", "https://" + request.getHeaders().getFirst('X-Forwarded-Host') + "/rs/open-banking/" + value.Version.asString() + "/aisp/account-access-consents/{ConsentId}");
             value.Links.linkValues.add("https://" + request.getHeaders().getFirst('X-Forwarded-Host') + "/rs/open-banking/" + value.Version.asString() + "/aisp/account-access-consents/{ConsentId}");
         }
+
+        //Customer Info
+        // TODO: the LBG specific validations have to be done in the Test Facility Bank
 
         //Payment Initiation
         List paymentInitiationAPI = response.entity.getJson().get("Data").get("PaymentInitiationAPI").asList()
