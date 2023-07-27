@@ -136,6 +136,15 @@
           }
         },
         {
+          "comment": "Check the consent submitted to match the consent from the access token",
+          "name": "ConsentIdValidator",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ConsentIdValidator.groovy"
+          }
+        },
+        {
           "comment": "Prepare consent audit trail",
           "type": "ScriptableFilter",
           "config": {
