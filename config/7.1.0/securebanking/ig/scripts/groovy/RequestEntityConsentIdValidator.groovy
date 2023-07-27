@@ -8,7 +8,7 @@ import com.forgerock.sapi.gateway.rest.HttpHeaderNames
 
 String fapiInteractionId = request.getHeaders().getFirst(HttpHeaderNames.X_FAPI_INTERACTION_ID);
 if (fapiInteractionId == null) { fapiInteractionId = 'No ' + HttpHeaderNames.X_FAPI_INTERACTION_ID + ' header'}
-SCRIPT_NAME = '[ConsentIdValidator] (' + fapiInteractionId + ') - '
+SCRIPT_NAME = '[RequestEntityRequestEntityConsentIdValidator] (' + fapiInteractionId + ') - '
 logger.debug(SCRIPT_NAME + 'Running...')
 
 // Get the intent id from the access token
