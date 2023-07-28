@@ -1,5 +1,5 @@
 {
-  "name": "31 - Open Banking RS Payment Consent",
+  "name": "66 - Open Banking RS Funds confirmation Consent",
   "auditService": "AuditService-OB-Route",
   "baseURI": "${urls.rsBaseUri}",
   "condition": "${matches(request.uri.path, '^/rs/open-banking/v(\\\\d+.)?(\\\\d+.)?(\\\\*|\\\\d+)/cbpii/funds-confirmation-consents')}",
@@ -59,14 +59,14 @@
         },
         "FetchApiClientResourcesChain",
         {
-          "comment": "Ensure ApiClient includesPISP role",
+          "comment": "Ensure ApiClient includes PISP role",
           "name": "ApiClientRoleCheck",
           "type": "ScriptableFilter",
           "config": {
             "type": "application/x-groovy",
             "file": "ApiClientRoleCheck.groovy",
             "args": {
-              "routeArgRole": "CBPII"
+              "routeArgRole": "PISP"
             }
           }
         },
