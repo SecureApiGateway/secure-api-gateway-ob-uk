@@ -38,7 +38,7 @@
           "type": "OAuth2ResourceServerFilter",
           "config": {
             "scopes": [
-              "payments"
+              "fundsconfirmations"
             ],
             "requireHttps": false,
             "realm": "OpenIG",
@@ -66,7 +66,7 @@
             "type": "application/x-groovy",
             "file": "ApiClientRoleCheck.groovy",
             "args": {
-              "routeArgRole": "PISP"
+              "routeArgRole": "CBPII"
             }
           }
         },
