@@ -66,7 +66,7 @@
             "type": "application/x-groovy",
             "file": "ApiClientRoleCheck.groovy",
             "args": {
-              "routeArgRole": "PISP"
+              "routeArgRole": "CBPII"
             }
           }
         },
