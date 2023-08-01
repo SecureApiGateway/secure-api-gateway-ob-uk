@@ -1,0 +1,77 @@
+{
+  "name": "60 - Internal Repo Route for Remote Consent Service",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/repo/')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        "SBATFapiInteractionFilterChain",
+        {
+          "name": "SwitchFilter-RequestRouter",
+          "type": "SwitchFilter",
+          "config": {
+            "onRequest": [
+              {
+                "comment": "Fetch OAuth2 client details from IDM",
+                "condition": "${matches(request.uri.path, '^/repo/apiclients')}",
+                "handler": {
+                  "type": "ScriptableHandler",
+                  "config": {
+                    "type": "application/x-groovy",
+                    "clientHandler": "IDMClientHandler",
+                    "file": "RepoApiClient.groovy",
+                    "args": {
+                      "routeArgObjApiClient": "apiClient",
+                      "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}"
+                    }
+                  }
+                }
+              },
+              {
+                "comment": "Fetch Open Banking consent from IDM",
+                "condition": "${matches(request.uri.path, '^/repo/consents')}",
+                "handler": {
+                  "type": "ScriptableHandler",
+                  "config": {
+                    "type": "application/x-groovy",
+                    "clientHandler": "IDMClientHandler",
+                    "file": "RepoConsent.groovy",
+                    "args": {
+                      "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+                      "routeArgObjUser": "&{user.object}"
+                    }
+                  }
+                }
+              },
+              {
+                "comment": "Fetch user information from IDM",
+                "condition": "${matches(request.uri.path, '^/repo/users')}",
+                "handler": {
+                  "type": "ScriptableHandler",
+                  "config": {
+                    "type": "application/x-groovy",
+                    "clientHandler": "IDMClientHandler",
+                    "file": "RepoUser.groovy",
+                    "args": {
+                      "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+                      "routeArgObjUser": "&{user.object}"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "handler": {
+        "type": "StaticResponseHandler",
+        "config": {
+          "status": 404,
+          "reason": "Not Found"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "comment": "Create SSA for test TPP clients to use in OIDC dynamic registration",
+  "name": "72 - API client onboarding - generate test SSA",
+  "auditService": "AuditService-OB-Route",
+  "condition": "${security.enableTestTrustedDirectory && matches(request.uri.path, '^/jwkms/apiclient/getssa')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        "SBATFapiInteractionFilterChain",
+        {
+          "comment": "Extract certificate details for organizational claims in SSA",
+          "name": "ParseCertificate",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ParseCertificate.groovy",
+            "args": {
+              "routeArgCertificateHeader": "ssl-client-cert"
+            }
+          }
+        },
+        {
+          "comment": "Create the SSA payload",
+          "name": "JwkmsBuildSSA",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "JwkmsBuildSSA.groovy",
+            "args": {
+              "routeArgJwtIssuer": "test-publisher",
+              "routeArgJwtValidity": 300
+            }
+          }
+        },
+        {
+          "comment": "Sign the SSA",
+          "name": "JwtBuilderFilter-SSA",
+          "type": "JwtBuilderFilter",
+          "config": {
+            "template": "${attributes.ssaPayload}",
+            "secretsProvider": "TestDirectorySigningKeyStore",
+            "signature": {
+              "secretId": "jwt.signer",
+              "algorithm": "PS256"
+            }
+          }
+        }
+      ],
+      "handler": {
+        "comment": "Return the SSA",
+        "type": "ScriptableHandler",
+        "config": {
+          "type": "application/x-groovy",
+          "file": "SetContentTypeToPlainText.groovy"
+        }
+      }
+    }
+  }
+}
