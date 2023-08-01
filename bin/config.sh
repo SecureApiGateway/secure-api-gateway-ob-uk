@@ -232,8 +232,8 @@ diff_config()
 
 # chdir to the script root/..
 cd "$script_dir/.."
-PROFILE_ROOT="config/$_arg_version/$_arg_profile"
-DOCKER_ROOT="docker/$_arg_version"
+PROFILE_ROOT="config/$_arg_profile"
+DOCKER_ROOT="docker"
 
 
 # if [ "$_arg_component" == "all" ]; then
