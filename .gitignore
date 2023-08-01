@@ -30,12 +30,12 @@ cue/
 .settings/
 dev/
 !kustomize/overlay/7.1.0/securebanking/dev
-!config/7.1.0/securebanking/ig/config/dev
+!config/securebanking/ig/config/dev
 .CONFIGURED
 forgeops-toolbox/
-docker/7.1.0/ig/config/
-docker/7.1.0/ig/lib/
-docker/7.1.0/ig/scripts/
+docker/ig/config/
+docker/ig/lib/
+docker/ig/scripts/
 /docker/gatling/gradlew
 /docker/gatling/gradlew.bat
 /docker/gatling/gradle/
