@@ -1,0 +1,148 @@
+{
+  "comment": "Create new TPP dynamic client registration",
+  "name": "03 - Open Banking DCR - Dynamic Client Registration",
+  "auditService": "AuditService-OB-Route",
+  "baseURI": "https://&{identity.platform.fqdn}",
+  "condition": "${matches(request.uri.path, '^/am/oauth2/realms/root/realms/&{am.realm}/register')}",
+  "handler": {
+    "type": "Chain",
+    "config": {
+      "filters": [
+        "SBATFapiInteractionFilterChain",
+        {
+          "comment": "Enforce response content type as application/json",
+          "name": "HeaderFilter-AddResponseHeaders",
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "remove": [
+              "Content-Type",
+              "X-Request-ID"
+            ],
+            "add": {
+              "Content-Type": [
+                "application/json"
+              ]
+            }
+          }
+        },
+        {
+          "comment": "Extract MTLS client certificate details",
+          "name": "ParseCertificate",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ParseCertificate.groovy",
+            "args": {
+              "routeArgCertificateHeader": "ssl-client-cert"
+            }
+          }
+        },
+        {
+          "comment": "Pull the registration request from the entity and create a RegistrationRequest object context attribute",
+          "name": "RegistrationRequestEntityValidationFilter",
+          "type": "RegistrationRequestEntityValidatorFilter",
+          "config": {
+            "trustedDirectoryService": "TrustedDirectoriesService"
+          }
+        },
+        {
+          "comment": "Validate the signature of the request Jwt and it's embedded SSA",
+          "name": "RegistrationRequestJwtSignatureValidationFilter",
+          "type": "RegistrationRequestJwtSignatureValidationFilter",
+          "config": {
+            "clientHandler": "OBClientHandler",
+            "jwkSetService": "OBJwkSetService",
+            "jwtSignatureValidator": "RsaJwtSignatureValidator"
+          }
+        },
+        {
+          "comment": "Validate that the request will result in an OAuth2 client that is FAPI compliant",
+          "name": "FAPIAdvancedDCRValidationFilter",
+          "type": "FAPIAdvancedDCRValidationFilter",
+          "config": {
+            "clientTlsCertHeader": "ssl-client-cert",
+            "supportedSigningAlgorithms": ["PS256"],
+            "supportedTokenEndpointAuthMethods": ["tls_client_auth", "private_key_jwt"]
+          }
+        },
+        {
+          "comment": "Pre process registration request",
+          "name": "ProcessRegistration",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "ProcessRegistration.groovy",
+            "args": {
+              "comment": "TODO: use env variable",
+              "routeArgObJwksHosts": [
+                "keystore.openbankingtest.org.uk"
+              ],
+              "routeArgProxyBaseUrl": "https://&{ig.fqdn}/jwkms/jwksproxy",
+              "jwkSetService": "${heap['OBJwkSetService']}",
+              "allowIgIssuedTestCerts": "${security.enableTestTrustedDirectory}",
+              "jwtSignatureValidator": "${heap['RsaJwtSignatureValidator']}",
+              "tokenEndpointAuthMethodsSupported": "${oauth2.tokenEndpointAuthMethodsSupported}",
+              "trustedDirectoryService": "${heap['TrustedDirectoriesService']}"
+            }
+          }
+        },
+        {
+          "comment": "Register TPP org and OAuth2 client in IDM or delete from IDM",
+          "name": "CreateApiClient",
+          "type": "ScriptableFilter",
+          "config": {
+            "type": "application/x-groovy",
+            "file": "CreateApiClient.groovy",
+            "args": {
+              "routeArgIdmBaseUri": "https://&{identity.platform.fqdn}",
+              "routeArgObjApiClientOrg": "apiClientOrg",
+              "routeArgObjApiClient": "apiClient"
+            },
+            "clientHandler": "IDMClientHandler"
+          }
+        },
+        {
+          "comment": "Set Host header for downstream",
+          "name": "HeaderFilter-ChangeHostToIAM",
+          "type": "HeaderFilter",
+          "config": {
+            "messageType": "REQUEST",
+            "remove": [
+              "host",
+              "X-Forwarded-Host"
+            ],
+            "add": {
+              "X-Forwarded-Host": [
+                "&{identity.platform.fqdn}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "AddIgAccessTokenForNewRegistrations",
+          "comment": "When creating a new registration we need to obtain credentials to allow IG to talk to AM. For flows which operate on an existing registration, the TPP must supply the registration_access_token returned in the DCR response",
+          "type": "ConditionalFilter",
+          "config": {
+            "condition": "${request.method == 'POST'}",
+            "delegate": {
+              "comment": "Fetch access token for dynamic client registration - IG credentials to talk to AM",
+              "type": "ClientCredentialsOAuth2ClientFilter",
+              "config": {
+                "clientId": "&{ig.client.id}",
+                "clientSecretId": "ig.client.secret",
+                "secretsProvider": "SystemAndEnvSecretStore-IAM",
+                "tokenEndpoint": "https://&{identity.platform.fqdn}/am/oauth2/realms/root/realms/&{am.realm}/access_token",
+                "scopes": [
+                  "dynamic_client_registration fr:idm:*"
+                ],
+                "handler": "TokenRequestHandler"
+              }
+            }
+          }
+        }
+      ],
+      "handler": "FRReverseProxyHandler"
+    }
+  }
+}
