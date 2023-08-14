@@ -162,12 +162,12 @@ public class ReSignIdTokenFilter implements Filter {
                             idTokenAccessor.setIdToken(resignedIdTokenJwtString);
                             return newResultPromise(response);
                         }, nsse -> {
-                            logger.warn("Failed to create signingHandler", nsse);
+                            logger.error("Failed to create signingHandler", nsse);
                             return newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                         });
                     });
                 }, e -> {
-                    logger.info("Failed to locate id_token", e);
+                    logger.warn("Failed to locate id_token", e);
                     return newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                 });
             }
@@ -205,7 +205,7 @@ public class ReSignIdTokenFilter implements Filter {
     }
 
     /**
-     * Locator of IdTokenAccessors for a particular Response object
+     * Locator of IdTokenAccessors for a particular Response object.
      */
     interface IdTokenAccessorLocator {
 
