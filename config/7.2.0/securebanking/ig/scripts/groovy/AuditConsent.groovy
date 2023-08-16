@@ -1,5 +1,6 @@
 import static org.forgerock.json.resource.Requests.newCreateRequest;
 import static org.forgerock.json.resource.ResourcePath.resourcePath;
+import static com.forgerock.sapi.gateway.rest.HttpHeaderNames.X_FAPI_INTERACTION_ID
 
 SCRIPT_NAME = "[AuditConsent] - "
 
@@ -46,9 +47,9 @@ next.handle(context, request).thenOnResult(response -> {
     JsonValue auditEvent = auditEvent('OB-CONSENT-' + event).add('consent', consent)
 
     def fapiInfo = [:]
-    def values = request.headers.get('x-fapi-interaction-id')
+    def values = request.headers.get(X_FAPI_INTERACTION_ID)
     if (values) {
-        fapiInfo.put( header, values.firstValue)
+        fapiInfo.put(X_FAPI_INTERACTION_ID, values.firstValue)
     }
 
     auditEvent = auditEvent.add('fapiInfo', fapiInfo);
