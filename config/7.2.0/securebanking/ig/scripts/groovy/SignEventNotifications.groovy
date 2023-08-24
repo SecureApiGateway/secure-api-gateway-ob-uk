@@ -88,7 +88,7 @@ if(request.method == "POST" || request.method == "PUT") {
 
     def eventsRequest = request.entity.getJson()
 
-    def tppId = eventsRequest.tppId
+    def apiClientId = eventsRequest.apiClientId
 
     def events = eventsRequest.events
 
@@ -109,7 +109,7 @@ if(request.method == "POST" || request.method == "PUT") {
     critClaims.add(TAN_CRIT_CLAIM);
 
     def newApiClientEvent = [
-            "tppId" : tppId,
+            "apiClientId" : apiClientId,
             "events": []
     ]
 
