@@ -45,10 +45,10 @@ public class SignPayloadUtil implements SignUtil {
     private final SigningManager signingManager;
     private final Purpose<SigningKey> signingKeyPurpose;
     private final Map<String, Object> critHeaderClaims;
-
     private final String signingKeyId;
     private final String algorithm;
     private final String kid;
+
     public SignPayloadUtil(
             SecretsProvider secretsProvider,
             Map<String, Object> critHeaderClaims,
@@ -72,9 +72,12 @@ public class SignPayloadUtil implements SignUtil {
     @Override
     public String sign(final Map<String, Object> payload) {
         Reject.ifNull(payload, "payload must be supplied");
-        Reject.ifTrue(payload.isEmpty(),"payload map must not be empty");
+        Reject.ifTrue(payload.isEmpty(), "payload map must not be empty");
+
         logger.debug("Payload to be signed:\n {}\n", payload);
+
         Promise<SigningHandler, NoSuchSecretException> signingHandler = signingManager.newSigningHandler(signingKeyPurpose);
+
         try {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
 
@@ -88,8 +91,7 @@ public class SignPayloadUtil implements SignUtil {
 
             SignedJwt signedJwt = signedJwtBuilder.asJwt();
 
-
-            if(!critHeaderClaims.isEmpty()) {
+            if (!critHeaderClaims.isEmpty()) {
                 logger.debug("Adding critical header claims {}", critHeaderClaims);
                 signedJwt.getHeader().put("crit", critHeaderClaims.keySet().stream().collect(Collectors.toList()));
                 critHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));

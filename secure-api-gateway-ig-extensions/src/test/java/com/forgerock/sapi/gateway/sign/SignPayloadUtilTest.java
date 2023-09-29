@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretBuilder;
@@ -49,6 +50,9 @@ public class SignPayloadUtilTest {
 
     private static final String KID = "xcJeVytTkFL21lHIUVkAd6QVi4M";
     private static final String AUD = "7umx5nTR33811QyQfi";
+    private static final String JTI = UUID.randomUUID().toString();
+    private static final String TXN = UUID.randomUUID().toString();
+    private static final String ASPSP_ORG_ID = "0015800001041REAAY";
     private static final String ALGORITHM = "PS256";
     private Map<String, Object> critClaims;
     private String signingKeyId = KID;
@@ -60,7 +64,7 @@ public class SignPayloadUtilTest {
         rsaJwtVerifier = new RSASSAVerifier((RSAPublicKey) keyPair.getPublic());
         this.critClaims = Map.of(
                 "http://openbanking.org.uk/iat", System.currentTimeMillis() / 1000,
-                "http://openbanking.org.uk/iss", "ISS_ORG_ID",
+                "http://openbanking.org.uk/iss", ASPSP_ORG_ID,
                 "http://openbanking.org.uk/tan", "openbanking.org.uk"
         );
     }
@@ -76,10 +80,12 @@ public class SignPayloadUtilTest {
                 ALGORITHM
         );
         // When
-        String result = signPayload.sign(getPayloadMap());
+        String jwt = signPayload.sign(getPayloadMap());
         // Then
-        assertThat(result).isNotNull();
-        validateSignature(result);
+        assertThat(jwt).isNotNull();
+        final SignedJWT signedJwt = SignedJWT.parse(jwt);
+        validateSignature(signedJwt);
+        validateSignedJwt(signedJwt);
     }
 
     @Test
@@ -136,34 +142,35 @@ public class SignPayloadUtilTest {
         return secretsProvider;
     }
 
-    private void validateSignature(String signedJwt) throws ParseException {
-        final SignedJWT jwtToVerify = SignedJWT.parse(signedJwt);
+    private void validateSignature(SignedJWT signedJwt) {
         try {
-            jwtToVerify.verify(rsaJwtVerifier);
+            signedJwt.verify(rsaJwtVerifier);
         } catch (JOSEException e) {
             fail("Failed to verify signedJwt was signed by " + signingKeyId, e);
         }
+    }
 
-        // Valid the id_token header and claims match what is expected
-        final JWSHeader header = jwtToVerify.getHeader();
+    private void validateSignedJwt(SignedJWT signedJwt) throws ParseException {
+        // Valid the header and claims match what is expected
+        final JWSHeader header = signedJwt.getHeader();
         assertEquals(JWSAlgorithm.PS256, header.getAlgorithm());
         assertEquals(KID, header.getKeyID());
-        final JWTClaimsSet jwtClaimsSet = jwtToVerify.getJWTClaimsSet();
+        final JWTClaimsSet jwtClaimsSet = signedJwt.getJWTClaimsSet();
         assertEquals("https://examplebank.com/", jwtClaimsSet.getIssuer());
         assertEquals("https://examplebank.com/api/open-banking/v3.0/pisp/domestic-payments/pmt-7290-003", jwtClaimsSet.getSubject());
         assertEquals(List.of(AUD), jwtClaimsSet.getAudience());
-        assertEquals("dfc51628-3479-4b81-ad60-210b43d02306", jwtClaimsSet.getClaim("txn"));
-        assertEquals("b460a07c-4962-43d1-85ee-9dc10fbb8f6c", jwtClaimsSet.getJWTID());
+        assertEquals(TXN, jwtClaimsSet.getClaim("txn"));
+        assertEquals(JTI, jwtClaimsSet.getJWTID());
     }
 
     private ImmutableMap<String, Object> getPayloadMap() {
         return ImmutableMap.<String, Object>builder()
                 .put("iss", "https://examplebank.com/")
                 .put("iat", 1516239022)
-                .put("jti", "b460a07c-4962-43d1-85ee-9dc10fbb8f6c")
+                .put("jti", JTI)
                 .put("sub", "https://examplebank.com/api/open-banking/v3.0/pisp/domestic-payments/pmt-7290-003")
                 .put("aud", AUD)
-                .put("txn", "dfc51628-3479-4b81-ad60-210b43d02306")
+                .put("txn", TXN)
                 .put("toe", 1516239022)
                 .put("events", Map.of(
                                 "urn:uk:org:openbanking:events:resource-update", Map.of(
