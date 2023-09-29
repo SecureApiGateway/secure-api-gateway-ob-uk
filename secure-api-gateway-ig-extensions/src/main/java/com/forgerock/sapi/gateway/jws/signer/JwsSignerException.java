@@ -13,18 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.sign;
-
-import java.util.Map;
+package com.forgerock.sapi.gateway.jws.signer;
 
 /**
- * Interface util to define sign methods
+ * Exception for signers <br/>
+ * Used as Exception Type throw by the sign task of an implemented signer if it fails
  */
-public interface SignUtil {
-    /**
-     * Sign method signature
-     * @param payload {@link Map}
-     * @return Signed JWT as {@link String}
-     */
-    String sign(Map<String, Object> payload);
+public class JwsSignerException extends Exception {
+
+    private static final long serialVersionUID = 1L;
+
+    public JwsSignerException(String message) {
+        super(message);
+    }
+
+    public JwsSignerException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public JwsSignerException(Throwable cause) {
+        super(cause);
+    }
 }
