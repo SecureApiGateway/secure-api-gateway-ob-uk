@@ -29,10 +29,7 @@
             "type": "application/x-groovy",
             "file": "SignEventsResponse.groovy",
             "args": {
-              "algorithm": "PS256",
-              "signingKeyId": "jwt.signer",
-              "kid": "&{ig.ob.aspsp.signing.kid}",
-              "secretsProvider": "${heap['SecretsProvider-ASPSP']}",
+              "signer": "${heap['DefaultSapiJwsSigner-RSASSA-PSS']}",
               "aspspOrgId": "&{ob.aspsp.org.id}"
             }
           }

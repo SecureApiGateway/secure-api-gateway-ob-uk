@@ -15,6 +15,8 @@
  */
 package com.forgerock.sapi.gateway.sign;
 
+import static org.forgerock.openig.secrets.SecretsProviderHeaplet.secretsProvider;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,6 +28,8 @@ import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.json.jose.jws.SigningManager;
 import org.forgerock.json.jose.jws.handlers.SigningHandler;
 import org.forgerock.json.jose.jwt.JwtClaimsSet;
+import org.forgerock.openig.heap.GenericHeaplet;
+import org.forgerock.openig.heap.HeapException;
 import org.forgerock.secrets.NoSuchSecretException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretsProvider;
@@ -36,41 +40,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Util to sign objects <br/>
- * Implementation of {@link SignUtil}
+ * Default implementation of {@link SapiJwsSigner}
  */
-public class SignPayloadUtil implements SignUtil {
+public class DefaultSapiJwsSigner implements SapiJwsSigner<DefaultSapiJwsSigner> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SignPayloadUtil.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultSapiJwsSigner.class);
     private final SigningManager signingManager;
     private final Purpose<SigningKey> signingKeyPurpose;
-    private final Map<String, Object> critHeaderClaims;
-    private final String signingKeyId;
+    private Map<String, Object> critHeaderClaims;
     private final String algorithm;
     private final String kid;
 
-    public SignPayloadUtil(
+    public DefaultSapiJwsSigner(
             SecretsProvider secretsProvider,
-            Map<String, Object> critHeaderClaims,
             String signingKeyId,
             String kid,
             String algorithm
     ) {
-        Reject.ifNull(secretsProvider, "secretsProvider must be supplied");
-        Reject.ifNull(kid, "kid must be supplied");
-        Reject.ifNull(signingKeyId, "signingKeyId must be supplied");
-        Reject.ifNull(algorithm, "algorithm must be supplied");
         this.signingManager = new SigningManager(secretsProvider);
-        this.signingKeyId = signingKeyId;
         this.kid = kid;
-        this.critHeaderClaims = critHeaderClaims == null ? Collections.EMPTY_MAP : critHeaderClaims;
         this.algorithm = algorithm;
         this.signingKeyPurpose = Purpose.purpose(signingKeyId, SigningKey.class);
+        this.critHeaderClaims = Collections.EMPTY_MAP;
     }
 
 
     @Override
-    public String sign(final Map<String, Object> payload) {
+    public String sign(final Map<String, Object> payload) throws Exception {
         Reject.ifNull(payload, "payload must be supplied");
         Reject.ifTrue(payload.isEmpty(), "payload map must not be empty");
 
@@ -78,11 +74,10 @@ public class SignPayloadUtil implements SignUtil {
 
         Promise<SigningHandler, NoSuchSecretException> signingHandler = signingManager.newSigningHandler(signingKeyPurpose);
 
-        try {
+        return signingHandler.then(sHandler -> {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
-
             SignedJwtBuilderImpl signedJwtBuilder = new JwtBuilderFactory()
-                    .jws(signingHandler.getOrThrow())
+                    .jws(sHandler)
                     .headers()
                     .alg(JwsAlgorithm.parseAlgorithm(algorithm))
                     .kid(kid)
@@ -91,16 +86,40 @@ public class SignPayloadUtil implements SignUtil {
 
             SignedJwt signedJwt = signedJwtBuilder.asJwt();
 
-            if (!critHeaderClaims.isEmpty()) {
-                logger.debug("Adding critical header claims {}", critHeaderClaims);
-                signedJwt.getHeader().put("crit", critHeaderClaims.keySet().stream().collect(Collectors.toList()));
-                critHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));
-            }
+            addCriticalClaims(signedJwt);
 
             return signedJwt.build();
-        } catch (java.lang.Exception e) {
-            logger.error("Error signing the payload : " + e);
-            throw new RuntimeException(e);
+
+        }).getOrThrow();
+    }
+
+    @Override
+    public DefaultSapiJwsSigner critClaims(final Map<String, Object> criticalHeaderClaims) {
+        this.critHeaderClaims = criticalHeaderClaims == null ? Collections.EMPTY_MAP : criticalHeaderClaims;
+        return this;
+    }
+
+    private void addCriticalClaims(SignedJwt signedJwt) {
+        if (!critHeaderClaims.isEmpty()) {
+            logger.debug("Adding critical header claims {}", critHeaderClaims);
+            signedJwt.getHeader().put(CRIT_CLAIM, critHeaderClaims.keySet().stream().collect(Collectors.toList()));
+            critHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));
+        }
+    }
+
+    /**
+     * Basic heaplet to allow RsaJwtSignatureValidator to be created via IG config
+     */
+    public static class Heaplet extends GenericHeaplet {
+        @Override
+        public Object create() throws HeapException {
+//            final String clientId = config.get(CONFIG_CLIENT_ID).as(evaluatedWithHeapProperties()).required().asString();
+            final SecretsProvider secretsProvider = config.get("secretsProvider").required()
+                    .as(secretsProvider(heap));
+            final String signingKeyId = config.get("signingKeyId").required().asString();
+            final String kid = config.get("kid").as(evaluatedWithHeapProperties()).required().asString();
+            final String algorithm = config.get("algorithm").required().asString();
+            return new DefaultSapiJwsSigner(secretsProvider, signingKeyId, kid, algorithm);
         }
     }
 }

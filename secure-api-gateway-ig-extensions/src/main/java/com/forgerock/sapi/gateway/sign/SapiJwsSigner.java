@@ -18,13 +18,24 @@ package com.forgerock.sapi.gateway.sign;
 import java.util.Map;
 
 /**
- * Interface util to define sign methods
+ * Signer Interface util to define concrete signer implementations
  */
-public interface SignUtil {
+public interface SapiJwsSigner<T> {
+
+    String CRIT_CLAIM = "crit";
     /**
      * Sign method signature
      * @param payload {@link Map}
      * @return Signed JWT as {@link String}
+     * @throws Exception
      */
-    String sign(Map<String, Object> payload);
+    String sign(Map<String, Object> payload) throws Exception;
+
+    /**
+     * Add critical header claims <br/>
+     * ex. Signer.critClaims(critClaimsMap).sign(payloadMap) <br/>
+     * @param criticalHeaderClaims
+     * @return T
+     */
+    T critClaims(Map<String, Object> criticalHeaderClaims);
 }

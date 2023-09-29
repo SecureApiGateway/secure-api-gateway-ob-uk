@@ -1,11 +1,10 @@
-import com.forgerock.sapi.gateway.sign.SignPayloadUtil
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
 
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /**
- * Sign each event from the response payload received from Test Facility Bank
+ * Sign each event from the response payload received from Test Facility Bank using the Signer provided by the Heap
  *
  * An Event Notification message needs to be structured as JWT
  * aligned with Security Event Token standard (SET) (https://datatracker.ietf.org/doc/html/rfc8417)
@@ -68,22 +67,15 @@ next.handle(context, request).thenOnResult({ response ->
 
     var responseBody = response.getEntity().getJson()
 
-    LinkedHashMap<String, String> sets = responseBody.sets
+    Map<String, String> sets = responseBody.sets
     try {
-        SignPayloadUtil signUtil = new SignPayloadUtil(
-                secretsProvider,
-                critClaims,
-                signingKeyId,
-                kid,
-                algorithm
-        )
 
         def slurper = new JsonSlurper()
-
         sets.forEach((jti, payload) -> {
             Map payloadMap = slurper.parseText(payload)
-            responseBody.sets[jti] = signUtil.sign(payloadMap)
+            responseBody.sets[jti] = signer.critClaims(critClaims).sign(payloadMap)
         })
+
     } catch (Exception e) {
         var message = "Error signing event"
         if (e.getMessage() != null) {

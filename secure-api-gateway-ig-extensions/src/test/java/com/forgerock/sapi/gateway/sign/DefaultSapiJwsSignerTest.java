@@ -46,7 +46,7 @@ import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-public class SignPayloadUtilTest {
+public class DefaultSapiJwsSignerTest {
 
     private static final String KID = "xcJeVytTkFL21lHIUVkAd6QVi4M";
     private static final String AUD = "7umx5nTR33811QyQfi";
@@ -54,12 +54,12 @@ public class SignPayloadUtilTest {
     private static final String TXN = UUID.randomUUID().toString();
     private static final String ASPSP_ORG_ID = "0015800001041REAAY";
     private static final String ALGORITHM = "PS256";
-    private Map<String, Object> critClaims;
-    private String signingKeyId = KID;
-    private KeyPair keyPair;
+    private final Map<String, Object> critClaims;
+    private final String signingKeyId = KID;
+    private final KeyPair keyPair;
     private final RSASSAVerifier rsaJwtVerifier;
 
-    public SignPayloadUtilTest() {
+    public DefaultSapiJwsSignerTest() {
         keyPair = CryptoUtils.generateRsaKeyPair();
         rsaJwtVerifier = new RSASSAVerifier((RSAPublicKey) keyPair.getPublic());
         this.critClaims = Map.of(
@@ -72,15 +72,14 @@ public class SignPayloadUtilTest {
     @Test
     void shouldSignPayload() throws Exception {
         // Given
-        SignPayloadUtil signPayload = new SignPayloadUtil(
+        DefaultSapiJwsSigner signPayload = new DefaultSapiJwsSigner(
                 getSecretsProvider(),
-                critClaims,
                 signingKeyId,
                 KID,
                 ALGORITHM
         );
         // When
-        String jwt = signPayload.sign(getPayloadMap());
+        String jwt = signPayload.critClaims(critClaims).sign(getPayloadMap());
         // Then
         assertThat(jwt).isNotNull();
         final SignedJWT signedJwt = SignedJWT.parse(jwt);
@@ -93,9 +92,8 @@ public class SignPayloadUtilTest {
         // Given / When / Then
         assertThrows(
                 NullPointerException.class,
-                () -> new SignPayloadUtil(
+                () -> new DefaultSapiJwsSigner(
                         null,
-                        critClaims,
                         signingKeyId,
                         KID,
                         ALGORITHM
@@ -114,17 +112,14 @@ public class SignPayloadUtilTest {
                         Purpose.purpose("anotherKeyId", SigningKey.class),
                         signingKey
                 );
-        SignPayloadUtil signPayload = new SignPayloadUtil(
+        DefaultSapiJwsSigner signPayload = new DefaultSapiJwsSigner(
                 secretsProvider,
-                critClaims,
                 signingKeyId,
                 KID,
                 ALGORITHM
         );
         // Then
-        assertThrows(
-                RuntimeException.class, () -> signPayload.sign(getPayloadMap())
-        );
+        assertThrows(Exception.class, () -> signPayload.critClaims(critClaims).sign(getPayloadMap()));
     }
 
     private SigningKey getSigningKey(String signingKeyId) throws Exception {
