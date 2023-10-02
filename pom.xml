@@ -52,7 +52,7 @@
         <versions-maven-plugin.version>2.15.0</versions-maven-plugin.version>
         <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
         <maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
-        <mycila-license-maven-plugin.version>4.2</mycila-license-maven-plugin.version>
+        <mycila-license-maven-plugin.version>4.3</mycila-license-maven-plugin.version>
         <maven-surfire-plugin.version>3.0.0</maven-surfire-plugin.version>
         <legal.path.header>legal/LICENSE-HEADER.txt</legal.path.header>
         <nimbus-jose.version>9.31</nimbus-jose.version>
