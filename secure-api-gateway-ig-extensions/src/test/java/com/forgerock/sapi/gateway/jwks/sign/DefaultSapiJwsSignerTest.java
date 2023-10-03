@@ -39,12 +39,10 @@ import org.forgerock.json.JsonValue;
 import org.forgerock.json.JsonValueException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
-import org.forgerock.secrets.NoSuchSecretException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretBuilder;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.util.promise.Promise;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -95,6 +93,25 @@ public class DefaultSapiJwsSignerTest {
         );
         // When
         String result = signPayload.sign(getPayloadMap(), critClaims);
+        // Then
+        assertThat(result).isNotNull();
+        final SignedJWT signedJwt = SignedJWT.parse(result);
+        validateSignature(signedJwt);
+        validateSignedJwt(signedJwt);
+        validateCritClaims(signedJwt.getHeader());
+    }
+
+    @Test
+    void shouldSignPayloadNoCritClaims() throws Exception {
+        // Given
+        DefaultSapiJwsSigner signPayload = new DefaultSapiJwsSigner(
+                getSecretsProvider(),
+                SIGNING_KEY_ID,
+                KID,
+                ALGORITHM
+        );
+        // When
+        String result = signPayload.sign(getPayloadMap(), null);
         // Then
         assertThat(result).isNotNull();
         final SignedJWT signedJwt = SignedJWT.parse(result);
@@ -188,6 +205,13 @@ public class DefaultSapiJwsSignerTest {
         assertEquals(List.of(AUD), jwtClaimsSet.getAudience());
         assertEquals(TXN, jwtClaimsSet.getClaim("txn"));
         assertEquals(JTI, jwtClaimsSet.getJWTID());
+    }
+
+    private void validateCritClaims(JWSHeader header) {
+        assertEquals(header.getCriticalParams(), critClaims.keySet());
+        critClaims.forEach((k, v) -> {
+            assertThat(header.getCustomParam(k)).isNotNull().isEqualTo(v);
+        });
     }
 
     private Map<String, Object> getPayloadMap() {
@@ -337,6 +361,7 @@ public class DefaultSapiJwsSignerTest {
             final SignedJWT signedJwt = SignedJWT.parse(result);
             validateSignature(signedJwt);
             validateSignedJwt(signedJwt);
+            validateCritClaims(signedJwt.getHeader());
         }
     }
 }
