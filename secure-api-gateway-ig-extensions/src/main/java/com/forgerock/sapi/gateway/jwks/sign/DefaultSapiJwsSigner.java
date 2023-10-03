@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.sign;
+package com.forgerock.sapi.gateway.jwks.sign;
 
 import static org.forgerock.openig.secrets.SecretsProviderHeaplet.secretsProvider;
 
-import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.forgerock.json.jose.builders.JwtBuilderFactory;
@@ -30,26 +30,28 @@ import org.forgerock.json.jose.jws.handlers.SigningHandler;
 import org.forgerock.json.jose.jwt.JwtClaimsSet;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
-import org.forgerock.secrets.NoSuchSecretException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
 import org.forgerock.util.Reject;
-import org.forgerock.util.promise.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link SapiJwsSigner}
+ * <p>
+ * This default JWS signer is configured in the IG configuration Heap to be used in filters<br/>
+ * @see DefaultSapiJwsSigner.Heaplet
  */
-public class DefaultSapiJwsSigner implements SapiJwsSigner<DefaultSapiJwsSigner> {
+public class DefaultSapiJwsSigner implements SapiJwsSigner {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultSapiJwsSigner.class);
     private final SigningManager signingManager;
     private final Purpose<SigningKey> signingKeyPurpose;
-    private Map<String, Object> critHeaderClaims;
     private final String algorithm;
     private final String kid;
+    private SecretsProvider secretsProvider;
+    private SigningKey signingKey;
 
     public DefaultSapiJwsSigner(
             SecretsProvider secretsProvider,
@@ -57,27 +59,27 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner<DefaultSapiJwsSigner>
             String kid,
             String algorithm
     ) {
+        this.secretsProvider = secretsProvider;
         this.signingManager = new SigningManager(secretsProvider);
         this.kid = kid;
         this.algorithm = algorithm;
         this.signingKeyPurpose = Purpose.purpose(signingKeyId, SigningKey.class);
-        this.critHeaderClaims = Collections.EMPTY_MAP;
+
     }
 
-
     @Override
-    public String sign(final Map<String, Object> payload) throws Exception {
-        Reject.ifNull(payload, "payload must be supplied");
-        Reject.ifTrue(payload.isEmpty(), "payload map must not be empty");
-
-        logger.debug("Payload to be signed:\n {}\n", payload);
-
-        Promise<SigningHandler, NoSuchSecretException> signingHandler = signingManager.newSigningHandler(signingKeyPurpose);
-
-        return signingHandler.then(sHandler -> {
+    public String sign(
+            final Map<String, Object> payload,
+            final Map<String, Object> criticalHeaderClaims
+    ) throws SapiSignerException {
+        try {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
+            secretsProvider.getActiveSecret(signingKeyPurpose).then(signingKey -> this.signingKey = signingKey);
+            Reject.checkNotNull(signingKey, String.format("Secret signing key '%s' not found", signingKeyPurpose.getLabel()));
+            SigningHandler signingHandler = signingManager.newSigningHandler(signingKey);
+
             SignedJwtBuilderImpl signedJwtBuilder = new JwtBuilderFactory()
-                    .jws(sHandler)
+                    .jws(signingHandler)
                     .headers()
                     .alg(JwsAlgorithm.parseAlgorithm(algorithm))
                     .kid(kid)
@@ -86,34 +88,47 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner<DefaultSapiJwsSigner>
 
             SignedJwt signedJwt = signedJwtBuilder.asJwt();
 
-            addCriticalClaims(signedJwt);
+            if (!Objects.isNull(criticalHeaderClaims) && !criticalHeaderClaims.isEmpty()) {
+                logger.debug("Adding critical header claims {}", criticalHeaderClaims);
+                signedJwt.getHeader().put(CRIT_CLAIM, criticalHeaderClaims.keySet().stream().collect(Collectors.toList()));
+                criticalHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));
+            }
 
             return signedJwt.build();
-
-        }).getOrThrow();
-    }
-
-    @Override
-    public DefaultSapiJwsSigner critClaims(final Map<String, Object> criticalHeaderClaims) {
-        this.critHeaderClaims = criticalHeaderClaims == null ? Collections.EMPTY_MAP : criticalHeaderClaims;
-        return this;
-    }
-
-    private void addCriticalClaims(SignedJwt signedJwt) {
-        if (!critHeaderClaims.isEmpty()) {
-            logger.debug("Adding critical header claims {}", critHeaderClaims);
-            signedJwt.getHeader().put(CRIT_CLAIM, critHeaderClaims.keySet().stream().collect(Collectors.toList()));
-            critHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));
+        } catch (Exception e) {
+            logger.error("Error signing, {}", e.getMessage(), e);
+            throw new SapiSignerException(e.getMessage());
         }
     }
 
     /**
-     * Basic heaplet to allow RsaJwtSignatureValidator to be created via IG config
+     * Heaplet used to create {@link DefaultSapiJwsSigner} objects
+     * <p/>
+     * Mandatory fields:
+     * <ul>
+     *     <li>secretsProvider: The SecretsProvider object to query for the 'signingKeyId' in the keystore</li>
+     *     <li>signingKeyId: The signing key id name to identify the private key in the keystore to sign a JWT</li>
+     *     <li>kid: Key ID to build the JWT header, used to validate the signature via JWKs</li>
+     *     <li>algorithm: The name of the algorithm to use to sign the JWT</li>
+     * </ul>
+     * Example config:
+     * <pre>{@code
+     * {
+     *     "comment": "Default payload signer",
+     *     "name": "DefaultSapiJwsSigner",
+     *     "type": "com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner",
+     *     "config": {
+     *         "algorithm": "PS256",
+     *         "signingKeyId": "jwt.signer",
+     *         "kid": "&{ig.ob.aspsp.signing.kid}",
+     *         "secretsProvider": "SecretsProvider-ASPSP"
+     *     }
+     * }
+     * }</pre>
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-//            final String clientId = config.get(CONFIG_CLIENT_ID).as(evaluatedWithHeapProperties()).required().asString();
             final SecretsProvider secretsProvider = config.get("secretsProvider").required()
                     .as(secretsProvider(heap));
             final String signingKeyId = config.get("signingKeyId").required().asString();

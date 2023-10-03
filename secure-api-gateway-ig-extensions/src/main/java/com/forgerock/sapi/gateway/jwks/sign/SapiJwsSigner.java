@@ -13,29 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.sign;
+package com.forgerock.sapi.gateway.jwks.sign;
 
 import java.util.Map;
 
+import org.forgerock.secrets.NoSuchSecretException;
+import org.forgerock.util.promise.Promise;
+
 /**
- * Signer Interface util to define concrete signer implementations
+ * Signer Interface to define concrete signer implementations
  */
-public interface SapiJwsSigner<T> {
+public interface SapiJwsSigner {
 
     String CRIT_CLAIM = "crit";
-    /**
-     * Sign method signature
-     * @param payload {@link Map}
-     * @return Signed JWT as {@link String}
-     * @throws Exception
-     */
-    String sign(Map<String, Object> payload) throws Exception;
 
     /**
-     * Add critical header claims <br/>
-     * ex. Signer.critClaims(critClaimsMap).sign(payloadMap) <br/>
-     * @param criticalHeaderClaims
-     * @return T
+     *
+     * @param payload              {@link Map}
+     * @param criticalHeaderClaims {@link Map}
+     * @return a signed JWT as String
+     * @throws SapiSignerException
      */
-    T critClaims(Map<String, Object> criticalHeaderClaims);
+    String sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims) throws SapiSignerException;
 }

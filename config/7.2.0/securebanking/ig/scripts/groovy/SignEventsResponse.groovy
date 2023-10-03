@@ -1,6 +1,6 @@
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
-
+import com.forgerock.sapi.gateway.jwks.sign.SapiSignerException
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /**
@@ -36,7 +36,7 @@ Error response example:
     "Errors": [
         {
             "ErrorCode": "UK.OBIE.UnexpectedError",
-            "Message": "Internal error [Error signing event set payload, Cause: secretsProvider must be supplied]"
+            "Message": "Internal error [Error signing event, Cause: Secret signing key 'WRONG-KEY' not found]"
         }
     ]
 }
@@ -68,22 +68,25 @@ next.handle(context, request).thenOnResult({ response ->
     var responseBody = response.getEntity().getJson()
 
     Map<String, String> sets = responseBody.sets
-    try {
+//    try {
 
         def slurper = new JsonSlurper()
         sets.forEach((jti, payload) -> {
             Map payloadMap = slurper.parseText(payload)
-            responseBody.sets[jti] = signer.critClaims(critClaims).sign(payloadMap)
+            try {
+                responseBody.sets[jti] = signer.sign(payloadMap, critClaims)
+            } catch (SapiSignerException e) {
+                var message = "Error signing event"
+                if (e.getReason() != null) {
+                    message = message + " , Cause: " + e.getReason()
+                }
+                logger.error("{} {}", SCRIPT_NAME, message)
+                response.status = Status.INTERNAL_SERVER_ERROR
+                response.entity = "{ \"error\":\"" + message + "\"}"
+            }
         })
 
-    } catch (Exception e) {
-        var message = "Error signing event"
-        if (e.getMessage() != null) {
-            message = message + ", Cause: " + e.getMessage()
-        }
-        logger.error("{} {}", SCRIPT_NAME, message)
-        response.status = Status.INTERNAL_SERVER_ERROR
-        response.entity = "{ \"error\":\"" + message + "\"}"
+    if(response.getStatus().isServerError()) {
         return response
     }
 
