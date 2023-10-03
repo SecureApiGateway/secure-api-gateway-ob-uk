@@ -1,6 +1,7 @@
+import com.forgerock.sapi.gateway.jwks.sign.SapiJwsSignerResult
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
-import com.forgerock.sapi.gateway.jwks.sign.SapiSignerException
+
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /**
@@ -70,23 +71,23 @@ next.handle(context, request).thenOnResult({ response ->
     Map<String, String> sets = responseBody.sets
 //    try {
 
-        def slurper = new JsonSlurper()
-        sets.forEach((jti, payload) -> {
-            Map payloadMap = slurper.parseText(payload)
-            try {
-                responseBody.sets[jti] = signer.sign(payloadMap, critClaims)
-            } catch (SapiSignerException e) {
-                var message = "Error signing event"
-                if (e.getReason() != null) {
-                    message = message + " , Cause: " + e.getReason()
-                }
-                logger.error("{} {}", SCRIPT_NAME, message)
+    def slurper = new JsonSlurper()
+    sets.forEach((jti, payload) -> {
+        Map payloadMap = slurper.parseText(payload)
+        signer.sign(payloadMap, critClaims).then(result -> {
+            logger.debug("{} signer result {}", SCRIPT_NAME, result)
+            if (result.hasErrors()) {
+                logger.error("Signer errors: {}", result.getErrors().join(","))
                 response.status = Status.INTERNAL_SERVER_ERROR
+                var message = "Causes: " + result.getErrors().join(",")
                 response.entity = "{ \"error\":\"" + message + "\"}"
+                return response
             }
+            responseBody.sets[jti] = result.getSignedJwt()
         })
+    })
 
-    if(response.getStatus().isServerError()) {
+    if (response.getStatus().isServerError()) {
         return response
     }
 
