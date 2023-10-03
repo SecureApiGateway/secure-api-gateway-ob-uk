@@ -15,22 +15,22 @@
  */
 package com.forgerock.sapi.gateway.jwks.sign;
 
-public class SapiSignerException extends Exception {
+public class SapiJwsSignerException extends Exception {
 
     private static final long serialVersionUID = 1L;
 
-    public SapiSignerException() {
+    public SapiJwsSignerException() {
     }
 
-    public SapiSignerException(String message) {
+    public SapiJwsSignerException(String message) {
         super(message);
     }
 
-    public SapiSignerException(String message, Throwable cause) {
+    public SapiJwsSignerException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public SapiSignerException(Throwable cause) {
+    public SapiJwsSignerException(Throwable cause) {
         super(cause);
     }
 }

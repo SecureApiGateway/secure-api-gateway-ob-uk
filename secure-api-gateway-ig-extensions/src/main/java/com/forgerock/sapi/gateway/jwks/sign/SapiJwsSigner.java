@@ -17,9 +17,6 @@ package com.forgerock.sapi.gateway.jwks.sign;
 
 import java.util.Map;
 
-import org.forgerock.secrets.NoSuchSecretException;
-import org.forgerock.util.promise.Promise;
-
 /**
  * Signer Interface to define concrete signer implementations
  */
@@ -32,7 +29,7 @@ public interface SapiJwsSigner {
      * @param payload              {@link Map}
      * @param criticalHeaderClaims {@link Map}
      * @return a signed JWT as String
-     * @throws SapiSignerException
+     * @throws SapiJwsSignerException
      */
-    String sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims) throws SapiSignerException;
+    String sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims) throws SapiJwsSignerException;
 }

@@ -71,7 +71,7 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
     public String sign(
             final Map<String, Object> payload,
             final Map<String, Object> criticalHeaderClaims
-    ) throws SapiSignerException {
+    ) throws SapiJwsSignerException {
         try {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
             secretsProvider.getActiveSecret(signingKeyPurpose).then(signingKey -> this.signingKey = signingKey);
@@ -97,7 +97,7 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
             return signedJwt.build();
         } catch (Exception e) {
             logger.error("Error signing, {}", e.getMessage(), e);
-            throw new SapiSignerException(e.getMessage());
+            throw new SapiJwsSignerException(e.getMessage());
         }
     }
 

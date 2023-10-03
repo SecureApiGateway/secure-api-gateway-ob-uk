@@ -151,7 +151,7 @@ public class DefaultSapiJwsSignerTest {
                 ALGORITHM
         );
         // When
-        SapiSignerException result = assertThrows(SapiSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
+        SapiJwsSignerException result = assertThrows(SapiJwsSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
         // Then
         assertThat(result.getMessage()).isEqualTo(String.format("Secret signing key '%s' not found", signingKeyId));
     }
@@ -166,7 +166,7 @@ public class DefaultSapiJwsSignerTest {
                 "WRONG-ALG"
         );
         // When
-        SapiSignerException result = assertThrows(SapiSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
+        SapiJwsSignerException result = assertThrows(SapiJwsSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
         // Then
         assertThat(result.getMessage()).isEqualTo("Unknown Signing Algorithm");
     }
