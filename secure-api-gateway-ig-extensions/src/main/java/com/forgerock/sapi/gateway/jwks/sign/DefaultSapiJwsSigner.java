@@ -52,8 +52,6 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
     private final Purpose<SigningKey> signingKeyPurpose;
     private final String algorithm;
     private final String kid;
-    private SecretsProvider secretsProvider;
-    private SigningKey signingKey;
 
     public DefaultSapiJwsSigner(
             SecretsProvider secretsProvider,
@@ -61,16 +59,14 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
             String kid,
             String algorithm
     ) {
-        this.secretsProvider = secretsProvider;
         this.signingManager = new SigningManager(secretsProvider);
         this.kid = kid;
         this.algorithm = algorithm;
         this.signingKeyPurpose = Purpose.purpose(signingKeyId, SigningKey.class);
-        secretsProvider.createActiveReference(signingKeyPurpose);
 
     }
 
-    //    @Override
+    @Override
     public Promise<SapiJwsSignerResult, NeverThrowsException> sign(
             final Map<String, Object> payload,
             final Map<String, Object> criticalHeaderClaims
@@ -78,14 +74,13 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
         return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> {
             try {
                 return new DefaultSapiJwsSignerResult(sign(signingHandler, payload, criticalHeaderClaims));
-            } catch (SapiJwsSignerException e) {
-                return new DefaultSapiJwsSignerResult(List.of(e.getMessage()));
+            } catch (SapiJwsSignerException sapiJwsSignerException) {
+                return new DefaultSapiJwsSignerResult(List.of(sapiJwsSignerException.getMessage()));
             }
-        }, nsse -> {
-            logger.error("Failed to create signingHandler, {}", nsse.getMessage());
-            return new DefaultSapiJwsSignerResult(List.of(nsse.getMessage()));
+        }, noSuchSecretException -> {
+            logger.error("Failed to create signingHandler, {}", noSuchSecretException.getMessage());
+            return new DefaultSapiJwsSignerResult(List.of(noSuchSecretException.getMessage()));
         });
-
     }
 
     private String sign(
