@@ -19,9 +19,6 @@ public class SapiJwsSignerException extends Exception {
 
     private static final long serialVersionUID = 1L;
 
-    public SapiJwsSignerException() {
-    }
-
     public SapiJwsSignerException(String message) {
         super(message);
     }
