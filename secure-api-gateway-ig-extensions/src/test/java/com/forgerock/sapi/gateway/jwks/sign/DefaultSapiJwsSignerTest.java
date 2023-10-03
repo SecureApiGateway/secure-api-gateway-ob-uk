@@ -22,8 +22,10 @@ import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
 import static org.forgerock.secrets.keys.KeyUsage.SIGN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.security.KeyPair;
@@ -43,6 +45,8 @@ import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretBuilder;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
+import org.forgerock.util.promise.NeverThrowsException;
+import org.forgerock.util.promise.Promise;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -85,17 +89,20 @@ public class DefaultSapiJwsSignerTest {
     @Test
     void shouldSignPayload() throws Exception {
         // Given
-        DefaultSapiJwsSigner signPayload = new DefaultSapiJwsSigner(
+        DefaultSapiJwsSigner jwsSigner = new DefaultSapiJwsSigner(
                 getSecretsProvider(),
                 SIGNING_KEY_ID,
                 KID,
                 ALGORITHM
         );
         // When
-        String result = signPayload.sign(getPayloadMap(), critClaims);
+        Promise<SapiJwsSignerResult, NeverThrowsException> result = jwsSigner.sign(getPayloadMap(), critClaims);
         // Then
         assertThat(result).isNotNull();
-        final SignedJWT signedJwt = SignedJWT.parse(result);
+        SapiJwsSignerResult signerResult = result.get();
+        assertThat(signerResult.getSignedJwt()).isNotNull();
+        assertFalse(signerResult.hasErrors());
+        final SignedJWT signedJwt = SignedJWT.parse(signerResult.getSignedJwt());
         validateSignature(signedJwt);
         validateSignedJwt(signedJwt);
         validateCritClaims(signedJwt.getHeader());
@@ -104,17 +111,20 @@ public class DefaultSapiJwsSignerTest {
     @Test
     void shouldSignPayloadNoCritClaims() throws Exception {
         // Given
-        DefaultSapiJwsSigner signPayload = new DefaultSapiJwsSigner(
+        DefaultSapiJwsSigner jwsSigner = new DefaultSapiJwsSigner(
                 getSecretsProvider(),
                 SIGNING_KEY_ID,
                 KID,
                 ALGORITHM
         );
         // When
-        String result = signPayload.sign(getPayloadMap(), null);
+        Promise<SapiJwsSignerResult, NeverThrowsException> result = jwsSigner.sign(getPayloadMap(), null);
         // Then
         assertThat(result).isNotNull();
-        final SignedJWT signedJwt = SignedJWT.parse(result);
+        SapiJwsSignerResult signerResult = result.get();
+        assertThat(signerResult.getSignedJwt()).isNotNull();
+        assertFalse(signerResult.hasErrors());
+        final SignedJWT signedJwt = SignedJWT.parse(signerResult.getSignedJwt());
         validateSignature(signedJwt);
         validateSignedJwt(signedJwt);
     }
@@ -151,9 +161,14 @@ public class DefaultSapiJwsSignerTest {
                 ALGORITHM
         );
         // When
-        SapiJwsSignerException result = assertThrows(SapiJwsSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
+        Promise<SapiJwsSignerResult, NeverThrowsException> result = jwsSigner.sign(getPayloadMap(), null);
         // Then
-        assertThat(result.getMessage()).isEqualTo(String.format("Secret signing key '%s' not found", signingKeyId));
+        assertThat(result).isNotNull();
+        SapiJwsSignerResult signerResult = result.get();
+        assertThat(signerResult.getSignedJwt()).isNull();
+        assertTrue(signerResult.hasErrors());
+        assertThat(signerResult.getErrors().size()).isEqualTo(1);
+        assertThat(signerResult.getErrors().get(0)).isEqualTo(String.format("No secret configured for purpose %s", signingKeyId));
     }
 
     @Test
@@ -166,9 +181,14 @@ public class DefaultSapiJwsSignerTest {
                 "WRONG-ALG"
         );
         // When
-        SapiJwsSignerException result = assertThrows(SapiJwsSignerException.class, () -> jwsSigner.sign(getPayloadMap(), critClaims));
+        Promise<SapiJwsSignerResult, NeverThrowsException> result = jwsSigner.sign(getPayloadMap(), null);
         // Then
-        assertThat(result.getMessage()).isEqualTo("Unknown Signing Algorithm");
+        assertThat(result).isNotNull();
+        SapiJwsSignerResult signerResult = result.get();
+        assertThat(signerResult.getSignedJwt()).isNull();
+        assertTrue(signerResult.hasErrors());
+        assertThat(signerResult.getErrors().size()).isEqualTo(1);
+        assertThat(signerResult.getErrors().get(0)).isEqualTo("Unknown Signing Algorithm");
     }
 
     private SigningKey getSigningKey(String signingKeyId) throws Exception {
@@ -355,10 +375,10 @@ public class DefaultSapiJwsSignerTest {
             // Then
             assertNotNull(jwsSigner);
             // When
-            String result = jwsSigner.sign(getPayloadMap(), critClaims);
+            Promise<SapiJwsSignerResult, NeverThrowsException> result = jwsSigner.sign(getPayloadMap(), critClaims);
             // Then
             assertThat(result).isNotNull();
-            final SignedJWT signedJwt = SignedJWT.parse(result);
+            final SignedJWT signedJwt = SignedJWT.parse(result.get().getSignedJwt());
             validateSignature(signedJwt);
             validateSignedJwt(signedJwt);
             validateCritClaims(signedJwt.getHeader());

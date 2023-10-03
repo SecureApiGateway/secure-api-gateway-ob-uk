@@ -17,6 +17,7 @@ package com.forgerock.sapi.gateway.jwks.sign;
 
 import static org.forgerock.openig.secrets.SecretsProviderHeaplet.secretsProvider;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -33,7 +34,8 @@ import org.forgerock.openig.heap.HeapException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.util.Reject;
+import org.forgerock.util.promise.NeverThrowsException;
+import org.forgerock.util.promise.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,20 +66,35 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
         this.kid = kid;
         this.algorithm = algorithm;
         this.signingKeyPurpose = Purpose.purpose(signingKeyId, SigningKey.class);
+        secretsProvider.createActiveReference(signingKeyPurpose);
 
     }
 
-    @Override
-    public String sign(
+    //    @Override
+    public Promise<SapiJwsSignerResult, NeverThrowsException> sign(
+            final Map<String, Object> payload,
+            final Map<String, Object> criticalHeaderClaims
+    ) {
+        return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> {
+            try {
+                return new DefaultSapiJwsSignerResult(sign(signingHandler, payload, criticalHeaderClaims));
+            } catch (SapiJwsSignerException e) {
+                return new DefaultSapiJwsSignerResult(List.of(e.getMessage()));
+            }
+        }, nsse -> {
+            logger.error("Failed to create signingHandler, {}", nsse.getMessage());
+            return new DefaultSapiJwsSignerResult(List.of(nsse.getMessage()));
+        });
+
+    }
+
+    private String sign(
+            SigningHandler signingHandler,
             final Map<String, Object> payload,
             final Map<String, Object> criticalHeaderClaims
     ) throws SapiJwsSignerException {
         try {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
-            secretsProvider.getActiveSecret(signingKeyPurpose).then(signingKey -> this.signingKey = signingKey);
-            Reject.checkNotNull(signingKey, String.format("Secret signing key '%s' not found", signingKeyPurpose.getLabel()));
-            SigningHandler signingHandler = signingManager.newSigningHandler(signingKey);
-
             SignedJwtBuilderImpl signedJwtBuilder = new JwtBuilderFactory()
                     .jws(signingHandler)
                     .headers()
@@ -87,7 +104,6 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
                     .claims(jwtClaimsSet);
 
             SignedJwt signedJwt = signedJwtBuilder.asJwt();
-
             if (!Objects.isNull(criticalHeaderClaims) && !criticalHeaderClaims.isEmpty()) {
                 logger.debug("Adding critical header claims {}", criticalHeaderClaims);
                 signedJwt.getHeader().put(CRIT_CLAIM, criticalHeaderClaims.keySet().stream().collect(Collectors.toList()));
