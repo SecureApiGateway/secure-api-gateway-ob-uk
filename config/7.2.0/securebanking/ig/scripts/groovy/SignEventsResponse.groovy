@@ -37,7 +37,7 @@ Error response example:
     "Errors": [
         {
             "ErrorCode": "UK.OBIE.UnexpectedError",
-            "Message": "Internal error [Error signing event, Cause: Secret signing key 'WRONG-KEY' not found]"
+            "Message": "Internal error [Causes: Unknown Signing Algorithm]"
         }
     ]
 }

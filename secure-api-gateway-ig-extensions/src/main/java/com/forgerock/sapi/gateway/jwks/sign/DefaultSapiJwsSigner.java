@@ -126,7 +126,7 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
      * <pre>{@code
      * {
      *     "comment": "Default payload signer",
-     *     "name": "DefaultSapiJwsSigner",
+     *     "name": "DefaultSapiJwsSigner-RSASSA-PSS",
      *     "type": "com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner",
      *     "config": {
      *         "algorithm": "PS256",
