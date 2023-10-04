@@ -1,7 +1,5 @@
-import com.forgerock.sapi.gateway.jwks.sign.SapiJwsSignerResult
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
-
 import static org.forgerock.util.promise.Promises.newResultPromise
 
 /**
@@ -37,7 +35,7 @@ Error response example:
     "Errors": [
         {
             "ErrorCode": "UK.OBIE.UnexpectedError",
-            "Message": "Internal error [Causes: Unknown Signing Algorithm]"
+            "Message": "Internal error [Unknown Signing Algorithm]"
         }
     ]
 }
@@ -52,10 +50,10 @@ def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
 if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[SignEventsResponse] (" + fapiInteractionId + ") - "
 
-Map<String, Object> critClaims = new HashMap<>()
-critClaims.put("http://openbanking.org.uk/iat", System.currentTimeMillis() / 1000)
-critClaims.put("http://openbanking.org.uk/iss", aspspOrgId)
-critClaims.put("http://openbanking.org.uk/tan", "openbanking.org.uk")
+Map<String, Object> critClaims = Map.of(
+"http://openbanking.org.uk/iat", System.currentTimeMillis() / 1000,
+"http://openbanking.org.uk/iss", aspspOrgId,
+"http://openbanking.org.uk/tan", "openbanking.org.uk")
 
 next.handle(context, request).thenOnResult({ response ->
     logger.debug("{} Running...", SCRIPT_NAME)
@@ -69,22 +67,20 @@ next.handle(context, request).thenOnResult({ response ->
     var responseBody = response.getEntity().getJson()
 
     Map<String, String> sets = responseBody.sets
-//    try {
 
     def slurper = new JsonSlurper()
     sets.forEach((jti, payload) -> {
         Map payloadMap = slurper.parseText(payload)
-        signer.sign(payloadMap, critClaims).then(result -> {
-            logger.debug("{} signer result {}", SCRIPT_NAME, result)
-            if (result.hasErrors()) {
-                logger.error("Signer errors: {}", result.getErrors().join(","))
-                response.status = Status.INTERNAL_SERVER_ERROR
-                var message = "Causes: " + result.getErrors().join(",")
-                response.entity = "{ \"error\":\"" + message + "\"}"
-                return response
-            }
-            responseBody.sets[jti] = result.getSignedJwt()
-        })
+        signer.sign(payloadMap, critClaims)
+                .then(signedJwt -> {
+                    logger.debug("signed Jwt {}", signedJwt)
+                    responseBody.sets[jti] = signedJwt
+                }, sapiJwsSignerException -> {
+                    logger.error("{} Signature fails: {}", SCRIPT_NAME, sapiJwsSignerException.getMessage())
+                    response.status = Status.INTERNAL_SERVER_ERROR
+                    response.entity = "{ \"error\":\"" + sapiJwsSignerException.getMessage() + "\"}"
+                    return newResultPromise(response)
+                })
     })
 
     if (response.getStatus().isServerError()) {
@@ -94,4 +90,5 @@ next.handle(context, request).thenOnResult({ response ->
     logger.debug("{} final response with signed events {}", SCRIPT_NAME, responseBody)
     response.entity = responseBody
     return response
+
 })

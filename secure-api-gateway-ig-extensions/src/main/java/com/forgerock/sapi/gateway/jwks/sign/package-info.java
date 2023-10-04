@@ -30,12 +30,10 @@
  * <h3>Interfaces</h3>
  * <ul>
  *     <li>A signer interface {@link com.forgerock.sapi.gateway.jwks.sign.SapiJwsSigner}</li>
- *     <li>A signer result interface {@link com.forgerock.sapi.gateway.jwks.sign.SapiJwsSignerResult}</li>
  * </ul>
  * <h3><em>Default</em> implementations</h3>
  * <ul>
  *     <li>A Default signer implementation {@link com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner}</li>
- *     <li>A Default Result signer implementation {@link com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSignerResult}</li>
  * </ul>
  * <h3><em>Exceptions</h3>
  * <ul>
@@ -79,7 +77,7 @@
  *      }
  *  }
  *  }</pre>
- * <h4>Use example of heaplet</h4>
+ * <h4>Script filter use</h4>
  * <pre>{@code
  * {
  *   "comment": "Sign events from the RS response",
@@ -87,13 +85,26 @@
  *   "type": "ScriptableFilter",
  *   "config": {
  *     "type": "application/x-groovy",
- *     "file": "SignEventsResponse.groovy",
+ *     "file": "CustomScript.groovy",
  *     "args": {
  *       "signer": "${heap['DefaultSapiJwsSigner-RSASSA-PSS']}",
  *       "aspspOrgId": "&{ob.aspsp.org.id}"
  *     }
  *   }
  * }
+ * }</pre>
+ * <h4>Script sample</h4>
+ * <pre>{@code
+ * signer.sign(payloadMap, critClaims)
+ *                 .then(signedJwt -> {
+ *                     logger.debug("result {}", signedJwt)
+ *                     // process the signed JWT (string)
+ *                 }, sapiJwsSignerException -> { // SapiJwsSignerException handler
+ *                     logger.error("Signature fails: {}", sapiJwsSignerException.getMessage())
+ *                     response.status = Status.INTERNAL_SERVER_ERROR
+ *                     response.entity = "{ \"error\":\"" + sapiJwsSignerException.getMessage() + "\"}"
+ *                     return newResultPromise(response)
+ *                 })
  * }</pre>
  *
  * @author	  Jorge Sanchez Perez

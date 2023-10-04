@@ -17,15 +17,13 @@ package com.forgerock.sapi.gateway.jwks.sign;
 
 import static org.forgerock.openig.secrets.SecretsProviderHeaplet.secretsProvider;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.forgerock.json.jose.builders.JwsHeaderBuilder;
 import org.forgerock.json.jose.builders.JwtBuilderFactory;
-import org.forgerock.json.jose.builders.SignedJwtBuilderImpl;
 import org.forgerock.json.jose.jws.JwsAlgorithm;
-import org.forgerock.json.jose.jws.SignedJwt;
 import org.forgerock.json.jose.jws.SigningManager;
 import org.forgerock.json.jose.jws.handlers.SigningHandler;
 import org.forgerock.json.jose.jwt.JwtClaimsSet;
@@ -34,7 +32,6 @@ import org.forgerock.openig.heap.HeapException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +39,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Default implementation of {@link SapiJwsSigner}
  * <p>
- * This default JWS signer is configured in the IG configuration Heap to be used in filters<br/>
+ * A default JWS signer. <br/>
+ * Provides signing functionality for use by the filters and/or the IG scripts<br/>
  * @see DefaultSapiJwsSigner.Heaplet
  */
 public class DefaultSapiJwsSigner implements SapiJwsSigner {
@@ -63,24 +61,20 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
         this.kid = kid;
         this.algorithm = algorithm;
         this.signingKeyPurpose = Purpose.purpose(signingKeyId, SigningKey.class);
-
     }
 
     @Override
-    public Promise<SapiJwsSignerResult, NeverThrowsException> sign(
+    public Promise<String, SapiJwsSignerException> sign(
             final Map<String, Object> payload,
             final Map<String, Object> criticalHeaderClaims
     ) {
-        return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> {
-            try {
-                return new DefaultSapiJwsSignerResult(sign(signingHandler, payload, criticalHeaderClaims));
-            } catch (SapiJwsSignerException sapiJwsSignerException) {
-                return new DefaultSapiJwsSignerResult(List.of(sapiJwsSignerException.getMessage()));
-            }
-        }, noSuchSecretException -> {
-            logger.error("Failed to create signingHandler, {}", noSuchSecretException.getMessage());
-            return new DefaultSapiJwsSignerResult(List.of(noSuchSecretException.getMessage()));
-        });
+        return signingManager.newSigningHandler(signingKeyPurpose)
+                .then(signingHandler -> sign(signingHandler, payload, criticalHeaderClaims),
+                        noSuchSecretException -> {
+                            logger.error("Failed to create signingHandler", noSuchSecretException);
+                            throw new SapiJwsSignerException(noSuchSecretException.getMessage());
+                        }
+                );
     }
 
     private String sign(
@@ -90,25 +84,27 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
     ) throws SapiJwsSignerException {
         try {
             final JwtClaimsSet jwtClaimsSet = new JwtClaimsSet(payload);
-            SignedJwtBuilderImpl signedJwtBuilder = new JwtBuilderFactory()
+
+            JwsHeaderBuilder jwsHeaderBuilder = new JwtBuilderFactory()
                     .jws(signingHandler)
                     .headers()
                     .alg(JwsAlgorithm.parseAlgorithm(algorithm))
-                    .kid(kid)
-                    .done()
-                    .claims(jwtClaimsSet);
+                    .kid(kid);
 
-            SignedJwt signedJwt = signedJwtBuilder.asJwt();
-            if (!Objects.isNull(criticalHeaderClaims) && !criticalHeaderClaims.isEmpty()) {
-                logger.debug("Adding critical header claims {}", criticalHeaderClaims);
-                signedJwt.getHeader().put(CRIT_CLAIM, criticalHeaderClaims.keySet().stream().collect(Collectors.toList()));
-                criticalHeaderClaims.forEach((k, v) -> signedJwt.getHeader().put(k, v));
-            }
+            addCriticalClaims(jwsHeaderBuilder, criticalHeaderClaims);
 
-            return signedJwt.build();
+            return jwsHeaderBuilder.done().claims(jwtClaimsSet).build();
+
         } catch (Exception e) {
-            logger.error("Error signing, {}", e.getMessage(), e);
+            logger.error("Failed to compute the signature", e);
             throw new SapiJwsSignerException(e.getMessage());
+        }
+    }
+
+    private void addCriticalClaims(JwsHeaderBuilder jwsHeaderBuilder, final Map<String, Object> criticalHeaderClaims) {
+        if (!Objects.isNull(criticalHeaderClaims) && !criticalHeaderClaims.isEmpty()) {
+            jwsHeaderBuilder.crit(criticalHeaderClaims.keySet().stream().collect(Collectors.toList()));
+            criticalHeaderClaims.forEach((k, v) -> jwsHeaderBuilder.header(k, v));
         }
     }
 

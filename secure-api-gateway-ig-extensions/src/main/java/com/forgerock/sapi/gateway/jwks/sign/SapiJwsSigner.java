@@ -17,21 +17,20 @@ package com.forgerock.sapi.gateway.jwks.sign;
 
 import java.util.Map;
 
+import org.forgerock.secrets.NoSuchSecretException;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 
 /**
- * Signer Interface to define concrete signer implementations
+ * Interface to implement custom signers
  */
 public interface SapiJwsSigner {
-
-    String CRIT_CLAIM = "crit";
 
     /**
      * Sign a Map<String, Object>, that represents a json structure, supporting critical header claims.<br/>
      * @param payload              {@link Map}
      * @param criticalHeaderClaims {@link Map}
-     * @return a promise of the resulting object {@link SapiJwsSignerResult}
+     * @return a promise of the resulting object
      */
-    Promise<SapiJwsSignerResult, NeverThrowsException> sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims);
+    Promise<String, SapiJwsSignerException> sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims);
 }
