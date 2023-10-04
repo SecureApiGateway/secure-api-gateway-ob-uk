@@ -17,8 +17,6 @@ package com.forgerock.sapi.gateway.jwks.sign;
 
 import java.util.Map;
 
-import org.forgerock.secrets.NoSuchSecretException;
-import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 
 /**
@@ -30,7 +28,11 @@ public interface SapiJwsSigner {
      * Sign a Map<String, Object>, that represents a json structure, supporting critical header claims.<br/>
      * @param payload              {@link Map}
      * @param criticalHeaderClaims {@link Map}
-     * @return a promise of the resulting object
+     * @return a promise of the resulting object.<br/>
+     * <ul>Promise:
+     *     <li>String: The signed JWT (JSON Web Signature (JWS)) of the task's result</li>
+     *     <li>SapiJwsSignerException: The exception thrown by the task if it fails</li>
+     * </ul>
      */
     Promise<String, SapiJwsSignerException> sign(Map<String, Object> payload, Map<String, Object> criticalHeaderClaims);
 }
