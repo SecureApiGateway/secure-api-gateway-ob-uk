@@ -20,7 +20,7 @@
  * Sometimes a specification require sign messages as JSON Web Signatures (JWS) to met Non-repudiation requirements,
  * JSON Web Signature (JWS) represents the payload of a JWS as a base64url-encoded value and uses this value in the JWS Signature computation.
  * <p>
- *     <em><a href='https://datatracker.ietf.org/doc/html/rfc7797'>FRC7797</a></em>
+ *     <em><a href='https://datatracker.ietf.org/doc/html/rfc7515'>RFC7515 JSON Web Signature (JWS)</a></em>
  * </p>
  * <h2>Package Specification</h2>
  * <p>
