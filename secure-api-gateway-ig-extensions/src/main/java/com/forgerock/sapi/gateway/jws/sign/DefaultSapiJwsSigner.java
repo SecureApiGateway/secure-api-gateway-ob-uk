@@ -17,9 +17,9 @@ package com.forgerock.sapi.gateway.jws.sign;
 
 import static org.forgerock.openig.secrets.SecretsProviderHeaplet.secretsProvider;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.forgerock.json.jose.builders.JwsHeaderBuilder;
 import org.forgerock.json.jose.builders.JwtBuilderFactory;
@@ -32,7 +32,6 @@ import org.forgerock.openig.heap.HeapException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretsProvider;
 import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.util.Strings;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.Promises;
 import org.slf4j.Logger;
@@ -71,20 +70,17 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
             final Map<String, Object> criticalHeaderClaims
     ) {
         if (Objects.isNull(payload) || payload.isEmpty()) {
-            return Promises.newExceptionPromise(
-                    new SapiJwsSignerException("Failed to compute the signature, The payload cannot be null")
+            String reason = buildErrorMessage(
+                    SapiJwsSignerException.class.getSimpleName(),
+                    "The payload cannot be null"
             );
+            logger.error(reason);
+            return Promises.newExceptionPromise(new SapiJwsSignerException(reason));
         }
         return signingManager.newSigningHandler(signingKeyPurpose)
                 .then(signingHandler -> sign(signingHandler, payload, criticalHeaderClaims),
-                        noSuchSecretException -> {
-                            String error = Strings.joinAsString(
-                                    ", ",
-                                    "Failed to create Signing Handler",
-                                    noSuchSecretException.getMessage()
-                            );
-                            logger.error(error, noSuchSecretException);
-                            throw new SapiJwsSignerException(error, noSuchSecretException);
+                        nsse -> {
+                            throw sapiJwsSignerException(nsse);
                         }
                 );
     }
@@ -108,21 +104,29 @@ public class DefaultSapiJwsSigner implements SapiJwsSigner {
             return jwsHeaderBuilder.done().claims(jwtClaimsSet).build();
 
         } catch (Exception e) {
-            String error = Strings.joinAsString(
-                    ", ",
-                    "Failed to compute the signature",
-                    e.getMessage()
-            );
-            logger.error(error, e.getCause());
-            throw new SapiJwsSignerException(error, e);
+            throw sapiJwsSignerException(e);
         }
     }
 
     private void addCriticalClaims(JwsHeaderBuilder jwsHeaderBuilder, final Map<String, Object> criticalHeaderClaims) {
         if (!Objects.isNull(criticalHeaderClaims) && !criticalHeaderClaims.isEmpty()) {
-            jwsHeaderBuilder.crit(criticalHeaderClaims.keySet().stream().collect(Collectors.toList()));
-            criticalHeaderClaims.forEach((k, v) -> jwsHeaderBuilder.header(k, v));
+            jwsHeaderBuilder.crit(new ArrayList<>(criticalHeaderClaims.keySet()));
+            criticalHeaderClaims.forEach(jwsHeaderBuilder::header);
         }
+    }
+
+    private SapiJwsSignerException sapiJwsSignerException(Exception exception) {
+        String reason = buildErrorMessage(exception.getClass().getSimpleName(), exception.getMessage());
+        logger.error(reason, exception);
+        return new SapiJwsSignerException(reason, exception);
+    }
+
+    private String buildErrorMessage(String exceptionName, String reason) {
+        return String.join(
+                ": ",
+                String.format("Compute signature %s", exceptionName),
+                reason
+        );
     }
 
     /**

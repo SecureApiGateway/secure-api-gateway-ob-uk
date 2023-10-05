@@ -39,6 +39,7 @@ import org.forgerock.json.JsonValue;
 import org.forgerock.json.JsonValueException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
+import org.forgerock.secrets.NoSuchSecretException;
 import org.forgerock.secrets.Purpose;
 import org.forgerock.secrets.SecretBuilder;
 import org.forgerock.secrets.SecretsProvider;
@@ -152,7 +153,12 @@ public class DefaultSapiJwsSignerTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
-                .isEqualTo("Failed to compute the signature, The payload cannot be null");
+                .isEqualTo(
+                        String.format(
+                                "Compute signature %s: The payload cannot be null",
+                                SapiJwsSignerException.class.getSimpleName()
+                        )
+                );
     }
 
     @Test
@@ -174,10 +180,17 @@ public class DefaultSapiJwsSignerTest {
         );
         // When
         final Promise<String, SapiJwsSignerException> result = jwsSigner.sign(getPayloadMap(), critClaims);
+
         // Then
         assertThat(result).isNotNull();
         assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
-                .isEqualTo(String.format("Failed to create Signing Handler, No secret configured for purpose %s", signingKeyId));
+                .isEqualTo(
+                        String.format(
+                                "Compute signature %s: No secret configured for purpose %s",
+                                NoSuchSecretException.class.getSimpleName(),
+                                signingKeyId
+                        )
+                );
     }
 
     @Test
@@ -194,7 +207,11 @@ public class DefaultSapiJwsSignerTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
-                .isEqualTo("Failed to compute the signature, Unknown Signing Algorithm");
+                .isEqualTo(String.format(
+                                "Compute signature %s: Unknown Signing Algorithm",
+                                IllegalArgumentException.class.getSimpleName()
+                        )
+                );
     }
 
     private SigningKey getSigningKey(String signingKeyId) throws Exception {

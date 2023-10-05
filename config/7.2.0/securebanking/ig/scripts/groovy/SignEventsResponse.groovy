@@ -1,9 +1,10 @@
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
+import org.forgerock.json.resource.Response
 
 import static org.forgerock.util.promise.Promises.newResultPromise
 import static org.forgerock.util.promise.Promises.when
-
+import org.forgerock.http.protocol.*
 /**
  * Sign each event from the response payload received from Test Facility Bank using the Signer provided by the Heap
  *
@@ -57,7 +58,7 @@ Map<String, Object> critClaims = Map.of(
         "http://openbanking.org.uk/iss", aspspOrgId,
         "http://openbanking.org.uk/tan", "openbanking.org.uk")
 
-next.handle(context, request).thenOnResult({ response ->
+next.handle(context, request).thenAsync({ response ->
     logger.debug("{} Running...", SCRIPT_NAME)
 
     Status status = response.getStatus()
@@ -66,37 +67,36 @@ next.handle(context, request).thenOnResult({ response ->
         return newResultPromise(response)
     }
 
-    var responseBody = response.getEntity().getJson()
+    var rsResponseBody = response.getEntity().getJson()
 
-    Map<String, String> sets = responseBody.sets
+    Map<String, String> sets = rsResponseBody.sets
 
     def slurper = new JsonSlurper()
 
-    /* No blocking call:
-     * - Compute the signature for each SET retrieved from the Test utility bank (RS) response in a loop
+    /* No blocking Async loop call (returns a promise):
+     * - Compute the signature for each SET (Signed Event Token) retrieved from the Test utility bank (RS) response in a loop
      * - When all promises have been succeeded then process the result (List<Map<jti, signedJwt>)
+     *   - Overrides each SET json plain value received from RS with the signedJwt
+     *   - Overrides the response entity with the new signed SETs
+     *   - Returns the modified response to the handler
      */
-    when(sets.collect(entry -> {
-        Map payloadMap = slurper.parseText(entry.value)
+    return when(sets.collect(set -> {
+        Map payloadMap = slurper.parseText(set.value)
         return signer.sign(payloadMap, critClaims)
                 .then(signedJwt -> {
-                    return Map.entry(entry.key, signedJwt)
+                    return Map.entry(set.key, signedJwt)
                 })
-    })).then(onResult -> onResult.forEach {
-        map ->  responseBody.sets[map.key] = map.value
+    })).then(signedJwtResults -> {
+        signedJwtResults.forEach {
+            entry -> rsResponseBody.sets[entry.key] = entry.value
+        }
+        response.entity = rsResponseBody
+        logger.debug("{} Final json {}", SCRIPT_NAME, rsResponseBody)
+        return response
     }, sapiJwsSignerException -> {
         logger.error("{} Signature fails: {}", SCRIPT_NAME, sapiJwsSignerException.getMessage())
         response.status = Status.INTERNAL_SERVER_ERROR
         response.entity = "{ \"error\":\"" + sapiJwsSignerException.getMessage() + "\"}"
         return newResultPromise(response)
     })
-
-    if (response.getStatus().isServerError()) {
-        return response
-    }
-
-    logger.debug("{} final response with signed events {}", SCRIPT_NAME, responseBody)
-    response.entity = responseBody
-    return response
-
 })
