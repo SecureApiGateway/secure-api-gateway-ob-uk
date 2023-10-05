@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.forgerock.sapi.gateway.jwks.sign;
+package com.forgerock.sapi.gateway.jws.sign;
 
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,6 +139,23 @@ public class DefaultSapiJwsSignerTest {
     }
 
     @Test
+    void shouldRaisePayloadNullException() throws Exception {
+        // Given
+        final DefaultSapiJwsSigner jwsSigner = new DefaultSapiJwsSigner(
+                getSecretsProvider(),
+                SIGNING_KEY_ID,
+                KID,
+                ALGORITHM
+        );
+        // When
+        final Promise<String, SapiJwsSignerException> result = jwsSigner.sign(null, null);
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
+                .isEqualTo("Failed to compute the signature, The payload cannot be null");
+    }
+
+    @Test
     void shouldRaiseSigningKeyException() throws Exception {
         // Given
         final String signingKeyId = "wrongKeyId";
@@ -160,7 +177,7 @@ public class DefaultSapiJwsSignerTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
-                .isEqualTo(String.format("No secret configured for purpose %s", signingKeyId));
+                .isEqualTo(String.format("Failed to create Signing Handler, No secret configured for purpose %s", signingKeyId));
     }
 
     @Test
@@ -177,7 +194,7 @@ public class DefaultSapiJwsSignerTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(assertThrows(SapiJwsSignerException.class, () -> result.getOrThrow()).getMessage())
-                .isEqualTo("Unknown Signing Algorithm");
+                .isEqualTo("Failed to compute the signature, Unknown Signing Algorithm");
     }
 
     private SigningKey getSigningKey(String signingKeyId) throws Exception {

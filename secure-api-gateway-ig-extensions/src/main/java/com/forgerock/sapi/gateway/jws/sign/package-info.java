@@ -18,10 +18,16 @@
  * com.forgerock.sapi.gateway.jwks.sign <br/>
  * <h1>Overview</h1>
  * Sometimes a specification require sign messages as JSON Web Signatures (JWS) to met Non-repudiation requirements,
- * JSON Web Signature (JWS) represents the payload of a JWS as a base64url-encoded value and uses this value in the JWS Signature computation.
- * <p>
- *     <em><a href='https://datatracker.ietf.org/doc/html/rfc7515'>RFC7515 JSON Web Signature (JWS)</a></em>
- * </p>
+ * JSON Web Signature (JWS) represents the payload of a JWS as a base64url-encoded value and uses this value in the JWS Signature computation.<br/><br/>
+ * JSON Web Signature spec
+ * <ul>
+ *     <li><a href='https://datatracker.ietf.org/doc/html/rfc7515'>RFC7515 JSON Web Signature (JWS)</a></li>
+ * </ul>
+ * Reading recommendations
+ * <ul>
+ *     <li><a href='https://community.forgerock.com/t/identity-gateway-7-0-async-programming-101/29'>Identity Gateway async programming</a></li>
+ *     <li><a href='https://community.forgerock.com/t/identity-gateway-7-1-highway-to-async-programming/28'>Identity Gateway highway to async programming</a></li>
+ * </ul>
  * <h2>Package Specification</h2>
  * <p>
  * Provides interfaces to implement custom signers to sign messages.<br/>
@@ -29,15 +35,15 @@
  * </p>
  * <h3>Interfaces</h3>
  * <ul>
- *     <li>A signer interface {@link com.forgerock.sapi.gateway.jwks.sign.SapiJwsSigner}</li>
+ *     <li>A signer interface {@link com.forgerock.sapi.gateway.jws.sign.SapiJwsSigner}</li>
  * </ul>
  * <h3><em>Default</em> implementations</h3>
  * <ul>
- *     <li>A Default signer implementation {@link com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner}</li>
+ *     <li>A Default signer implementation {@link com.forgerock.sapi.gateway.jws.sign.DefaultSapiJwsSigner}</li>
  * </ul>
  * <h3><em>Exceptions</h3>
  * <ul>
- *     <li>{@link com.forgerock.sapi.gateway.jwks.sign.SapiJwsSignerException}</li>
+ *     <li>{@link com.forgerock.sapi.gateway.jws.sign.SapiJwsSignerException}</li>
  * </ul>
  * <h2>Configuration</h2>
  * <h4>Introduction</h4>
@@ -54,7 +60,7 @@
  * <br/>
  * A signer implementation could be used as heaplet object across filters or another heaplets. <br/>
  * <h4>Default Signer Heaplet configuration example</h4>
- *  Heaplet used to create {@link com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner} objects
+ *  Heaplet used to create {@link com.forgerock.sapi.gateway.jws.sign.DefaultSapiJwsSigner} objects
  *  <p/>
  *  Mandatory fields:
  *  <ul>
@@ -106,8 +112,7 @@
  *                     return newResultPromise(response)
  *                 })
  * }</pre>
- *
  * @author	  Jorge Sanchez Perez
  * @since	  2.0
  */
-package com.forgerock.sapi.gateway.jwks.sign;
+package com.forgerock.sapi.gateway.jws.sign;

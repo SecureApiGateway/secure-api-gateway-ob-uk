@@ -1,6 +1,8 @@
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.Status
+
 import static org.forgerock.util.promise.Promises.newResultPromise
+import static org.forgerock.util.promise.Promises.when
 
 /**
  * Sign each event from the response payload received from Test Facility Bank using the Signer provided by the Heap
@@ -51,9 +53,9 @@ if (fapiInteractionId == null) fapiInteractionId = "No x-fapi-interaction-id"
 SCRIPT_NAME = "[SignEventsResponse] (" + fapiInteractionId + ") - "
 
 Map<String, Object> critClaims = Map.of(
-"http://openbanking.org.uk/iat", System.currentTimeMillis() / 1000,
-"http://openbanking.org.uk/iss", aspspOrgId,
-"http://openbanking.org.uk/tan", "openbanking.org.uk")
+        "http://openbanking.org.uk/iat", System.currentTimeMillis() / 1000,
+        "http://openbanking.org.uk/iss", aspspOrgId,
+        "http://openbanking.org.uk/tan", "openbanking.org.uk")
 
 next.handle(context, request).thenOnResult({ response ->
     logger.debug("{} Running...", SCRIPT_NAME)
@@ -69,18 +71,24 @@ next.handle(context, request).thenOnResult({ response ->
     Map<String, String> sets = responseBody.sets
 
     def slurper = new JsonSlurper()
-    sets.forEach((jti, payload) -> {
-        Map payloadMap = slurper.parseText(payload)
-        signer.sign(payloadMap, critClaims)
+
+    /* No blocking call:
+     * - Compute the signature for each SET retrieved from the Test utility bank (RS) response in a loop
+     * - When all promises have been succeeded then process the result (List<Map<jti, signedJwt>)
+     */
+    when(sets.collect(entry -> {
+        Map payloadMap = slurper.parseText(entry.value)
+        return signer.sign(payloadMap, critClaims)
                 .then(signedJwt -> {
-                    logger.debug("signed Jwt {}", signedJwt)
-                    responseBody.sets[jti] = signedJwt
-                }, sapiJwsSignerException -> {
-                    logger.error("{} Signature fails: {}", SCRIPT_NAME, sapiJwsSignerException.getMessage())
-                    response.status = Status.INTERNAL_SERVER_ERROR
-                    response.entity = "{ \"error\":\"" + sapiJwsSignerException.getMessage() + "\"}"
-                    return newResultPromise(response)
+                    return Map.entry(entry.key, signedJwt)
                 })
+    })).then(onResult -> onResult.forEach {
+        map ->  responseBody.sets[map.key] = map.value
+    }, sapiJwsSignerException -> {
+        logger.error("{} Signature fails: {}", SCRIPT_NAME, sapiJwsSignerException.getMessage())
+        response.status = Status.INTERNAL_SERVER_ERROR
+        response.entity = "{ \"error\":\"" + sapiJwsSignerException.getMessage() + "\"}"
+        return newResultPromise(response)
     })
 
     if (response.getStatus().isServerError()) {
