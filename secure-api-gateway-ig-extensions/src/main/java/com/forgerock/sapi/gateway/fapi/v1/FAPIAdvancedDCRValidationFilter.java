@@ -136,6 +136,8 @@ import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
  * </pre>
  * certificateRetriever is a {@link CertificateRetriever} object heap reference, different implementations are available.
  * See {@link FromHeaderCertificateRetriever} and {@link FromContextCertificateRetriever} for examples.
+ * This configuration is OPTIONAL but is strongly recommended to be used in preference to the deprecated
+ * clientTlsCertHeader config.
  * <p>
  * clientTlsCertHeader is the name of the header to extract the client's MTLS cert from.
  * The header value must contain a PEM encoded, then URL encoded, x509 certificate.
