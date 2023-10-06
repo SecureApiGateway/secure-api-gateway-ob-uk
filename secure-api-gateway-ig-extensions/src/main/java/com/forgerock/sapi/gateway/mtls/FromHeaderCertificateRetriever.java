@@ -24,6 +24,8 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
 import org.forgerock.http.protocol.Request;
+import org.forgerock.openig.heap.GenericHeaplet;
+import org.forgerock.openig.heap.HeapException;
 import org.forgerock.services.context.Context;
 import org.forgerock.util.Reject;
 import org.slf4j.Logger;
@@ -75,5 +77,27 @@ public class FromHeaderCertificateRetriever implements CertificateRetriever {
             throw new CertificateException("client tls cert must be in X.509 format");
         }
         return (X509Certificate) certificate;
+    }
+
+    /**
+     * Heaplet responsible for creating {@link FromHeaderCertificateRetriever} objects
+     *
+     * Required config:
+     * - clientTlsCertHeader String the name of the header which contains the certificate
+     *
+     * Example config:
+     * {
+     *       "name": "FromHeaderCertificateRetriever",
+     *       "type": "FromHeaderCertificateRetriever",
+     *       "config": {
+     *         "clientTlsCertHeader": "ssl-client-cert"
+     *       }
+     * }
+     */
+    public static class Heaplet extends GenericHeaplet {
+        @Override
+        public Object create() throws HeapException {
+            return new FromHeaderCertificateRetriever(config.get("clientTlsCertHeader").required().asString());
+        }
     }
 }

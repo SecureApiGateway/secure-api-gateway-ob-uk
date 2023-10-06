@@ -15,6 +15,8 @@
  */
 package com.forgerock.sapi.gateway.fapi.v1;
 
+import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -53,6 +55,7 @@ import com.forgerock.sapi.gateway.dcr.common.Validator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.mtls.CertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.FromContextCertificateRetriever;
 import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
 
 /**
@@ -122,7 +125,8 @@ import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
  *     {@code {
  *         "type": "FAPIAdvancedDCRValidationFilter",
  *         "config": {
- *             "clientTlsCertHeader"                    : String        [REQUIRED]
+ *             "certificateRetriever"                   : CertificateRetriever [OPTIONAL]
+ *             "clientTlsCertHeader"                    : String        [OPTIONAL] [Deprecated]
  *             "supportedSigningAlgorithms"             : String[]      [OPTIONAL]
  *             "supportedTokenEndpointAuthMethods"      : String[]      [OPTIONAL]
  *             "registrationObjectSigningFieldNames"    : String[]      [OPTIONAL]
@@ -130,9 +134,13 @@ import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
  *    }
  *    }
  * </pre>
+ * certificateRetriever is a {@link CertificateRetriever} object heap reference, different implementations are available.
+ * See {@link FromHeaderCertificateRetriever} and {@link FromContextCertificateRetriever} for examples.
+ * <p>
  * clientTlsCertHeader is the name of the header to extract the client's MTLS cert from.
  * The header value must contain a PEM encoded, then URL encoded, x509 certificate.
- * This configuration is REQUIRED.
+ * This configuration is OPTIONAL.
+ * This configuration is now deprecated, use certificateRetriever instead
  * <p>
  * supportedSigningAlgorithms configures which JWS algorithms are supported for signing, see DEFAULT_SUPPORTED_JWS_ALGORITHMS for the default
  * values if this config is omitted.
@@ -494,6 +502,8 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     /** Creates and initializes a FAPIAdvancedDCRValidationFilter */
     public static class Heaplet extends GenericHeaplet {
 
+        private final Logger logger = LoggerFactory.getLogger(getClass());
+
         @Override
         public Object create() throws HeapException {
             final FAPIAdvancedDCRValidationFilter filter = new FAPIAdvancedDCRValidationFilter();
@@ -524,8 +534,17 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
                                                                 .defaultTo(DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES)
                                                                 .asList(String.class));
 
-            final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            filter.setClientCertificateRetriever(new FromHeaderCertificateRetriever(clientCertHeaderName));
+            final JsonValue certificateRetrieverConfig = config.get("certificateRetriever");
+            if (certificateRetrieverConfig.isNotNull()) {
+                final CertificateRetriever certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));
+                filter.setClientCertificateRetriever(certificateRetriever);
+            } else {
+                final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
+                logger.warn("{} config option clientTlsCertHeader is deprecated, use certificateRetriever instead. " +
+                            "This option needs to contain a value which is a reference to a {} object on the heap",
+                            FAPIAdvancedDCRValidationFilter.class.getSimpleName(), CertificateRetriever.class);
+                filter.setClientCertificateRetriever(new FromHeaderCertificateRetriever(clientCertHeaderName));
+            }
 
             final List<Validator<JsonValue>> requestObjectValidators = filter.getDefaultRequestObjectValidators();
             filter.setRegistrationRequestObjectValidators(requestObjectValidators);

@@ -444,6 +444,10 @@
         "kid": "&{ig.ob.aspsp.signing.kid}",
         "secretsProvider": "SecretsProvider-ASPSP"
       }
+    },
+    {
+      "name": "FromContextCertificateRetriever",
+      "type": "FromContextCertificateRetriever"
     }
   ],
   "monitor": true
