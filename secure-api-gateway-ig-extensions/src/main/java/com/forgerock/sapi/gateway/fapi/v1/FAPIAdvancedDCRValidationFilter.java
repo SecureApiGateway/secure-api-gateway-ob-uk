@@ -126,10 +126,10 @@ import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
  *         "type": "FAPIAdvancedDCRValidationFilter",
  *         "config": {
  *             "certificateRetriever"                   : CertificateRetriever [OPTIONAL]
- *             "clientTlsCertHeader"                    : String        [OPTIONAL] [Deprecated]
- *             "supportedSigningAlgorithms"             : String[]      [OPTIONAL]
- *             "supportedTokenEndpointAuthMethods"      : String[]      [OPTIONAL]
- *             "registrationObjectSigningFieldNames"    : String[]      [OPTIONAL]
+ *             "clientTlsCertHeader"                    : String               [OPTIONAL] [DEPRECATED]
+ *             "supportedSigningAlgorithms"             : String[]             [OPTIONAL]
+ *             "supportedTokenEndpointAuthMethods"      : String[]             [OPTIONAL]
+ *             "registrationObjectSigningFieldNames"    : String[]             [OPTIONAL]
  *         }
  *    }
  *    }
@@ -534,11 +534,13 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
                                                                 .defaultTo(DEFAULT_REG_OBJ_SIGNING_FIELD_NAMES)
                                                                 .asList(String.class));
 
+            // certificateRetriever configuration is preferred to the deprecated clientTlsCertHeader configuration
             final JsonValue certificateRetrieverConfig = config.get("certificateRetriever");
             if (certificateRetrieverConfig.isNotNull()) {
                 final CertificateRetriever certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));
                 filter.setClientCertificateRetriever(certificateRetriever);
             } else {
+                // Fallback to the config which only configures the FromHeaderCertificateRetriever
                 final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
                 logger.warn("{} config option clientTlsCertHeader is deprecated, use certificateRetriever instead. " +
                             "This option needs to contain a value which is a reference to a {} object on the heap",

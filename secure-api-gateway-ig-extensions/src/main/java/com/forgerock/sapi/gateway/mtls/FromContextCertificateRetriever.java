@@ -62,7 +62,7 @@ public class FromContextCertificateRetriever implements CertificateRetriever {
      * Heaplet responsible for creating {@link FromContextCertificateRetriever} objects
      *
      * Optional fields:
-     * - certificateAttributeName: the name of the attribute to store the certificate in, defaults to clientCertificate
+     * - certificateAttributeName String the name of the attribute to retrieve the certificate from, defaults to clientCertificate
      *
      * Example config:
      * {
