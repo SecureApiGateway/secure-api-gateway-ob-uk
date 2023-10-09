@@ -37,13 +37,13 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  * This retriever must only run after the {@link AddCertificateToAttributesContextFilter} has installed the certificate
  * into the context.
  */
-public class FromContextCertificateRetriever implements CertificateRetriever {
+public class ContextCertificateRetriever implements CertificateRetriever {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final String certificateAttribute;
 
-    public FromContextCertificateRetriever(String certificateAttribute) {
+    public ContextCertificateRetriever(String certificateAttribute) {
         this.certificateAttribute = Reject.checkNotBlank(certificateAttribute, "certificateAttribute must be provided");
     }
 
@@ -59,15 +59,15 @@ public class FromContextCertificateRetriever implements CertificateRetriever {
     }
 
     /**
-     * Heaplet responsible for creating {@link FromContextCertificateRetriever} objects
+     * Heaplet responsible for creating {@link ContextCertificateRetriever} objects
      *
      * Optional fields:
      * - certificateAttributeName String the name of the attribute to retrieve the certificate from, defaults to clientCertificate
      *
      * Example config:
      * {
-     *       "name": "FromContextCertificateRetriever",
-     *       "type": "FromContextCertificateRetriever",
+     *       "name": "ContextCertificateRetriever",
+     *       "type": "ContextCertificateRetriever",
      *       "config": {
      *         "certificateAttributeName": "clientCertificate"
      *       }
@@ -76,8 +76,8 @@ public class FromContextCertificateRetriever implements CertificateRetriever {
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-            return new FromContextCertificateRetriever(config.get("certificateAttributeName")
-                                                             .defaultTo(DEFAULT_CERTIFICATE_ATTRIBUTE).asString());
+            return new ContextCertificateRetriever(config.get("certificateAttributeName")
+                                                         .defaultTo(DEFAULT_CERTIFICATE_ATTRIBUTE).asString());
         }
     }
 }

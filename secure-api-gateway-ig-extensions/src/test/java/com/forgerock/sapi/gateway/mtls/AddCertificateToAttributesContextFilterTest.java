@@ -16,7 +16,7 @@
 package com.forgerock.sapi.gateway.mtls;
 
 import static com.forgerock.sapi.gateway.mtls.AddCertificateToAttributesContextFilter.DEFAULT_CERTIFICATE_ATTRIBUTE;
-import static com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetrieverTest.createRequestWithCertHeader;
+import static com.forgerock.sapi.gateway.mtls.HeaderCertificateRetrieverTest.createRequestWithCertHeader;
 import static com.forgerock.sapi.gateway.util.CryptoUtils.generateRsaKeyPair;
 import static com.forgerock.sapi.gateway.util.CryptoUtils.generateX509Cert;
 import static org.assertj.core.api.Assertions.assertThat;

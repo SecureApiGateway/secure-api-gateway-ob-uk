@@ -39,10 +39,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever.Heaplet;
+import com.forgerock.sapi.gateway.mtls.HeaderCertificateRetriever.Heaplet;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 
-class FromHeaderCertificateRetrieverTest {
+class HeaderCertificateRetrieverTest {
 
     private static final String TEST_CERT_HEADER_NAME = "clientCertHeader";
 
@@ -63,10 +63,10 @@ class FromHeaderCertificateRetrieverTest {
 
     @Test
     void successfullyRetrievesClientCert() throws Exception {
-        testRetrievesClientCert(new FromHeaderCertificateRetriever(TEST_CERT_HEADER_NAME), TEST_CERT_HEADER_NAME);
+        testRetrievesClientCert(new HeaderCertificateRetriever(TEST_CERT_HEADER_NAME), TEST_CERT_HEADER_NAME);
     }
 
-    private void testRetrievesClientCert(FromHeaderCertificateRetriever headerCertificateRetriever, String headerName) throws CertificateException {
+    private void testRetrievesClientCert(HeaderCertificateRetriever headerCertificateRetriever, String headerName) throws CertificateException {
         final X509Certificate clientCert = createValidCert();
         final Request request = createRequestWithCertHeader(clientCert, headerName);
         final X509Certificate actualCert = headerCertificateRetriever.retrieveCertificate(new RootContext("test"), request);
@@ -75,7 +75,7 @@ class FromHeaderCertificateRetrieverTest {
 
     @Test
     void failsToRetrievesCertIfMissingHeader() {
-        final FromHeaderCertificateRetriever headerCertificateRetriever = new FromHeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
+        final HeaderCertificateRetriever headerCertificateRetriever = new HeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
         final Request requestWithNoHeader = new Request();
         final CertificateException certificateException = assertThrows(CertificateException.class,
                 () -> headerCertificateRetriever.retrieveCertificate(new RootContext("test"), requestWithNoHeader));
@@ -85,7 +85,7 @@ class FromHeaderCertificateRetrieverTest {
 
     @Test
     void failsToRetrievesCertIfHeaderNotValidUrlEncodedString() {
-        final FromHeaderCertificateRetriever headerCertificateRetriever = new FromHeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
+        final HeaderCertificateRetriever headerCertificateRetriever = new HeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
         final Request requestWithNoHeader = new Request();
         final String headerValueInvalidUrlEncoding = "%-128blah blah blah";
         requestWithNoHeader.addHeaders(new GenericHeader(TEST_CERT_HEADER_NAME, headerValueInvalidUrlEncoding));
@@ -98,7 +98,7 @@ class FromHeaderCertificateRetrieverTest {
 
     @Test
     void failsToRetrievesCertIfHeaderNotValidPemEncodedString() {
-        final FromHeaderCertificateRetriever headerCertificateRetriever = new FromHeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
+        final HeaderCertificateRetriever headerCertificateRetriever = new HeaderCertificateRetriever(TEST_CERT_HEADER_NAME);
         final Request requestWithNoHeader = new Request();
         final String headerValueInvalidPem = URLEncoder.encode("blah blah blah", Charset.defaultCharset());
         requestWithNoHeader.addHeaders(new GenericHeader(TEST_CERT_HEADER_NAME, headerValueInvalidPem));
@@ -131,7 +131,7 @@ class FromHeaderCertificateRetrieverTest {
         void testCreatingFilterWithAllConfig() throws HeapException, CertificateException {
             final String certHeader = "header123";
             filterConfig.add("clientTlsCertHeader", certHeader);
-            final FromHeaderCertificateRetriever filter = (FromHeaderCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
+            final HeaderCertificateRetriever filter = (HeaderCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
             testRetrievesClientCert(filter, certHeader);
         }
     }

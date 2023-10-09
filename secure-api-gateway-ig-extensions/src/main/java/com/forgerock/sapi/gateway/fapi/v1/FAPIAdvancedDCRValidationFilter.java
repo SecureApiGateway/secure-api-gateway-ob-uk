@@ -55,8 +55,8 @@ import com.forgerock.sapi.gateway.dcr.common.Validator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.mtls.CertificateRetriever;
-import com.forgerock.sapi.gateway.mtls.FromContextCertificateRetriever;
-import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.ContextCertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.HeaderCertificateRetriever;
 
 /**
  * Filter which rejects Dynamic Client Registration (DCR) request that would result in OAuth2 clients that would not
@@ -135,7 +135,7 @@ import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
  *    }
  * </pre>
  * certificateRetriever is a {@link CertificateRetriever} object heap reference, different implementations are available.
- * See {@link FromHeaderCertificateRetriever} and {@link FromContextCertificateRetriever} for examples.
+ * See {@link HeaderCertificateRetriever} and {@link ContextCertificateRetriever} for examples.
  * This configuration is OPTIONAL but is strongly recommended to be used in preference to the deprecated
  * clientTlsCertHeader config.
  * <p>
@@ -542,12 +542,12 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
                 final CertificateRetriever certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));
                 filter.setClientCertificateRetriever(certificateRetriever);
             } else {
-                // Fallback to the config which only configures the FromHeaderCertificateRetriever
+                // Fallback to the config which only configures the HeaderCertificateRetriever
                 final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
                 logger.warn("{} config option clientTlsCertHeader is deprecated, use certificateRetriever instead. " +
                             "This option needs to contain a value which is a reference to a {} object on the heap",
                             FAPIAdvancedDCRValidationFilter.class.getSimpleName(), CertificateRetriever.class);
-                filter.setClientCertificateRetriever(new FromHeaderCertificateRetriever(clientCertHeaderName));
+                filter.setClientCertificateRetriever(new HeaderCertificateRetriever(clientCertHeaderName));
             }
 
             final List<Validator<JsonValue>> requestObjectValidators = filter.getDefaultRequestObjectValidators();

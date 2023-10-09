@@ -96,7 +96,7 @@ public class AddCertificateToAttributesContextFilter implements Filter {
         @Override
         public Object create() throws HeapException {
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            final CertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(clientCertHeaderName);
+            final CertificateRetriever certificateRetriever = new HeaderCertificateRetriever(clientCertHeaderName);
 
             final String attributeName = config.get("certificateAttributeName").defaultTo(DEFAULT_CERTIFICATE_ATTRIBUTE).asString();
             return new AddCertificateToAttributesContextFilter(certificateRetriever, attributeName);

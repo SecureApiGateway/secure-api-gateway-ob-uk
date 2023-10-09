@@ -50,7 +50,7 @@ import com.forgerock.sapi.gateway.jwks.FetchApiClientJwksFilter;
  * This filter depends on the {@link JWKSet} containing the keys for this {@link ApiClient} being present in
  * the {@link AttributesContext}.
  *
- * The certificate for the request is supplied by the pluggable certificateRetriever, see {@link FromHeaderCertificateRetriever}
+ * The certificate for the request is supplied by the pluggable certificateRetriever, see {@link HeaderCertificateRetriever}
  * for an example implementation (this is the default configured by the {@link Heaplet})
  *
  * Once the {@link X509Certificate} and JWKSet have been obtained, then the filter delegates to a {@link TransportCertValidator}
@@ -143,7 +143,7 @@ public class TransportCertValidationFilter implements Filter {
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
             final TransportCertValidator transportCertValidator = config.get("transportCertValidator").required()
                                                                         .as(requiredHeapObject(heap, TransportCertValidator.class));
-            final CertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(clientCertHeaderName);
+            final CertificateRetriever certificateRetriever = new HeaderCertificateRetriever(clientCertHeaderName);
             return new TransportCertValidationFilter(certificateRetriever, transportCertValidator);
         }
     }

@@ -57,7 +57,7 @@
           "name": "FAPIAdvancedDCRValidationFilter",
           "type": "FAPIAdvancedDCRValidationFilter",
           "config": {
-            "certificateRetriever": "FromContextCertificateRetriever",
+            "certificateRetriever": "ContextCertificateRetriever",
             "supportedSigningAlgorithms": ["PS256"],
             "supportedTokenEndpointAuthMethods": ["tls_client_auth", "private_key_jwt"]
           }

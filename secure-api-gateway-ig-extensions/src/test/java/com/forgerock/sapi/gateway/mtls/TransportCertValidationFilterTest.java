@@ -68,7 +68,7 @@ class TransportCertValidationFilterTest {
      * JWKSet containing TEST_TLS_CERT plus others
      */
     private static JWKSet TEST_JWKS;
-    private final FromHeaderCertificateRetriever certificateResolver = new FromHeaderCertificateRetriever(CERTIFICATE_HEADER_NAME);
+    private final HeaderCertificateRetriever certificateResolver = new HeaderCertificateRetriever(CERTIFICATE_HEADER_NAME);
     private final DefaultTransportCertValidator certValidator = new DefaultTransportCertValidator("tls");
 
     @BeforeAll

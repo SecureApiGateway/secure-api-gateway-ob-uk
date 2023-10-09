@@ -47,7 +47,6 @@ import com.forgerock.sapi.gateway.dcr.idm.ApiClientService;
 import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientDecoder;
 import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientService;
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
-import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 import com.forgerock.sapi.gateway.jwks.ApiClientJwkSetService;
 import com.forgerock.sapi.gateway.jwks.DefaultApiClientJwkSetService;
 import com.forgerock.sapi.gateway.jwks.JwkSetService;
@@ -278,7 +277,7 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                     .as(requiredHeapObject(heap, TransportCertValidator.class));
 
             final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            final CertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(clientCertHeaderName);
+            final CertificateRetriever certificateRetriever = new HeaderCertificateRetriever(clientCertHeaderName);
 
             final String accessTokenClientIdClaim =  config.get("accessTokenClientIdClaim")
                                                            .defaultTo(DEFAULT_ACCESS_TOKEN_CLIENT_ID_CLAIM).asString();

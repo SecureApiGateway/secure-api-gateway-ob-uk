@@ -39,18 +39,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.mtls.FromContextCertificateRetriever.Heaplet;
+import com.forgerock.sapi.gateway.mtls.ContextCertificateRetriever.Heaplet;
 
-class FromContextCertificateRetrieverTest {
+class ContextCertificateRetrieverTest {
 
     @Test
     void shouldFetchCertFromContext() throws CertificateException {
         final String certificateAttribute = DEFAULT_CERTIFICATE_ATTRIBUTE;
-        final FromContextCertificateRetriever certificateRetriever = new FromContextCertificateRetriever(certificateAttribute);
+        final ContextCertificateRetriever certificateRetriever = new ContextCertificateRetriever(certificateAttribute);
         testFetchCertFromContext(certificateAttribute, certificateRetriever);
     }
 
-    private static void testFetchCertFromContext(String certificateAttribute, FromContextCertificateRetriever certificateRetriever) throws CertificateException {
+    private static void testFetchCertFromContext(String certificateAttribute, ContextCertificateRetriever certificateRetriever) throws CertificateException {
         final AttributesContext attributesContext = new AttributesContext(new RootContext());
         final X509Certificate certificate = generateX509Cert(generateRsaKeyPair(), "CN=blah");
         attributesContext.getAttributes().put(certificateAttribute, certificate);
@@ -61,11 +61,11 @@ class FromContextCertificateRetrieverTest {
 
     @Test
     void failsIfNoCertFound() {
-        final FromContextCertificateRetriever certificateRetriever = new FromContextCertificateRetriever(DEFAULT_CERTIFICATE_ATTRIBUTE);
+        final ContextCertificateRetriever certificateRetriever = new ContextCertificateRetriever(DEFAULT_CERTIFICATE_ATTRIBUTE);
         testNoCertFound(certificateRetriever);
     }
 
-    private static void testNoCertFound(FromContextCertificateRetriever certificateRetriever) {
+    private static void testNoCertFound(ContextCertificateRetriever certificateRetriever) {
         final TransactionIdContext context = new TransactionIdContext(new AttributesContext(new RootContext()), new TransactionId("123"));
         assertThrows(CertificateException.class, () -> certificateRetriever.retrieveCertificate(context, new Request()));
     }
@@ -83,7 +83,7 @@ class FromContextCertificateRetrieverTest {
 
         @Test
         void shouldFetchCertFromDefaultAttributeName() throws Exception {
-            FromContextCertificateRetriever certificateRetriever = (FromContextCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
+            ContextCertificateRetriever certificateRetriever = (ContextCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
             testFetchCertFromContext(DEFAULT_CERTIFICATE_ATTRIBUTE, certificateRetriever);
         }
 
@@ -91,7 +91,7 @@ class FromContextCertificateRetrieverTest {
         void shouldFetchCertFromCustomAttributeName() throws Exception {
             final String customCertAttribute = "customCertAttribute";
             filterConfig.add("certificateAttributeName", customCertAttribute);
-            FromContextCertificateRetriever certificateRetriever = (FromContextCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
+            ContextCertificateRetriever certificateRetriever = (ContextCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
             testFetchCertFromContext(customCertAttribute, certificateRetriever);
         }
     }

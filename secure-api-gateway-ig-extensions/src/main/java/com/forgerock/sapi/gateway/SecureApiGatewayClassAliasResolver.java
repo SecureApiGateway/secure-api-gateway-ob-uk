@@ -34,8 +34,8 @@ import com.forgerock.sapi.gateway.jws.RsaJwtSignatureValidator;
 import com.forgerock.sapi.gateway.jws.signer.CompactSerializationJwsSigner;
 import com.forgerock.sapi.gateway.mtls.AddCertificateToAttributesContextFilter;
 import com.forgerock.sapi.gateway.mtls.DefaultTransportCertValidator;
-import com.forgerock.sapi.gateway.mtls.FromContextCertificateRetriever;
-import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.ContextCertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.HeaderCertificateRetriever;
 import com.forgerock.sapi.gateway.mtls.TokenEndpointTransportCertValidationFilter;
 import com.forgerock.sapi.gateway.mtls.TransportCertValidationFilter;
 import com.forgerock.sapi.gateway.trusteddirectories.FetchTrustedDirectoryFilter;
@@ -63,8 +63,8 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("ReSignIdTokenFilter", ReSignIdTokenFilter.class);
         ALIASES.put("CompactSerializationJwsSigner", CompactSerializationJwsSigner.class);
         ALIASES.put("AddCertificateToAttributesContextFilter", AddCertificateToAttributesContextFilter.class);
-        ALIASES.put("FromContextCertificateRetriever", FromContextCertificateRetriever.class);
-        ALIASES.put("FromHeaderCertificateRetriever", FromHeaderCertificateRetriever.class);
+        ALIASES.put("ContextCertificateRetriever", ContextCertificateRetriever.class);
+        ALIASES.put("HeaderCertificateRetriever", HeaderCertificateRetriever.class);
     }
 
     /**

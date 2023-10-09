@@ -446,8 +446,8 @@
       }
     },
     {
-      "name": "FromContextCertificateRetriever",
-      "type": "FromContextCertificateRetriever"
+      "name": "ContextCertificateRetriever",
+      "type": "ContextCertificateRetriever"
     }
   ],
   "monitor": true

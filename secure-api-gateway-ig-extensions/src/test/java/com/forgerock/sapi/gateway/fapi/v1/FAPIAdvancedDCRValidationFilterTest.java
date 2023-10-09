@@ -62,7 +62,7 @@ import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
 import com.forgerock.sapi.gateway.dcr.common.Validator;
 import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
 import com.forgerock.sapi.gateway.fapi.v1.FAPIAdvancedDCRValidationFilter.Heaplet;
-import com.forgerock.sapi.gateway.mtls.FromHeaderCertificateRetriever;
+import com.forgerock.sapi.gateway.mtls.HeaderCertificateRetriever;
 import com.forgerock.sapi.gateway.util.TestHandlers.TestSuccessResponseHandler;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -556,13 +556,13 @@ class FAPIAdvancedDCRValidationFilterTest {
         @Test
         void createFilterWithCertificateRetrieverConfig() throws Exception {
             final HeapImpl heap = new HeapImpl(Name.of("test"));
-            final FromHeaderCertificateRetriever certificateRetriever = new FromHeaderCertificateRetriever(CERT_HEADER_NAME);
-            heap.put("fromHeaderCertificateRetriever", certificateRetriever);
+            final HeaderCertificateRetriever certificateRetriever = new HeaderCertificateRetriever(CERT_HEADER_NAME);
+            heap.put("headerCertificateRetriever", certificateRetriever);
 
             // Config which sets all the options, restricting the signing and auth methods to a single one each and extending the signing field names
             final JsonValue filterConfig = json(object(field("supportedTokenEndpointAuthMethods", array("private_key_jwt")),
                     field("supportedSigningAlgorithms", array("PS256")),
-                    field("certificateRetriever", "fromHeaderCertificateRetriever"),
+                    field("certificateRetriever", "headerCertificateRetriever"),
                     field("registrationObjectSigningFieldNames",
                             array("token_endpoint_auth_signing_alg",
                                     "id_token_signed_response_alg",

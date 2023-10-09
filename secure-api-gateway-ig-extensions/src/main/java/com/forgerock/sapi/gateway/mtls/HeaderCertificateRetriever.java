@@ -39,13 +39,13 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
  * The certificateHeaderName field determines which header the cert is retrieved from.
  * The header value is expected to be a PEM encoded then URL encoded X509 certificate.
  */
-public class FromHeaderCertificateRetriever implements CertificateRetriever {
+public class HeaderCertificateRetriever implements CertificateRetriever {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final String certificateHeaderName;
 
-    public FromHeaderCertificateRetriever(String certificateHeaderName) {
+    public HeaderCertificateRetriever(String certificateHeaderName) {
         Reject.ifBlank(certificateHeaderName, "certificateHeaderName must be provided");
         this.certificateHeaderName = certificateHeaderName;
     }
@@ -80,15 +80,15 @@ public class FromHeaderCertificateRetriever implements CertificateRetriever {
     }
 
     /**
-     * Heaplet responsible for creating {@link FromHeaderCertificateRetriever} objects
+     * Heaplet responsible for creating {@link HeaderCertificateRetriever} objects
      *
      * Required config:
      * - clientTlsCertHeader String the name of the header which contains the certificate
      *
      * Example config:
      * {
-     *       "name": "FromHeaderCertificateRetriever",
-     *       "type": "FromHeaderCertificateRetriever",
+     *       "name": "HeaderCertificateRetriever",
+     *       "type": "HeaderCertificateRetriever",
      *       "config": {
      *         "clientTlsCertHeader": "ssl-client-cert"
      *       }
@@ -97,7 +97,7 @@ public class FromHeaderCertificateRetriever implements CertificateRetriever {
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-            return new FromHeaderCertificateRetriever(config.get("clientTlsCertHeader").required().asString());
+            return new HeaderCertificateRetriever(config.get("clientTlsCertHeader").required().asString());
         }
     }
 }

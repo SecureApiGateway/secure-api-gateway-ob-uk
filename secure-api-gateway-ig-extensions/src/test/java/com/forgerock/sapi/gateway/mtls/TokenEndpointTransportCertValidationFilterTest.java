@@ -309,7 +309,7 @@ class TokenEndpointTransportCertValidationFilterTest {
             final TestHandler responseHandler = createResponseWithValidAccessToken();
 
 
-            final Request request = FromHeaderCertificateRetrieverTest.createRequestWithCertHeader(clientCert, certHeader);
+            final Request request = HeaderCertificateRetrieverTest.createRequestWithCertHeader(clientCert, certHeader);
 
             final Promise<Response, NeverThrowsException> responsePromise = filter.filter(new RootContext("root"), request, responseHandler);
             final Response response = responsePromise.get(1, TimeUnit.MILLISECONDS);
