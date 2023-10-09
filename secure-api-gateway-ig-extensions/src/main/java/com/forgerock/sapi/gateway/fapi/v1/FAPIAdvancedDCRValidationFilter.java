@@ -539,8 +539,7 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
             // certificateRetriever configuration is preferred to the deprecated clientTlsCertHeader configuration
             final JsonValue certificateRetrieverConfig = config.get("certificateRetriever");
             if (certificateRetrieverConfig.isNotNull()) {
-                final CertificateRetriever certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));
-                filter.setClientCertificateRetriever(certificateRetriever);
+                filter.setClientCertificateRetriever(certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class)));
             } else {
                 // Fallback to the config which only configures the HeaderCertificateRetriever
                 final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
