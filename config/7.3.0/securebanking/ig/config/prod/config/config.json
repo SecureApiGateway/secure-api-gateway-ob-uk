@@ -127,7 +127,7 @@
             "name": "TransportCertValidationFilter",
             "type": "TransportCertValidationFilter",
             "config": {
-              "clientTlsCertHeader": "ssl-client-cert",
+              "certificateRetriever": "HeaderCertificateRetriever",
               "transportCertValidator": "OBTransportCertValidator"
             }
           }
