@@ -35,15 +35,15 @@
  * </p>
  * <h3>Interfaces</h3>
  * <ul>
- *     <li>A signer interface {@link com.forgerock.sapi.gateway.jws.sign.SapiJwsSigner}</li>
+ *     <li>A signer interface {@link com.forgerock.sapi.gateway.jws.signers.JwsSigner}</li>
  * </ul>
  * <h3><em>Default</em> implementations</h3>
  * <ul>
- *     <li>A Default signer implementation {@link com.forgerock.sapi.gateway.jws.sign.DefaultSapiJwsSigner}</li>
+ *     <li>A Default signer implementation {@link com.forgerock.sapi.gateway.jws.signers.CompactSerializationMapJwsSigner}</li>
  * </ul>
  * <h3><em>Exceptions</h3>
  * <ul>
- *     <li>{@link com.forgerock.sapi.gateway.jws.sign.SapiJwsSignerException}</li>
+ *     <li>{@link com.forgerock.sapi.gateway.jws.signers.SapiJwsSignerException}</li>
  * </ul>
  * <h2>Configuration</h2>
  * <h4>Introduction</h4>
@@ -60,7 +60,7 @@
  * <br/>
  * A signer implementation could be used as heaplet object across filters or another heaplets. <br/>
  * <h4>Default Signer Heaplet configuration example</h4>
- *  Heaplet used to create {@link com.forgerock.sapi.gateway.jws.sign.DefaultSapiJwsSigner} objects
+ *  Heaplet used to create {@link com.forgerock.sapi.gateway.jws.signers.CompactSerializationMapJwsSigner} objects
  *  <p/>
  *  Mandatory fields:
  *  <ul>
@@ -73,8 +73,8 @@
  *  <pre>{@code
  *  {
  *      "comment": "Default payload signer",
- *      "name": "DefaultSapiJwsSigner-RSASSA-PSS",
- *      "type": "com.forgerock.sapi.gateway.jwks.sign.DefaultSapiJwsSigner",
+ *      "name": "CompactSerializationMapJwsSigner-RSASSA-PSS",
+ *      "type": "com.forgerock.sapi.gateway.jwks.sign.CompactSerializationMapJwsSigner",
  *      "config": {
  *          "algorithm": "PS256",
  *          "signingKeyId": "jwt.signer",
@@ -93,7 +93,7 @@
  *     "type": "application/x-groovy",
  *     "file": "CustomScript.groovy",
  *     "args": {
- *       "signer": "${heap['DefaultSapiJwsSigner-RSASSA-PSS']}",
+ *       "signer": "${heap['CompactSerializationMapJwsSigner-RSASSA-PSS']}",
  *       "aspspOrgId": "&{ob.aspsp.org.id}"
  *     }
  *   }
@@ -115,4 +115,4 @@
  * @author	  Jorge Sanchez Perez
  * @since	  2.0
  */
-package com.forgerock.sapi.gateway.jws.sign;
+package com.forgerock.sapi.gateway.jws.signers;

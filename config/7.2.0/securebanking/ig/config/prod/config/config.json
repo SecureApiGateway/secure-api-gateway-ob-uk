@@ -424,8 +424,8 @@
       }
     },
     {
-      "name": "DefaultSapiJwsSigner-RSASSA-PSS",
-      "type": "com.forgerock.sapi.gateway.jws.sign.DefaultSapiJwsSigner",
+      "name": "CompactSerializationMapJwsSigner-RSASSA-PSS",
+      "type": "com.forgerock.sapi.gateway.jws.signers.CompactSerializationMapJwsSigner",
       "config": {
         "algorithm": "PS256",
         "signingKeyId": "jwt.signer",

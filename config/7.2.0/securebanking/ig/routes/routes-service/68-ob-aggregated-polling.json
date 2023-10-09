@@ -29,7 +29,7 @@
             "type": "application/x-groovy",
             "file": "SignEventsResponse.groovy",
             "args": {
-              "signer": "${heap['DefaultSapiJwsSigner-RSASSA-PSS']}",
+              "signer": "${heap['CompactSerializationMapJwsSigner-RSASSA-PSS]}",
               "aspspOrgId": "&{ob.aspsp.org.id}"
             }
           }
