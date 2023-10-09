@@ -78,7 +78,7 @@ public class AddCertificateToAttributesContextFilter implements Filter {
      * Heaplet used to create {@link AddCertificateToAttributesContextFilter} objects
      *
      * Mandatory fields:
-     *  - certificateRetriever: {@link CertificateRetriever} object heap reference, this is used to retriever the
+     *  - certificateRetriever: {@link CertificateRetriever} object heap reference, this is used to retrieve the
      *                          certificate to store in the attributes context (see {@link HeaderCertificateRetriever})
      *
      *  Optional fields:

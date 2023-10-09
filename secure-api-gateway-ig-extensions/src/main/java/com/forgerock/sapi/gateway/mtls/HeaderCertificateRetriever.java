@@ -35,7 +35,7 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**
  * CertificateRetriever implementation that retrieves the client's mTLS certificate from a HTTP Request Header.
- *
+ * <p>
  * The certificateHeaderName field determines which header the cert is retrieved from.
  * The header value is expected to be a PEM encoded then URL encoded X509 certificate.
  */
@@ -81,10 +81,10 @@ public class HeaderCertificateRetriever implements CertificateRetriever {
 
     /**
      * Heaplet responsible for creating {@link HeaderCertificateRetriever} objects
-     *
+     * <p>
      * Required config:
      * - clientTlsCertHeader String the name of the header which contains the certificate
-     *
+     * <p>
      * Example config:
      * {
      *       "name": "HeaderCertificateRetriever",

@@ -134,8 +134,9 @@ import com.forgerock.sapi.gateway.mtls.HeaderCertificateRetriever;
  *    }
  *    }
  * </pre>
- * certificateRetriever is a {@link CertificateRetriever} object heap reference, different implementations are available.
- * See {@link HeaderCertificateRetriever} and {@link ContextCertificateRetriever} for examples.
+ * certificateRetriever is a {@link CertificateRetriever} object heap reference, this object is used to retrieve the
+ * client's MTLS transport certificate in order to carry out validation on it. Different implementations are available,
+ * see {@link HeaderCertificateRetriever} and {@link ContextCertificateRetriever} for examples.
  * This configuration is OPTIONAL but is strongly recommended to be used in preference to the deprecated
  * clientTlsCertHeader config.
  * <p>

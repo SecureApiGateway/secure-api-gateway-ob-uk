@@ -33,7 +33,7 @@ import com.forgerock.sapi.gateway.fapi.FAPIUtils;
 
 /**
  * CertificateRetriever implementation which retrieves the certificate from the {@link org.forgerock.services.context.AttributesContext}.
- *
+ * <p>
  * This retriever must only run after the {@link AddCertificateToAttributesContextFilter} has installed the certificate
  * into the context.
  */
@@ -60,10 +60,10 @@ public class ContextCertificateRetriever implements CertificateRetriever {
 
     /**
      * Heaplet responsible for creating {@link ContextCertificateRetriever} objects
-     *
+     * <p>
      * Optional fields:
      * - certificateAttributeName String the name of the attribute to retrieve the certificate from, defaults to clientCertificate
-     *
+     * <p>
      * Example config:
      * {
      *       "name": "ContextCertificateRetriever",
