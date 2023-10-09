@@ -18,6 +18,7 @@ package com.forgerock.sapi.gateway.mtls;
 import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
+import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -77,7 +78,8 @@ public class AddCertificateToAttributesContextFilter implements Filter {
      * Heaplet used to create {@link AddCertificateToAttributesContextFilter} objects
      *
      * Mandatory fields:
-     *  - clientTlsCertHeader: the name of the Request Header which contains the client's TLS cert
+     *  - certificateRetriever: {@link CertificateRetriever} object heap reference, this is used to retriever the
+     *                          certificate to store in the attributes context (see {@link HeaderCertificateRetriever})
      *
      *  Optional fields:
      *  - certificateAttributeName: the name of the attribute to store the certificate in, defaults to clientCertificate
@@ -88,17 +90,18 @@ public class AddCertificateToAttributesContextFilter implements Filter {
      *           "name": "AddCertificateToAttributesContextFilter",
      *           "type": "AddCertificateToAttributesContextFilter",
      *           "config": {
-     *             "clientTlsCertHeader": "ssl-client-cert"
+     *             "certificateRetriever": "HeaderCertificateRetriever"
      *           }
      * }
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-            final String clientCertHeaderName = config.get("clientTlsCertHeader").required().asString();
-            final CertificateRetriever certificateRetriever = new HeaderCertificateRetriever(clientCertHeaderName);
+            final CertificateRetriever certificateRetriever = config.get("certificateRetriever")
+                                                                    .as(requiredHeapObject(heap, CertificateRetriever.class));
+            final String attributeName = config.get("certificateAttributeName")
+                                               .defaultTo(DEFAULT_CERTIFICATE_ATTRIBUTE).asString();
 
-            final String attributeName = config.get("certificateAttributeName").defaultTo(DEFAULT_CERTIFICATE_ATTRIBUTE).asString();
             return new AddCertificateToAttributesContextFilter(certificateRetriever, attributeName);
         }
     }

@@ -34,7 +34,7 @@ import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.JsonValue;
 import org.forgerock.json.JsonValueException;
-import org.forgerock.openig.heap.Heap;
+import org.forgerock.openig.heap.HeapException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
 import org.forgerock.services.TransactionId;
@@ -131,9 +131,8 @@ class AddCertificateToAttributesContextFilterTest {
 
     @Nested
     public class HeapletTests {
-
         private JsonValue filterConfig;
-        private Heap heap;
+        private HeapImpl heap;
 
         @BeforeEach
         public void beforeEach() {
@@ -141,23 +140,30 @@ class AddCertificateToAttributesContextFilterTest {
             heap = new HeapImpl(Name.of("test"));
         }
 
+        private void setupCertRetrieverConfig() {
+            heap.put("headerCertificateRetriever", new HeaderCertificateRetriever("clientCertHeader"));
+            filterConfig.put("certificateRetriever", "headerCertificateRetriever");
+        }
+
         @Test
         void failsWhenCertificateRetrieverIsNotConfigured() {
-            final JsonValueException jsonValueException = assertThrows(JsonValueException.class,
+            final HeapException heapException = assertThrows(HeapException.class,
                     () -> new Heaplet().create(Name.of("test"), filterConfig, heap));
-            assertThat(jsonValueException.getMessage()).isEqualTo("/clientTlsCertHeader: Expecting a value");
+            assertThat(heapException.getMessage()).isEqualTo("Invalid object declaration");
+            assertThat(heapException.getCause())
+                    .isInstanceOf(JsonValueException.class).hasMessage("/certificateRetriever: Expecting a value");
         }
 
         @Test
         void testAddsCertWithDefaultAttributeName() throws Exception {
-            filterConfig.add("clientTlsCertHeader", "clientCertHeader");
+            setupCertRetrieverConfig();
             final AddCertificateToAttributesContextFilter filter = (AddCertificateToAttributesContextFilter) new Heaplet().create(Name.of("test"), filterConfig, heap);
             testCertificateIsAddedToAttributesContext(testCertificate, DEFAULT_CERTIFICATE_ATTRIBUTE, filter, createRequestWithCertHeader(testCertificate));
         }
 
         @Test
         void testAddsCertWithCustomAttributeName() throws Exception {
-            filterConfig.add("clientTlsCertHeader", "clientCertHeader");
+            setupCertRetrieverConfig();
             final String customCertAttributeName = "customCertAttributeName";
             filterConfig.add("certificateAttributeName", customCertAttributeName);
             final AddCertificateToAttributesContextFilter filter = (AddCertificateToAttributesContextFilter) new Heaplet().create(Name.of("test"), filterConfig, heap);

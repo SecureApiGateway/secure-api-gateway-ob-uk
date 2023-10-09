@@ -124,13 +124,13 @@ class HeaderCertificateRetrieverTest {
         void failsToCreateIfCertHeaderIsMissing() {
             final JsonValueException jsonValueException = assertThrows(JsonValueException.class,
                     () -> new Heaplet().create(Name.of("test"), filterConfig, heap));
-            assertThat(jsonValueException.getMessage()).isEqualTo("/clientTlsCertHeader: Expecting a value");
+            assertThat(jsonValueException.getMessage()).isEqualTo("/certificateHeaderName: Expecting a value");
         }
 
         @Test
         void testCreatingFilterWithAllConfig() throws HeapException, CertificateException {
             final String certHeader = "header123";
-            filterConfig.add("clientTlsCertHeader", certHeader);
+            filterConfig.add("certificateHeaderName", certHeader);
             final HeaderCertificateRetriever filter = (HeaderCertificateRetriever) new Heaplet().create(Name.of("test"), filterConfig, heap);
             testRetrievesClientCert(filter, certHeader);
         }

@@ -90,14 +90,14 @@ public class HeaderCertificateRetriever implements CertificateRetriever {
      *       "name": "HeaderCertificateRetriever",
      *       "type": "HeaderCertificateRetriever",
      *       "config": {
-     *         "clientTlsCertHeader": "ssl-client-cert"
+     *         "certificateHeaderName": "ssl-client-cert"
      *       }
      * }
      */
     public static class Heaplet extends GenericHeaplet {
         @Override
         public Object create() throws HeapException {
-            return new HeaderCertificateRetriever(config.get("clientTlsCertHeader").required().asString());
+            return new HeaderCertificateRetriever(config.get("certificateHeaderName").required().asString());
         }
     }
 }
