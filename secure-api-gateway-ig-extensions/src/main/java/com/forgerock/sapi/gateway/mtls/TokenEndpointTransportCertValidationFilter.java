@@ -283,6 +283,7 @@ public class TokenEndpointTransportCertValidationFilter implements Filter {
                     .as(requiredHeapObject(heap, TransportCertValidator.class));
 
             final CertificateRetriever certificateRetriever;
+            // certificateRetriever configuration is preferred to the deprecated clientTlsCertHeader configuration
             final JsonValue certificateRetrieverConfig = config.get("certificateRetriever");
             if (certificateRetrieverConfig.isNotNull()) {
                 certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));

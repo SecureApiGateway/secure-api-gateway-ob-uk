@@ -150,6 +150,7 @@ public class TransportCertValidationFilter implements Filter {
         @Override
         public Object create() throws HeapException {
             final CertificateRetriever certificateRetriever;
+            // certificateRetriever configuration is preferred to the deprecated clientTlsCertHeader configuration
             final JsonValue certificateRetrieverConfig = config.get("certificateRetriever");
             if (certificateRetrieverConfig.isNotNull()) {
                 certificateRetriever = certificateRetrieverConfig.as(requiredHeapObject(heap, CertificateRetriever.class));
