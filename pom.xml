@@ -41,6 +41,7 @@
         <module>secure-api-gateway-ig-extensions</module>
     </modules>
 
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- https://maven.apache.org/plugins/maven-compiler-plugin/examples/set-compiler-release.html -->
