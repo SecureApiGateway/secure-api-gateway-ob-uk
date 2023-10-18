@@ -168,7 +168,8 @@ def buildApiClientIdmObject(oauth2ClientId, softwareStatement) {
           "apiClientOrg"  : ["_ref": "managed/" + routeArgObjApiClientOrg + "/" + softwareStatement.getOrgId()]
   ]
 
-  if (softwareStatement.hasJwksUri()){logger.debug("jwks is '{}'", apiClientIdmObj)
+  if (softwareStatement.hasJwksUri()){
+    logger.debug("jwks is '{}'", apiClientIdmObj)
     apiClientIdmObj.jwksUri = softwareStatement.getJwksUri()
   } else {
     apiClientIdmObj.jwks = softwareStatement.getJwksSet().toJsonValue()
