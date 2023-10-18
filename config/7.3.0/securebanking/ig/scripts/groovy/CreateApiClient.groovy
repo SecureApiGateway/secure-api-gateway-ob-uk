@@ -169,7 +169,6 @@ def buildApiClientIdmObject(oauth2ClientId, softwareStatement) {
   ]
 
   if (softwareStatement.hasJwksUri()){
-    logger.debug("jwks is '{}'", apiClientIdmObj)
     apiClientIdmObj.jwksUri = softwareStatement.getJwksUri()
   } else {
     apiClientIdmObj.jwks = softwareStatement.getJwksSet().toJsonValue()
