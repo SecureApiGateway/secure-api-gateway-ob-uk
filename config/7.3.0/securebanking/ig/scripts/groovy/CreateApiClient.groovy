@@ -168,7 +168,7 @@ def buildApiClientIdmObject(oauth2ClientId, softwareStatement) {
           "apiClientOrg"  : ["_ref": "managed/" + routeArgObjApiClientOrg + "/" + softwareStatement.getOrgId()]
   ]
 
-  if (softwareStatement.hasJwksUri()){
+  if (softwareStatement.hasJwksUri()){logger.debug("jwks is '{}'", apiClientIdmObj)
     apiClientIdmObj.jwksUri = softwareStatement.getJwksUri()
   } else {
     apiClientIdmObj.jwks = softwareStatement.getJwksSet().toJsonValue()
@@ -179,8 +179,8 @@ def buildApiClientIdmObject(oauth2ClientId, softwareStatement) {
 }
 
 def buildApiClientOrganisationIdmObject(SoftwareStatement softwareStatement) {
-  def organisationName = softwareStatement.getOrgId()
   def organisationIdentifier = softwareStatement.getOrgId()
+  def organisationName = softwareStatement.getOrgName() != null ? softwareStatement.getOrgName() : organisationIdentifier
   return [
           "_id" : organisationIdentifier,
           "id"  : organisationIdentifier,
