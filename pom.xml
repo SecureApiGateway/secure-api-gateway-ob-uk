@@ -125,7 +125,7 @@
         <repository>
             <id>forgerock-private-releases</id>
             <name>ForgeRock Private Releases Repository</name>
-            <url>https://maven.forgerock.org/repo/private-releases</url>
+            <url>https://maven.forgerock.org/artifactory/private-releases</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
