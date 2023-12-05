@@ -30,14 +30,14 @@ import org.forgerock.util.promise.Promises;
 
 /**
  * Validates that a request made to the OAuth2.0 /authorize endpoint is FAPI compliant.
- *
+ * <p>
  * For /authorize requests, the request JWT is supplied as an HTTP Query Param
- *
- * OAuth 2.0 spec: https://www.rfc-editor.org/rfc/rfc6749#section-4.1
- * FAPI Part 1: https://openid.net/specs/openid-financial-api-part-1-1_0.html#authorization-server
- * FAPI Part 2: https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server
+ * <p>
+ * For more details on /authorize requests see: <a href="https://www.rfc-editor.org/rfc/rfc6749#section-4.1">OAuth 2.0 spec</a>
  */
 public class FapiAuthorizeRequestValidationFilter extends BaseFapiAuthorizeRequestValidationFilter {
+
+    private static final String REQUEST_URI_PARAM_NAME = "request_uri";
 
     @Override
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
@@ -51,13 +51,14 @@ public class FapiAuthorizeRequestValidationFilter extends BaseFapiAuthorizeReque
 
     /**
      * Requests which contain a request_uri param are /authorize requests for a previously submitted /par request.
-     * See: https://datatracker.ietf.org/doc/html/rfc9126#section-4
+     * <p>
+     * See: <a href="https://datatracker.ietf.org/doc/html/rfc9126#name-authorization-request">OAuth 2.0 PAR authorization request</a>
      *
      * @param request Request to check
      * @return boolean indicating if this is an authorize request for a par request
      */
     private boolean isAuthorizeParRequest(Request request) {
-        return getParamFromRequestQuery(request, "request_uri") != null;
+        return getParamFromRequestQuery(request, REQUEST_URI_PARAM_NAME) != null;
     }
 
     /**
@@ -90,7 +91,7 @@ public class FapiAuthorizeRequestValidationFilter extends BaseFapiAuthorizeReque
     @Override
     protected void removeStateParamFromRequest(Request request) {
         final Form existingQueryParams = request.getQueryParams();
-        existingQueryParams.remove("state");
+        existingQueryParams.remove(STATE_PARAM_NAME);
         existingQueryParams.toRequestQuery(request);
     }
 

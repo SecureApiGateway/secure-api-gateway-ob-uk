@@ -24,7 +24,7 @@ import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter.BaseFetchApiClien
 /**
  * Heaplet for creating a ParResponseFetchApiClientFilter, this is an alias for the AuthorizeResponseFetchApiClientFilter
  * that has been configured to retrieve the client_id from the HTTP Request's Form.
- *
+ * <p>
  * Mandatory config:
  * - idmGetApiClientBaseUri: the base uri used to build the IDM query to get the apiClient, the client_id is expected
  * to be appended to this uri (and some query params).
@@ -32,6 +32,7 @@ import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter.BaseFetchApiClien
  * query IDM)
  * <p>
  * Example config:
+ * <pre>{@code
  * {
  *   "comment": "Add ApiClient data to the context attributes for the AS /par route",
  *   "name": "ParResponseFetchApiClientFilter",
@@ -41,6 +42,7 @@ import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter.BaseFetchApiClien
  *     "clientHandler": "IDMClientHandler"
  *   }
  * }
+ * }</pre>
  */
 public class ParResponseFetchApiClientFilterHeaplet extends BaseFetchApiClientHeaplet {
 

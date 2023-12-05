@@ -39,18 +39,28 @@ import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 
 /**
  * Base class for validating that authorize requests are FAPI compliant.
+ * <p>
  * This class can be extended to provide implementations which are specific to particular OAuth2.0 endpoints that
  * handle such requests, namely: /authorize and /par
- *
+ * <p>
  * Specs:
- * - FAPI Part 1: https://openid.net/specs/openid-financial-api-part-1-1_0.html#authorization-server
- * - FAPI Part 2: https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server
+ * <ul>
+ *     <li><a href="https://openid.net/specs/openid-financial-api-part-1-1_0.html#authorization-server">FAPI Part 1</a></li>
+ *     <li><a href="https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server">FAPI Part 2</a></li>
+ * </ul>
  */
 public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter {
     private static final Set<String> VALID_HTTP_REQUEST_METHODS = Set.of("POST", "GET");
     private static final List<String> REQUIRED_REQUEST_JWT_CLAIMS = List.of("scope", "nonce", "response_type", "redirect_uri", "client_id");
+    protected static final String STATE_PARAM_NAME = "state";
+    private static final String ACCEPT_HEADER_NAME = "accept";
+    private static final String REQUEST_JWT_PARAM_NAME = "request";
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    /**
+     * Factory capable of producing OAuth2.0 compliant HTTP Responses for error conditions.
+     */
     protected final OAuthErrorResponseFactory errorResponseFactory = new OAuthErrorResponseFactory(new ContentTypeFormatterFactory());
 
     public Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
@@ -58,7 +68,7 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
             return Promises.newResultPromise(new Response(Status.METHOD_NOT_ALLOWED));
         }
 
-        final Header acceptHeader = request.getHeaders().get("accept");
+        final Header acceptHeader = request.getHeaders().get(ACCEPT_HEADER_NAME);
         return getRequestJwtClaimSet(request).thenAsync(requestJwtClaimSet -> {
             if (requestJwtClaimSet == null) {
                 final String errorDescription = "Request must have a 'request' parameter the value of which must be a signed jwt";
@@ -96,7 +106,7 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
     }
 
     private Promise<JwtClaimsSet, NeverThrowsException> getRequestJwtClaimSet(Request request) {
-        return getParamFromRequest(request, "request").then(requestJwtString -> {
+        return getParamFromRequest(request, REQUEST_JWT_PARAM_NAME).then(requestJwtString -> {
             if (requestJwtString == null) {
                 logger.info("authorize request must have a request JWT parameter");
                 return null;
@@ -112,9 +122,8 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
     }
 
     protected Promise<Void, NeverThrowsException> removeStateFromRequestIfNotInRequestJwt(Request request, JwtClaimsSet requestJwtClaimSet) {
-        String stateClaimName = "state";
-        if (!requestJwtHasClaim(stateClaimName, requestJwtClaimSet)) {
-            return getParamFromRequest(request, stateClaimName).thenOnResult(stateParam -> {
+        if (!requestJwtHasClaim(STATE_PARAM_NAME, requestJwtClaimSet)) {
+            return getParamFromRequest(request, STATE_PARAM_NAME).thenOnResult(stateParam -> {
                 if (stateParam != null) {
                     logger.info("Removing state request parameter as no state claim in request jwt");
                     removeStateParamFromRequest(request);
@@ -126,7 +135,8 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
 
     /**
      * Retrieves a parameter from the HTTP Request.
-     * @param request Request the HTTP Request to retrieve the parameter from
+     *
+     * @param request   Request the HTTP Request to retrieve the parameter from
      * @param paramName String the name of the parameter
      * @return Promise<String, NeverThrowsException> which returns the param value as a String or a null if the param
      * does not exist or fails to be retrieved due to an exception.
@@ -135,7 +145,7 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
 
     /**
      * Removes the state parameter from the Request.
-     *
+     * <p>
      * See removeStateFromRequestIfNotInRequestJwt for usage, this is required to work around an issue in AM
      *
      * @param request Request the HTTP Request to remove the state param from.

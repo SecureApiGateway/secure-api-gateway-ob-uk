@@ -104,6 +104,11 @@ public class AuthorizeResponseFetchApiClientFilter implements Filter {
         return new Response(Status.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Helper function capable of retrieving the client_id parameter from the Request's Query params.
+     *
+     * @return Promise<String, NeverThrowsException> which returns the client_id or null if it does not exist
+     */
     static Function<Request, Promise<String, NeverThrowsException>> queryParamClientIdRetriever() {
         return request -> {
             final List<String> clientIdParams = request.getQueryParams().get("client_id");
@@ -115,6 +120,11 @@ public class AuthorizeResponseFetchApiClientFilter implements Filter {
         };
     }
 
+    /**
+     * Helper function capable of retrieving the client_id parameter from the Request's Form entity.
+     *
+     * @return Promise<String, NeverThrowsException> which returns the client_id or null if it does not exist
+     */
     static Function<Request, Promise<String, NeverThrowsException>> formClientIdRetriever() {
         return request -> request.getEntity().getFormAsync()
                 .then(form -> form.getFirst("client_id"))

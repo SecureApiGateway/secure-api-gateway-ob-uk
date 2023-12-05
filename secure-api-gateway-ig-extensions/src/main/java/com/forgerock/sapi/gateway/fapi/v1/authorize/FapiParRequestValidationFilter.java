@@ -26,12 +26,22 @@ import org.forgerock.util.promise.Promise;
 
 /**
  * Validates that a request made to the OAuth2.0 /par (Pushed Authorization Request) endpoint is FAPI compliant.
- *
+ * <p>
  * For /par requests, the request JWT is supplied as an HTTP Form parameter.
- *
- * OAuth 2.0 Pushed Authorization Request spec: https://datatracker.ietf.org/doc/html/rfc9126
+ * <p>
+ * For more details see:
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9126#name-pushed-authorization-reques">OAuth 2.0 Pushed Authorization Requests</a>
  */
 public class FapiParRequestValidationFilter extends BaseFapiAuthorizeRequestValidationFilter {
+
+    /**
+     * Retrieves parameters from the HTTP Request's Form
+     *
+     * @param request   Request the HTTP Request to retrieve the parameter from
+     * @param paramName String the name of the parameter
+     * @return Promise<String, NeverThrowsException> a promise containing the String value of the parameter or null if
+     * the parameter does not exist or if an exception is thrown.
+     */
     @Override
     protected Promise<String, NeverThrowsException> getParamFromRequest(Request request, String paramName) {
         return request.getEntity().getFormAsync()
@@ -46,7 +56,7 @@ public class FapiParRequestValidationFilter extends BaseFapiAuthorizeRequestVali
     protected void removeStateParamFromRequest(Request request) {
         try {
             final Form form = request.getEntity().getForm();
-            form.remove("state");
+            form.remove(STATE_PARAM_NAME);
             request.setEntity(form);
         } catch (IOException e) {
             logger.warn("Failed to remove state param from /par request form due to exception", e);

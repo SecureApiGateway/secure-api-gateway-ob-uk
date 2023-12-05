@@ -29,6 +29,7 @@ import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter.BaseFetchApiClien
  * query IDM)
  * <p>
  * Example config:
+ * <pre>{@code
  * {
  *   "comment": "Add ApiClient data to the context attributes for the AS /authorize route",
  *   "name": "AuthoriseResponseFetchApiClientFilter",
@@ -38,6 +39,7 @@ import com.forgerock.sapi.gateway.dcr.idm.FetchApiClientFilter.BaseFetchApiClien
  *     "clientHandler": "IDMClientHandler"
  *   }
  * }
+ * }</pre>
  */
 public class AuthoriseResponseFetchApiClientFilterHeaplet extends BaseFetchApiClientHeaplet {
 
