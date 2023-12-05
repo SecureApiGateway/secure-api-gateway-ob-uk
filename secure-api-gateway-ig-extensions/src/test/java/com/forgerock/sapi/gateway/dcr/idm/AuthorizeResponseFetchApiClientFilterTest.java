@@ -51,7 +51,6 @@ import org.forgerock.util.promise.Promises;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.forgerock.sapi.gateway.dcr.idm.AuthorizeResponseFetchApiClientFilter.Heaplet;
 import com.forgerock.sapi.gateway.dcr.idm.IdmApiClientServiceTest.MockApiClientTestDataIdmHandler;
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
 import com.forgerock.sapi.gateway.util.TestHandlers.FixedResponseHandler;
@@ -67,7 +66,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
     void fetchApiClientForSuccessResponse() throws Exception {
         final JsonValue idmClientData = createIdmApiClientDataRequiredFieldsOnly(clientId);
         final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(idmBaseUri, clientId, idmClientData);
-        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri));
+        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri), AuthorizeResponseFetchApiClientFilter.queryParamClientIdRetriever());
         callFilterValidateSuccessBehaviour(idmClientData, filter);
     }
 
@@ -117,7 +116,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
     void doesNotFetchApiClientForErrorResponses() throws InterruptedException, TimeoutException {
         final JsonValue idmClientData = createIdmApiClientDataRequiredFieldsOnly(clientId);
         final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(idmBaseUri, clientId, idmClientData);
-        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri));
+        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri), AuthorizeResponseFetchApiClientFilter.queryParamClientIdRetriever());
         final AttributesContext context = createContext();
 
         final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, createRequest(), new FixedResponseHandler(new Response(Status.BAD_GATEWAY)));
@@ -131,7 +130,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
     void returnsErrorResponseWhenClientIdParamNotFound() throws Exception {
         final JsonValue idmClientData = createIdmApiClientDataRequiredFieldsOnly(clientId);
         final MockApiClientTestDataIdmHandler idmResponseHandler = new MockApiClientTestDataIdmHandler(idmBaseUri, clientId, idmClientData);
-        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri));
+        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(idmResponseHandler), idmBaseUri), AuthorizeResponseFetchApiClientFilter.queryParamClientIdRetriever());
         final AttributesContext context = createContext();
 
         final Request request = new Request();
@@ -145,7 +144,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
 
     @Test
     void returnsErrorResponseWhenApiClientServiceReturnsException() throws Exception {
-        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(Handlers.INTERNAL_SERVER_ERROR), idmBaseUri));
+        final AuthorizeResponseFetchApiClientFilter filter = new AuthorizeResponseFetchApiClientFilter(createApiClientService(new Client(Handlers.INTERNAL_SERVER_ERROR), idmBaseUri), AuthorizeResponseFetchApiClientFilter.queryParamClientIdRetriever());
         final AttributesContext context = createContext();
 
         final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, createRequest(), new TestSuccessResponseHandler());
@@ -159,7 +158,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
     public class HeapletTests {
         @Test
         void failsToConstructIfClientHandlerIsMissing() {
-            final HeapException heapException = assertThrows(HeapException.class, () -> new Heaplet().create(Name.of("test"),
+            final HeapException heapException = assertThrows(HeapException.class, () -> new AuthoriseResponseFetchApiClientFilterHeaplet().create(Name.of("test"),
                     json(object()), new HeapImpl(Name.of("heap"))), "Invalid object declaration");
             assertEquals(heapException.getCause().getMessage(), "/clientHandler: Expecting a value");
         }
@@ -170,7 +169,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
             final HeapImpl heap = new HeapImpl(Name.of("heap"));
             heap.put("idmClientHandler", idmClientHandler);
 
-            assertThrows(JsonValueException.class, () -> new Heaplet().create(Name.of("test"),
+            assertThrows(JsonValueException.class, () -> new AuthoriseResponseFetchApiClientFilterHeaplet().create(Name.of("test"),
                     json(object(field("clientHandler", "idmClientHandler"))), heap), "/idmGetApiClientBaseUri: Expecting a value");
         }
 
@@ -184,7 +183,7 @@ class AuthorizeResponseFetchApiClientFilterTest {
 
             final JsonValue config = json(object(field("clientHandler", "idmClientHandler"),
                     field("idmGetApiClientBaseUri", idmBaseUri)));
-            final AuthorizeResponseFetchApiClientFilter filter = (AuthorizeResponseFetchApiClientFilter) new Heaplet().create(Name.of("test"), config, heap);
+            final AuthorizeResponseFetchApiClientFilter filter = (AuthorizeResponseFetchApiClientFilter) new AuthoriseResponseFetchApiClientFilterHeaplet().create(Name.of("test"), config, heap);
 
             // Test the filter created by the Heaplet
             callFilterValidateSuccessBehaviour(idmApiClientData, filter);
