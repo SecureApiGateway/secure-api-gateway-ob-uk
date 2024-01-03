@@ -15,6 +15,7 @@
  */
 package com.forgerock.sapi.gateway.fapi.v1.authorize;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -37,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import com.forgerock.sapi.gateway.common.error.OAuthErrorResponseFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.HttpHeaderNames;
+import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
+import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
 
 /**
  * Base class for validating that authorize requests are FAPI compliant.
@@ -51,6 +54,8 @@ import com.forgerock.sapi.gateway.common.rest.HttpHeaderNames;
  * </ul>
  */
 public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter {
+    private static final Set<String> RESPONSE_TYPE_CODE = Set.of("code");
+    private static final Set<String> RESPONSE_TYPE_CODE_ID_TOKEN = Set.of("code", "id_token");
     private static final Set<String> VALID_HTTP_REQUEST_METHODS = Set.of("POST", "GET");
     private static final List<String> REQUIRED_REQUEST_JWT_CLAIMS = List.of("scope", "nonce", "response_type", "redirect_uri", "client_id");
     protected static final String STATE_PARAM_NAME = "state";
@@ -93,6 +98,8 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
                 }
             }
 
+            validateResponseType(requestJwtClaimSet);
+
             // Should be ignoring and not returning state if it only exists as a http request parameter and does not
             // exist in the request jwt. AM however doesn't apply this rule and returns state in the resulting redirect
             //
@@ -103,6 +110,47 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
                         return next.handle(context, request);
                     });
         });
+    }
+
+    void validateResponseType(JwtClaimsSet requestJwtClaimSet) {
+        final String responseTypeStr = requestJwtClaimSet.get("response_type").asString();
+        if (responseTypeStr == null || responseTypeStr.isEmpty()) {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_type");
+        }
+        final Set<String> responseType = Set.of(responseTypeStr.split(" "));
+        if (responseType.equals(RESPONSE_TYPE_CODE)) {
+            validateResponseTypeCode(requestJwtClaimSet);
+        } else if (responseType.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
+            validateResponseTypeCodeIdToken(requestJwtClaimSet);
+        } else {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_type not supported, must be one of: "
+                    + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
+        }
+    }
+
+    private void validateResponseTypeCode(JwtClaimsSet requestJwtClaimSet) {
+        final String responseMode = requestJwtClaimSet.get("response_mode").asString();
+        if (responseMode == null) {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
+                    "request object must contain field: response_mode when response_types is: " + RESPONSE_TYPE_CODE);
+        }
+        final List<String> validResponseModesForResponseTypeCode = List.of("jwt");
+        if (!validResponseModesForResponseTypeCode.contains(responseMode)) {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: "
+                    + validResponseModesForResponseTypeCode);
+        }
+    }
+
+    private void validateResponseTypeCodeIdToken(JwtClaimsSet requestJwtClaimSet) {
+        final String scopeClaim = requestJwtClaimSet.get("scope").asString();
+        if (scopeClaim == null) {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
+        }
+        final List<String> scopes = Arrays.asList(scopeClaim.split(" "));
+        if (!scopes.contains("openid")) {
+            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
+                    "request object must include openid as one of the requested scopes when response_types is: " + RESPONSE_TYPE_CODE_ID_TOKEN);
+        }
     }
 
     private Promise<JwtClaimsSet, NeverThrowsException> getRequestJwtClaimSet(Request request) {

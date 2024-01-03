@@ -168,8 +168,8 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      */
     private static final Set<String> VALIDATABLE_HTTP_REQUEST_METHODS = Set.of("POST", "PUT");
 
-    private static final List<String> RESPONSE_TYPE_CODE = List.of("code");
-    private static final List<String> RESPONSE_TYPE_CODE_ID_TOKEN = List.of("code id_token");
+    private static final Set<String> RESPONSE_TYPE_CODE = Set.of("code");
+    private static final Set<String> RESPONSE_TYPE_CODE_ID_TOKEN = Set.of("code", "id_token");
 
     private static final List<String> DEFAULT_SUPPORTED_JWS_ALGORITHMS = Stream.of(JwsAlgorithm.PS256, JwsAlgorithm.ES256)
                                                                                .map(JwsAlgorithm::getJwaAlgorithmName)
@@ -346,43 +346,19 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
      * @param registrationObject
      */
     void validateResponseTypes(JsonValue registrationObject) {
-        final List<String> responseTypes = registrationObject.get("response_types").asList(String.class);
-        if (responseTypes == null || responseTypes.isEmpty()) {
+        final List<String> responseTypesList = registrationObject.get("response_types").asList(String.class);
+        if (responseTypesList == null || responseTypesList.isEmpty()) {
             throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_types");
         }
-        if (responseTypes.equals(RESPONSE_TYPE_CODE)) {
-            validateResponseTypeCode(registrationObject);
-        } else if (responseTypes.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
-            validateResponseTypeCodeIdToken(registrationObject);
-        } else {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_types not supported, must be one of: "
-                    + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
-        }
-    }
 
-    private void validateResponseTypeCode(JsonValue registrationObject) {
-        final String responseMode = registrationObject.get("response_mode").asString();
-        if (responseMode == null) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
-                    "request object must contain field: response_mode when response_types is: " + RESPONSE_TYPE_CODE);
+        for (String responseTypes : responseTypesList) {
+            final HashSet<String> responseTypesSet = new HashSet<>(Arrays.asList(responseTypes.split(" ")));
+            if (!responseTypesSet.equals(RESPONSE_TYPE_CODE) && !responseTypesSet.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
+                throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
+                        "Invalid response_types value: " + responseTypes + ", must be one of: \"code\" or \"code id_token\"");
+            }
         }
-        final List<String> validResponseModesForResponseTypeCode = List.of("jwt");
-        if (!validResponseModesForResponseTypeCode.contains(responseMode)) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: "
-                    + validResponseModesForResponseTypeCode);
-        }
-    }
 
-    private void validateResponseTypeCodeIdToken(JsonValue registrationObject) {
-        final String scopeClaim = registrationObject.get("scope").asString();
-        if (scopeClaim == null) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
-        }
-        final List<String> scopes = Arrays.asList(scopeClaim.split(" "));
-        if (!scopes.contains("openid")) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
-                    "request object must include openid as one of the requested scopes when response_types is: " + RESPONSE_TYPE_CODE_ID_TOKEN);
-        }
     }
 
     /**

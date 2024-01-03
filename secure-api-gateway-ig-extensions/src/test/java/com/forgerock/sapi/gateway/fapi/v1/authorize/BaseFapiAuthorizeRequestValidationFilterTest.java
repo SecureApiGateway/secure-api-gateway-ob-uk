@@ -224,8 +224,8 @@ public abstract class BaseFapiAuthorizeRequestValidationFilterTest {
                 "redirect_uri", "https://test-tpp.com/redirect",
                 "nonce", "sdffdsdfdssfd",
                 "state", state,
-                "scope", "payments",
-                "response_type", "jwt"));
+                "scope", "openid payments",
+                "response_type", "code id_token"));
         final String signedRequestJwt = createSignedRequestJwt(requestClaims);
 
         final Request request = createRequest(signedRequestJwt, state);
@@ -240,8 +240,8 @@ public abstract class BaseFapiAuthorizeRequestValidationFilterTest {
         final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
                 "redirect_uri", "https://test-tpp.com/redirect",
                 "nonce", "sdffdsdfdssfd",
-                "scope", "payments",
-                "response_type", "jwt"));
+                "scope", "openid payments",
+                "response_type", "code id_token"));
         final String signedRequestJwt = createSignedRequestJwt(requestClaims);
 
         // state param in URI but NOT in jwt claims
@@ -251,6 +251,25 @@ public abstract class BaseFapiAuthorizeRequestValidationFilterTest {
         validateSuccessResponse(responsePromise);
         // Verify that state param was removed from the request that was sent onwards
         validateHandlerReceivedRequestWithoutStateParam();
+    }
+
+    @Test
+    void succeedsForValidRequestUsingJarm() throws Exception {
+        final String state = UUID.randomUUID().toString();
+        final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
+                "redirect_uri", "https://test-tpp.com/redirect",
+                "nonce", "sdffdsdfdssfd",
+                "state", state,
+                "scope", "openid payments",
+                "response_type", "code",
+                "response_mode", "jwt"));
+        final String signedRequestJwt = createSignedRequestJwt(requestClaims);
+
+        final Request request = createRequest(signedRequestJwt, state);
+
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, successResponseHandler);
+        validateSuccessResponse(responsePromise);
+        validateHandlerReceivedRequestWithStateParam(state);
     }
 
     protected abstract Request createRequest(String requestJwt, String state) throws Exception;
