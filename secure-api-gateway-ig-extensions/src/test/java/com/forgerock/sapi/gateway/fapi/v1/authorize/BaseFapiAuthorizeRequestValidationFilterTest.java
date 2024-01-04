@@ -272,6 +272,75 @@ public abstract class BaseFapiAuthorizeRequestValidationFilterTest {
         validateHandlerReceivedRequestWithStateParam(state);
     }
 
+    @Test
+    void failsWhenResponseTypesCodeMissingResponseMode() throws Exception {
+        final String state = UUID.randomUUID().toString();
+        final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
+                "redirect_uri", "https://test-tpp.com/redirect",
+                "nonce", "sdffdsdfdssfd",
+                "state", state,
+                "scope", "openid payments",
+                "response_type", "code"));
+        final String signedRequestJwt = createSignedRequestJwt(requestClaims);
+
+        final Request request = createRequest(signedRequestJwt, state);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, successResponseHandler);
+
+        validateErrorResponse(responsePromise, "response_mode must be specified when response_type is: \"code\"");
+    }
+
+    @Test
+    void failsWhenResponseTypeCodeInvalidResponseMode() throws Exception {
+        final String state = UUID.randomUUID().toString();
+        final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
+                "redirect_uri", "https://test-tpp.com/redirect",
+                "nonce", "sdffdsdfdssfd",
+                "state", state,
+                "scope", "openid payments",
+                "response_type", "code",
+                "response_mode", "not-supported"));
+        final String signedRequestJwt = createSignedRequestJwt(requestClaims);
+
+        final Request request = createRequest(signedRequestJwt, state);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, successResponseHandler);
+
+        validateErrorResponse(responsePromise, "response_mode must be: \"jwt\" when response_type is: \"code\"");
+    }
+
+    @Test
+    void failsWhenResponseTypeCodeIdDoesNotHaveOpenIdScope() throws Exception {
+        final String state = UUID.randomUUID().toString();
+        final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
+                "redirect_uri", "https://test-tpp.com/redirect",
+                "nonce", "sdffdsdfdssfd",
+                "state", state,
+                "scope", "payments",
+                "response_type", "code id_token"));
+        final String signedRequestJwt = createSignedRequestJwt(requestClaims);
+
+        final Request request = createRequest(signedRequestJwt, state);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, successResponseHandler);
+
+        validateErrorResponse(responsePromise, "request object must include openid as one of the requested scopes when response_type is: \"code id_token\"");
+    }
+
+    @Test
+    void failsWhenResponseTypeIsInvalid() throws Exception {
+        final String state = UUID.randomUUID().toString();
+        final JWTClaimsSet requestClaims = JWTClaimsSet.parse(Map.of("client_id", "client-123",
+                "redirect_uri", "https://test-tpp.com/redirect",
+                "nonce", "sdffdsdfdssfd",
+                "state", state,
+                "scope", "payments",
+                "response_type", "id_token"));
+        final String signedRequestJwt = createSignedRequestJwt(requestClaims);
+
+        final Request request = createRequest(signedRequestJwt, state);
+        final Promise<Response, NeverThrowsException> responsePromise = filter.filter(context, request, successResponseHandler);
+
+        validateErrorResponse(responsePromise, "response_type not supported, must be one of: \"code\", \"code id_token\"");
+    }
+
     protected abstract Request createRequest(String requestJwt, String state) throws Exception;
 
     private void validateErrorResponse(Promise<Response, NeverThrowsException> responsePromise, String expectedErrorMessage) throws IOException {

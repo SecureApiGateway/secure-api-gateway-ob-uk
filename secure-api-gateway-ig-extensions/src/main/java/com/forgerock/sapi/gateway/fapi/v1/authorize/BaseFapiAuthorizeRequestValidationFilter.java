@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 import com.forgerock.sapi.gateway.common.error.OAuthErrorResponseFactory;
 import com.forgerock.sapi.gateway.common.rest.ContentTypeFormatterFactory;
 import com.forgerock.sapi.gateway.common.rest.HttpHeaderNames;
-import com.forgerock.sapi.gateway.dcr.common.DCRErrorCode;
-import com.forgerock.sapi.gateway.dcr.common.exceptions.ValidationException;
 
 /**
  * Base class for validating that authorize requests are FAPI compliant.
@@ -98,7 +96,10 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
                 }
             }
 
-            validateResponseType(requestJwtClaimSet);
+            final Response responseTypeValidationErrorResponse = validateResponseType(acceptHeader, requestJwtClaimSet);
+            if (responseTypeValidationErrorResponse != null) {
+                return Promises.newResultPromise(responseTypeValidationErrorResponse);
+            }
 
             // Should be ignoring and not returning state if it only exists as a http request parameter and does not
             // exist in the request jwt. AM however doesn't apply this rule and returns state in the resulting redirect
@@ -112,45 +113,52 @@ public abstract class BaseFapiAuthorizeRequestValidationFilter implements Filter
         });
     }
 
-    void validateResponseType(JwtClaimsSet requestJwtClaimSet) {
+    /**
+     * Applies validation logic relating to the response_type
+     * <p>
+     * https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server specifies:
+     * the authorization server shall require
+     * <ol>
+     *     <li>the response_type value code id_token, or</li>
+     *     <li>the response_type value code in conjunction with the response_mode value jwt</li>
+     * </ol>
+     * <p>
+     * https://openid.net/specs/openid-financial-api-part-2-1_0.html#id-token-as-detached-signature-1 specifies:
+     * In addition, if the response_type value code id_token is used, the client shall include the value openid
+     * into the scope parameter in order to activate OIDC support;
+     */
+    Response validateResponseType(Header acceptHeader, JwtClaimsSet requestJwtClaimSet) {
         final String responseTypeStr = requestJwtClaimSet.get("response_type").asString();
-        if (responseTypeStr == null || responseTypeStr.isEmpty()) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request object must contain field: response_type");
-        }
         final Set<String> responseType = Set.of(responseTypeStr.split(" "));
         if (responseType.equals(RESPONSE_TYPE_CODE)) {
-            validateResponseTypeCode(requestJwtClaimSet);
+            return validateResponseTypeCode(acceptHeader, requestJwtClaimSet);
         } else if (responseType.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
-            validateResponseTypeCodeIdToken(requestJwtClaimSet);
+            return validateResponseTypeCodeIdToken(acceptHeader, requestJwtClaimSet);
         } else {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_type not supported, must be one of: "
-                    + List.of(RESPONSE_TYPE_CODE, RESPONSE_TYPE_CODE_ID_TOKEN));
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader, "response_type not supported, must be one of: \"code\", \"code id_token\"");
         }
     }
 
-    private void validateResponseTypeCode(JwtClaimsSet requestJwtClaimSet) {
+    private Response validateResponseTypeCode(Header acceptHeader, JwtClaimsSet requestJwtClaimSet) {
         final String responseMode = requestJwtClaimSet.get("response_mode").asString();
         if (responseMode == null) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
-                    "request object must contain field: response_mode when response_types is: " + RESPONSE_TYPE_CODE);
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader,
+                    "response_mode must be specified when response_type is: \"code\"");
         }
-        final List<String> validResponseModesForResponseTypeCode = List.of("jwt");
-        if (!validResponseModesForResponseTypeCode.contains(responseMode)) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "response_mode not supported, must be one of: "
-                    + validResponseModesForResponseTypeCode);
+        if (!"jwt".equals(responseMode)) {
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader,"response_mode must be: \"jwt\" when response_type is: \"code\"");
         }
+        return null;
     }
 
-    private void validateResponseTypeCodeIdToken(JwtClaimsSet requestJwtClaimSet) {
+    private Response validateResponseTypeCodeIdToken(Header acceptHeader, JwtClaimsSet requestJwtClaimSet) {
         final String scopeClaim = requestJwtClaimSet.get("scope").asString();
-        if (scopeClaim == null) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA, "request must contain field: scope");
-        }
         final List<String> scopes = Arrays.asList(scopeClaim.split(" "));
         if (!scopes.contains("openid")) {
-            throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
-                    "request object must include openid as one of the requested scopes when response_types is: " + RESPONSE_TYPE_CODE_ID_TOKEN);
+            return errorResponseFactory.invalidRequestErrorResponse(acceptHeader,
+                    "request object must include openid as one of the requested scopes when response_type is: \"code id_token\"");
         }
+        return null;
     }
 
     private Promise<JwtClaimsSet, NeverThrowsException> getRequestJwtClaimSet(Request request) {
