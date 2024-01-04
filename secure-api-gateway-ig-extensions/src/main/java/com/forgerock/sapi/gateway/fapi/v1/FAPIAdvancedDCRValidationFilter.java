@@ -337,12 +337,14 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
     }
 
     /**
-     * https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server
-     * Part 2 specifies:
+     * Validates that the response_types field contains only FAPI compliant response_type values, namely
+     * "code" or "code id_token".
+     * <p>
+     * https://openid.net/specs/openid-financial-api-part-2-1_0.html#authorization-server specifies:
      * the authorization server shall require
      *
      *    1. the response_type value code id_token, or
-     *    2.  the response_type value code in conjunction with the response_mode value jwt;
+     *    2. the response_type value code in conjunction with the response_mode value jwt
      * @param registrationObject
      */
     void validateResponseTypes(JsonValue registrationObject) {
@@ -352,7 +354,8 @@ public class FAPIAdvancedDCRValidationFilter implements Filter {
         }
 
         for (String responseTypes : responseTypesList) {
-            final HashSet<String> responseTypesSet = new HashSet<>(Arrays.asList(responseTypes.split(" ")));
+            // Convert the request responseTypes String into a set by splitting on whitespace
+            final Set<String> responseTypesSet = Set.of(responseTypes.split(" "));
             if (!responseTypesSet.equals(RESPONSE_TYPE_CODE) && !responseTypesSet.equals(RESPONSE_TYPE_CODE_ID_TOKEN)) {
                 throw new ValidationException(DCRErrorCode.INVALID_CLIENT_METADATA,
                         "Invalid response_types value: " + responseTypes + ", must be one of: \"code\" or \"code id_token\"");
