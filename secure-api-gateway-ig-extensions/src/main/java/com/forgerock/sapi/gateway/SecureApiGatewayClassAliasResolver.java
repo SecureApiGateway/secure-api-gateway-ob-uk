@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.forgerock.openig.alias.ClassAliasResolver;
 
+import com.forgerock.sapi.gateway.am.JwtReSigner;
 import com.forgerock.sapi.gateway.am.ReSignIdTokenFilter;
 import com.forgerock.sapi.gateway.common.exception.SapiLogAttachedExceptionFilterHeaplet;
 import com.forgerock.sapi.gateway.consent.ConsentRequestAccessAuthorisationFilter;
@@ -77,6 +78,7 @@ public class SecureApiGatewayClassAliasResolver implements ClassAliasResolver {
         ALIASES.put("FapiAuthorizeRequestValidationFilter", FapiAuthorizeRequestValidationFilter.class);
         ALIASES.put("FapiParRequestValidationFilter", FapiParRequestValidationFilter.class);
         ALIASES.put("ParResponseFetchApiClientFilter", ParResponseFetchApiClientFilterHeaplet.class);
+        ALIASES.put("JwtReSigner", JwtReSigner.class);
     }
 
     /**

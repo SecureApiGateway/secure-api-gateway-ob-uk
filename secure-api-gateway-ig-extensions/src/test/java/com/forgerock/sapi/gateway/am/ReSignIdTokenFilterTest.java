@@ -18,19 +18,13 @@ package com.forgerock.sapi.gateway.am;
 import static org.forgerock.json.JsonValue.field;
 import static org.forgerock.json.JsonValue.json;
 import static org.forgerock.json.JsonValue.object;
-import static org.forgerock.json.jose.utils.BigIntegerUtils.base64UrlEncodeUnsignedBigEndian;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -45,22 +39,12 @@ import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.JsonValue;
-import org.forgerock.json.jose.jwk.JWKSet;
-import org.forgerock.json.jose.jwk.RsaJWK;
 import org.forgerock.openig.heap.HeapException;
 import org.forgerock.openig.heap.HeapImpl;
 import org.forgerock.openig.heap.Name;
-import org.forgerock.secrets.NoSuchSecretException;
-import org.forgerock.secrets.Purpose;
-import org.forgerock.secrets.SecretBuilder;
-import org.forgerock.secrets.SecretsProvider;
-import org.forgerock.secrets.jwkset.JwkSetSecretStore;
-import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.secrets.keys.VerificationKey;
 import org.forgerock.services.context.AttributesContext;
 import org.forgerock.services.context.Context;
 import org.forgerock.services.context.RootContext;
-import org.forgerock.util.Options;
 import org.forgerock.util.promise.NeverThrowsException;
 import org.forgerock.util.promise.Promise;
 import org.junit.jupiter.api.Nested;
@@ -73,14 +57,7 @@ import com.forgerock.sapi.gateway.am.ReSignIdTokenFilter.IdTokenAccessorLocator;
 import com.forgerock.sapi.gateway.util.CryptoUtils;
 import com.forgerock.sapi.gateway.util.TestHandlers.FixedResponseHandler;
 import com.forgerock.sapi.gateway.util.TestHandlers.TestHandler;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSHeader.Builder;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 
 class ReSignIdTokenFilterTest {
 
@@ -94,56 +71,16 @@ class ReSignIdTokenFilterTest {
     private static final String ID_TOKEN = "id_token";
     private static final String TOKEN_TYPE = "token_type";
     private static final String EXPIRES_IN = "expires_in";
-    private static final String ID_TOKEN_ISSUER = "openam";
-    private static final String TOKEN_NAME = "tokenName";
-    private static final String TOKEN_NAME_VALUE = "id_token";
     private static final String REDIRECT_URI = "https://acme-fintech/callback";
     private static final String AUTHORISATION_CODE_PARAM = "code";
     private static final String AUTHORISATION_CODE_VALUE = "fsfgfgftwtqrtwq34";
 
-    // AM related secrets
-    private final RSASSASigner amJwtSigner;
-    private final String amSigningKeyId;
-    private final SecretsProvider amVerifyingSecretsProvider;
-    private final Purpose<VerificationKey> amVerificationKeyPurpose;
-
-    // OB releated secrets
-    private final RSASSAVerifier obJwtVerifier;
-    private final String obSigningKeyId;
-    private final SecretsProvider obSigningSecretsProvider;
-    private final Purpose<SigningKey> signingKeyPurpose = Purpose.SIGN;
+    private final JwtReSignerTestResourceManager jwtReSignerTestResourceManager;
+    private final JwtReSigner jwtReSigner;
 
     public ReSignIdTokenFilterTest() {
-        final KeyPair amKeyPair = CryptoUtils.generateRsaKeyPair();
-        this.amJwtSigner = new RSASSASigner(amKeyPair.getPrivate());
-        this.amSigningKeyId = "am-kid";
-
-        this.amVerifyingSecretsProvider = new SecretsProvider(Clock.systemUTC());
-
-        // Create a JwkSetSecretStore using the AM public key, used in the filter to verify signs from AM
-        final RSAPublicKey amPublicKey = (RSAPublicKey) amKeyPair.getPublic();
-        final RsaJWK amSigningKeyJwk = RsaJWK.builder(base64UrlEncodeUnsignedBigEndian(amPublicKey.getModulus()),
-                                                      base64UrlEncodeUnsignedBigEndian(amPublicKey.getPublicExponent()))
-                                             .keyId(amSigningKeyId).build();
-        final JWKSet amJwks = new JWKSet(amSigningKeyJwk);
-        amVerifyingSecretsProvider.setDefaultStores(new JwkSetSecretStore(amJwks, Options.unmodifiableDefaultOptions()));
-
-        // When using the JwkSetSecretStore, the verification key id is not used but needs to be valid as per the regex.
-        this.amVerificationKeyPurpose = Purpose.purpose("any.value", VerificationKey.class);
-
-        final KeyPair obKeyPair = CryptoUtils.generateRsaKeyPair();
-        this.obJwtVerifier = new RSASSAVerifier((RSAPublicKey) obKeyPair.getPublic());
-        this.obSigningKeyId = "ob-kid";
-
-        // SecretProvider installed into the filter that does the signing
-        obSigningSecretsProvider = new SecretsProvider(Clock.systemUTC());
-        try {
-            obSigningSecretsProvider.useSpecificSecretForPurpose(signingKeyPurpose,
-                    new SigningKey(new SecretBuilder().stableId(obSigningKeyId).secretKey(obKeyPair.getPrivate()).expiresAt(Instant.MAX)));
-        } catch (NoSuchSecretException e) {
-            throw new RuntimeException(e);
-        }
-
+        jwtReSignerTestResourceManager = new JwtReSignerTestResourceManager();
+        jwtReSigner = jwtReSignerTestResourceManager.getJwtReSigner();
     }
 
     private static Response buildAccessTokenEndpointResponse(String idToken) {
@@ -172,25 +109,8 @@ class ReSignIdTokenFilterTest {
         return new Response(Status.OK).addHeaders(new LocationHeader(locationUri));
     }
 
-    private String createAmSignedIdToken(String jti) {
-        try {
-            return createSignedIdToken(amJwtSigner, amSigningKeyId, jti);
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static String createSignedIdToken(RSASSASigner signer, String kid, String jti) throws JOSEException {
-        final SignedJWT signedJWT = new SignedJWT(new Builder(JWSAlgorithm.PS256).keyID(kid).build(),
-                new JWTClaimsSet.Builder().issuer(ID_TOKEN_ISSUER).claim(TOKEN_NAME, TOKEN_NAME_VALUE).jwtID(jti).build());
-
-        signedJWT.sign(signer);
-        return signedJWT.serialize();
-    }
-
     private ReSignIdTokenFilter createFilter(IdTokenAccessorLocator idTokenAccessorLocator) {
-        return new ReSignIdTokenFilter(amVerifyingSecretsProvider, amVerificationKeyPurpose, obSigningKeyId,
-                obSigningSecretsProvider, signingKeyPurpose, idTokenAccessorLocator);
+        return new ReSignIdTokenFilter(jwtReSigner, idTokenAccessorLocator);
     }
 
     @Test
@@ -200,7 +120,7 @@ class ReSignIdTokenFilterTest {
 
     private void testAccessTokenEndpointIdTokenIsReSigned(ReSignIdTokenFilter reSignIdTokenFilter) {
         final String expectedJti = UUID.randomUUID().toString();
-        final TestHandler responseHandler = new FixedResponseHandler(buildAccessTokenEndpointResponse(createAmSignedIdToken(expectedJti)));
+        final TestHandler responseHandler = new FixedResponseHandler(buildAccessTokenEndpointResponse(jwtReSignerTestResourceManager.createAmSignedIdToken(expectedJti)));
 
         final Response response = invokeFilter(reSignIdTokenFilter, responseHandler);
 
@@ -214,7 +134,7 @@ class ReSignIdTokenFilterTest {
 
     private void testAuthoriseEndpointFragmentIdTokenIsReSigned(ReSignIdTokenFilter reSignIdTokenFilter) {
         final String expectedJti = UUID.randomUUID().toString();
-        final TestHandler responseHandler = new FixedResponseHandler(buildAuthoriseEndpointFragmentResponse(createAmSignedIdToken(expectedJti)));
+        final TestHandler responseHandler = new FixedResponseHandler(buildAuthoriseEndpointFragmentResponse(jwtReSignerTestResourceManager.createAmSignedIdToken(expectedJti)));
 
         final Response response = invokeFilter(reSignIdTokenFilter, responseHandler);
 
@@ -228,7 +148,7 @@ class ReSignIdTokenFilterTest {
 
     private void testAuthoriseEndpointQueryIdTokenIsReSigned(ReSignIdTokenFilter reSignIdTokenFilter) {
         final String expectedJti = UUID.randomUUID().toString();
-        final TestHandler responseHandler = new FixedResponseHandler(buildAuthoriseEndpointQueryResponse(createAmSignedIdToken(expectedJti)));
+        final TestHandler responseHandler = new FixedResponseHandler(buildAuthoriseEndpointQueryResponse(jwtReSignerTestResourceManager.createAmSignedIdToken(expectedJti)));
 
         final Response response = invokeFilter(reSignIdTokenFilter, responseHandler);
 
@@ -270,13 +190,13 @@ class ReSignIdTokenFilterTest {
     }
 
     @Test
-    void testIdTokensNotSignedCorrectlyRaisesError() throws JOSEException {
+    void testIdTokensNotSignedCorrectlyRaisesError() {
         final ReSignIdTokenFilter reSignIdTokenFilter = createFilter(new AccessTokenEndpointIdTokenAccessorLocator());
         final String expectedJti = UUID.randomUUID().toString();
 
         final RSASSASigner signerWithUnknownKey = new RSASSASigner(CryptoUtils.generateRsaKeyPair().getPrivate());
         final TestHandler responseHandler = new FixedResponseHandler(buildAccessTokenEndpointResponse(
-                createSignedIdToken(signerWithUnknownKey, amSigningKeyId, expectedJti)));
+                jwtReSignerTestResourceManager.createSignedIdToken(signerWithUnknownKey, "kid-123", expectedJti)));
 
         final Response response = invokeFilter(reSignIdTokenFilter, responseHandler);
         assertEquals(Status.INTERNAL_SERVER_ERROR, response.getStatus());
@@ -316,17 +236,12 @@ class ReSignIdTokenFilterTest {
 
         private HeapImpl createHeap() {
             final HeapImpl heap = new HeapImpl(Name.of("test"));
-            heap.put("ObSigningSecretsProvider", obSigningSecretsProvider);
-            heap.put("AMSecretsProvider", amVerifyingSecretsProvider);
+            heap.put("jwtReSigner", jwtReSigner);
             return heap;
         }
 
         private JsonValue createJsonConfig(String endpointType) {
-            return json(object(field("verificationSecretsProvider", "AMSecretsProvider"),
-                               field("verificationSecretId", "value.is.ignored"),
-                               field("signingSecretsProvider", "ObSigningSecretsProvider"),
-                               field("signingKeyId", obSigningKeyId),
-                               field("signingKeySecretId", signingKeyPurpose.getLabel()),
+            return json(object(field("jwtReSigner", "jwtReSigner"),
                                field("endpointType", endpointType)));
         }
 
@@ -350,7 +265,7 @@ class ReSignIdTokenFilterTest {
             final JsonValue json = validateResponseJwtNonIdTokenFields(response);
 
             final String idToken = json.get(ID_TOKEN).asString();
-            validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken);
+            jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken);
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
         }
@@ -367,31 +282,13 @@ class ReSignIdTokenFilterTest {
         return json;
     }
 
-    private void validateIdTokenHasBeenReSigned(String expectedIdTokenJti, String idToken) throws ParseException {
-        final SignedJWT idTokenJwt = SignedJWT.parse(idToken);
-        try {
-            idTokenJwt.verify(obJwtVerifier);
-        } catch (JOSEException e) {
-            fail("Failed to verify id_token was signed by ob key", e);
-        }
-
-        // Valid the id_token header and claims match what is expected
-        final JWSHeader header = idTokenJwt.getHeader();
-        assertEquals(JWSAlgorithm.PS256, header.getAlgorithm());
-        assertEquals(obSigningKeyId, header.getKeyID());
-        final JWTClaimsSet jwtClaimsSet = idTokenJwt.getJWTClaimsSet();
-        assertEquals(ID_TOKEN_ISSUER, jwtClaimsSet.getIssuer());
-        assertEquals(TOKEN_NAME_VALUE, jwtClaimsSet.getClaim(TOKEN_NAME));
-        assertEquals(expectedIdTokenJti, jwtClaimsSet.getJWTID());
-    }
-
     private void validateSuccessAuthoriseFragmentResponse(Response response, String expectedIdTokenJti) {
         assertEquals(Status.OK, response.getStatus());
         final MutableUri locationUri = getLocationUri(response);
         try {
             final Optional<String> idToken = new Form().fromQueryString(locationUri.getFragment()).get(ID_TOKEN).stream().findFirst();
             assertTrue(idToken.isPresent());
-            validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
+            jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
         } catch (ParseException ex) {
             throw new RuntimeException(ex);
         }
@@ -403,7 +300,7 @@ class ReSignIdTokenFilterTest {
         try {
             final Optional<String> idToken = new Form().fromQueryString(locationUri.getQuery()).get(ID_TOKEN).stream().findFirst();
             assertTrue(idToken.isPresent());
-            validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
+            jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
         } catch (ParseException ex) {
             throw new RuntimeException(ex);
         }

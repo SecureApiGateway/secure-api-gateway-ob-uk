@@ -16,8 +16,6 @@
 package com.forgerock.sapi.gateway.am;
 
 import static org.forgerock.json.JsonValue.json;
-import static org.forgerock.json.jose.utils.JoseSecretConstraints.allowedAlgorithm;
-import static org.forgerock.openig.util.JsonValues.purposeOf;
 import static org.forgerock.openig.util.JsonValues.requiredHeapObject;
 import static org.forgerock.util.promise.Promises.newExceptionPromise;
 import static org.forgerock.util.promise.Promises.newResultPromise;
@@ -39,18 +37,8 @@ import org.forgerock.http.protocol.Request;
 import org.forgerock.http.protocol.Response;
 import org.forgerock.http.protocol.Status;
 import org.forgerock.json.JsonValue;
-import org.forgerock.json.jose.common.JwtReconstruction;
-import org.forgerock.json.jose.jws.JwsAlgorithm;
-import org.forgerock.json.jose.jws.JwsHeader;
-import org.forgerock.json.jose.jws.SignedJwt;
-import org.forgerock.json.jose.jws.SigningManager;
-import org.forgerock.json.jose.jws.handlers.SigningHandler;
 import org.forgerock.openig.heap.GenericHeaplet;
 import org.forgerock.openig.heap.HeapException;
-import org.forgerock.secrets.Purpose;
-import org.forgerock.secrets.SecretsProvider;
-import org.forgerock.secrets.keys.SigningKey;
-import org.forgerock.secrets.keys.VerificationKey;
 import org.forgerock.services.context.Context;
 import org.forgerock.util.Reject;
 import org.forgerock.util.promise.NeverThrowsException;
@@ -82,28 +70,10 @@ public class ReSignIdTokenFilter implements Filter {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
-     * SigningManager containing AM Secrets to be used to validate that JWTs in the response path have been signed
-     * correctly by AM before we re-sign them.
+     * Takes a JWT as input, verifies the signature and re-signs it with the configured private key.
      */
-    private final SigningManager verificationSigningManager;
-    /**
-     * Purpose used to find the VerificationKey in the verificationSigningManager to verify signatures with
-     */
-    private final Purpose<VerificationKey> verificationKeyPurpose;
-    /**
-     * The kid value to specify in the header of the re-signed JWT (must match a value in the trusted directories' jwks_uri)
-     */
-    private final String signingKeyId;
-    /**
-     * Purpose used to find the SigningKey in the SigningManager, should be configured to find the private key for
-     * the signingKeyId
-     */
-    private final Purpose<SigningKey> signingKeyPurpose;
-    /**
-     * Created using the {@link SecretsProvider} passed to the constructor, used to create new {@link SigningHandler}
-     * objects on a per Response processing basis.
-     */
-    private final SigningManager signingManager;
+    private final JwtReSigner jwtReSigner;
+
     /**
      * Locator of an {@link IdTokenAccessor} for a given Response.
      * <p>
@@ -112,24 +82,10 @@ public class ReSignIdTokenFilter implements Filter {
      */
     private final IdTokenAccessorLocator idTokenAccessorLocator;
 
-    public ReSignIdTokenFilter(SecretsProvider verificationSecretsProvider,
-                               Purpose<VerificationKey> verificationKeyPurpose,
-                               String signingKeyId,
-                               SecretsProvider signingSecretsProvider,
-                               Purpose<SigningKey> signingKeyPurpose,
-                               IdTokenAccessorLocator idTokenAccessorLocator) {
-
-        Reject.ifNull(verificationSecretsProvider, "verificationSecretsProvider must be supplied");
-        Reject.ifNull(verificationKeyPurpose, "verificationKeyPurpose must be supplied");
-        Reject.ifNull(signingKeyId, "signingKeyId must be supplied");
-        Reject.ifNull(signingSecretsProvider, "signingSecretsProvider must be supplied");
-        Reject.ifNull(signingKeyPurpose, "signingKeyPurpose must be supplied");
+    public ReSignIdTokenFilter(JwtReSigner jwtReSigner, IdTokenAccessorLocator idTokenAccessorLocator) {
+        Reject.ifNull(jwtReSigner, "jwtReSigner must be supplied");
         Reject.ifNull(idTokenAccessorLocator, "idTokenLocator must be supplied");
-        this.verificationSigningManager = new SigningManager(verificationSecretsProvider);
-        this.verificationKeyPurpose = verificationKeyPurpose;
-        this.signingKeyId = signingKeyId;
-        this.signingKeyPurpose = signingKeyPurpose;
-        this.signingManager = new SigningManager(signingSecretsProvider);
+        this.jwtReSigner = jwtReSigner;
         this.idTokenAccessorLocator = idTokenAccessorLocator;
     }
 
@@ -149,59 +105,16 @@ public class ReSignIdTokenFilter implements Filter {
                     final String idTokenJwtString = idTokenAccessor.getIdToken();
                     logger.debug("Located id_token: {}", idTokenJwtString);
 
-                    final SignedJwt signedJwt = new JwtReconstruction().reconstructJwt(idTokenJwtString, SignedJwt.class);
-                    return verifyAmSignedIdToken(signedJwt).thenAsync(signatureValid -> {
-                        if (!signatureValid) {
-                            logger.error("id_token: {} does not have a valid signature", idTokenJwtString);
-                            return newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
-                        }
-
-                        return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> {
-                            final String resignedIdTokenJwtString = reSignJwt(signedJwt, signingHandler);
-                            logger.debug("id_token re-signed: {}", resignedIdTokenJwtString);
-                            idTokenAccessor.setIdToken(resignedIdTokenJwtString);
-                            return response;
-                        }, nsse -> {
-                            logger.error("Failed to create signingHandler", nsse);
-                            return new Response(Status.INTERNAL_SERVER_ERROR);
-                        });
-                    });
-                }, e -> {
-                    logger.warn("Failed to locate id_token", e);
+                    return jwtReSigner.reSignJwt(idTokenJwtString).then(resignedIdTokenJwtString -> {
+                        idTokenAccessor.setIdToken(resignedIdTokenJwtString);
+                        return response;
+                    }, ex -> new Response(Status.INTERNAL_SERVER_ERROR));
+                }, ex -> {
+                    logger.error("Failed to re-sign id_token JWT", ex);
                     return newResultPromise(new Response(Status.INTERNAL_SERVER_ERROR));
                 });
             }
         });
-    }
-
-    /**
-     * Method to verify that the id_token SignedJwt was signed by AM
-     *
-     * @param signedJwt SignedJwt the JWT to verify that AM has signed
-     * @return Promise<Boolean, NeverThrowsException> the result of signature verification
-     */
-    private Promise<Boolean, NeverThrowsException> verifyAmSignedIdToken(SignedJwt signedJwt) {
-        final JwsAlgorithm algorithm = signedJwt.getHeader().getAlgorithm();
-        final Purpose<VerificationKey> constrainedPurpose =
-                verificationKeyPurpose.withConstraints(allowedAlgorithm(algorithm));
-
-        final String keyId = signedJwt.getHeader().getKeyId();
-        return verificationSigningManager.newVerificationHandler(constrainedPurpose, keyId)
-                                         .then(signedJwt::verify);
-    }
-
-    /**
-     * Re-signs the supplied jwt using the signingKeyId and supplied signingHandler
-     *
-     * @param signedJwt      SignedJwt the JWT to re-sign
-     * @param signingHandler SigningHandler capable of signing the JWT
-     * @return String jwt signed using the signingKeyId
-     */
-    private String reSignJwt(SignedJwt signedJwt, SigningHandler signingHandler) {
-        final JwsHeader headerWithCorrectKeyId = new JwsHeader(signedJwt.getHeader().getParameters());
-        headerWithCorrectKeyId.setKeyId(signingKeyId);
-        final SignedJwt resignedIdTokenJwt = new SignedJwt(headerWithCorrectKeyId, signedJwt.getClaimsSet(), signingHandler);
-        return resignedIdTokenJwt.build();
     }
 
     /**
@@ -369,30 +282,24 @@ public class ReSignIdTokenFilter implements Filter {
      * Heaplet which creates {@link ReSignIdTokenFilter} objects.
      * <p>
      * Configuration:
-     * - verificationSecretsProvider the name of the SecretsProvider heap object that contains the AM secrets
-     *                               used to verify the id_token was signed by AM before re-signing it.
-     * - verificationSecretId the secret id of the verification key in the verificationSecretsProvider.
-     *                        Note: when using a {@link org.forgerock.secrets.jwkset.JwkSetSecretStore} based provider
-     *                        then this value is not used in the key lookup but must be a non-blank value
-     * - signingKeyId the kid value to specify in the re-signed JWS header
-     * - signingSecretsProvider the name of the SecretsProvider heap object that contains the signing private key for the kid
-     * - signingKeySecretId the secretId used to find the signing key in the secretsProvider
-     * - endpointType which endpoint is this filter being used with, valid values: [access_token, authorize]
+     * <ul>
+     *     <li>endpointType which endpoint is this filter being used with, valid values: [access_token, authorize]</li>
+     *     <li>jwtReSigner name of a {@link JwtReSigner} available on the heap, used to validate in the incoming JWT
+     *         and produce the new JWT signed with the correct key and keyId.</li>
+     * </ul>
      * <p>
+     * <pre>{@code
      * Example config:
      * {
      *   "name": "ReSignIdTokenFilter",
      *   "type": "ReSignIdTokenFilter",
      *   "comment": "Re-sign the id_token returned by AM to fix OB keyId issue",
      *   "config": {
-     *     "verificationSecretsProvider": "SecretsProvider-AmJWK",
-     *     "verificationSecretId": "any.valid.regex.value",
-     *     "signingKeyId": "&{ig.ob.aspsp.signing.kid}",
-     *     "signingSecretsProvider": "SecretsProvider-ASPSP",
-     *     "signingKeySecretId": "jwt.signer",
-     *     "endpointType": "access_token"
+     *     "endpointType": "access_token",
+     *     "jwtReSigner": "jwtReSigner"
      *   }
-      *}
+     * }
+     * }</pre>
      */
     public static class Heaplet extends GenericHeaplet {
         private static final Map<String, Supplier<IdTokenAccessorLocator>> ENDPOINT_TYPE_REGISTRY = new HashMap<>();
@@ -404,28 +311,15 @@ public class ReSignIdTokenFilter implements Filter {
 
         @Override
         public Object create() throws HeapException {
-            final SecretsProvider signingSecretsProvider = config.get("signingSecretsProvider")
-                                                                 .as(requiredHeapObject(heap, SecretsProvider.class));
-            final Purpose<SigningKey> signingKeyPurpose = config.get("signingKeySecretId")
-                                                                .as(purposeOf(SigningKey.class));
 
             final String endpointType = config.get("endpointType").asString();
             final Supplier<IdTokenAccessorLocator> idTokenAccessorLocatorSupplier = ENDPOINT_TYPE_REGISTRY.get(endpointType);
             Reject.ifNull(idTokenAccessorLocatorSupplier,
                     "Unsupported endpointType: " + endpointType + ", specify one of: " + ENDPOINT_TYPE_REGISTRY.keySet());
 
-            final SecretsProvider verificationSecretsProvider = config.get("verificationSecretsProvider")
-                                                                      .as(requiredHeapObject(heap, SecretsProvider.class));
-            final Purpose<VerificationKey> verificationKeyPurpose = config.get("verificationSecretId")
-                                                                          .as(purposeOf(VerificationKey.class));
+            final JwtReSigner jwtReSigner = config.get("jwtReSigner").as(requiredHeapObject(heap, JwtReSigner.class));
 
-            final String signingKeyId = config.get("signingKeyId").asString();
-            return new ReSignIdTokenFilter(verificationSecretsProvider,
-                                           verificationKeyPurpose,
-                                           signingKeyId,
-                                           signingSecretsProvider,
-                                           signingKeyPurpose,
-                                           idTokenAccessorLocatorSupplier.get());
+            return new ReSignIdTokenFilter(jwtReSigner, idTokenAccessorLocatorSupplier.get());
         }
     }
 }
