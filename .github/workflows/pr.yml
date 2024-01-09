@@ -67,15 +67,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
-    needs: build
-    #if: github.actor != 'dependabot[bot]'
-    if: ${{ needs.GITHUB_USER.outputs.username }} != 'shaunharrisonfr'
+    needs: build    
     steps:
-      - name: test
-        run: |
-          echo ${{ needs.GITHUB_USER.outputs.username }}
       - name: 'Update Environment'
         uses: codefresh-io/codefresh-pipeline-runner@master
+        if: ${{ needs.GITHUB_USER.outputs.username }} != 'shaunharrisonfr'
         with:
           args: '-v TAG=${{ env.PR_NUMBER }} -v SERVICE_NAME=${{ env.SERVICE_NAME }} -v ENVIRONMENT=${{ env.GITHUB_USER }}'
         env:
