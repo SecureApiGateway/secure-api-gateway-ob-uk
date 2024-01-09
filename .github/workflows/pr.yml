@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     outputs:
-      GITHUB_USER: ${{ steps.github_username.outputs.username }}
+      GITHUB_USER: ${{ steps.github_username.outputs.GITHUB_USER }}
     steps:
       - name: Create lowercase Github Username
         id: github_username
@@ -71,7 +71,7 @@ jobs:
     steps:
       - name: 'Update Environment'
         uses: codefresh-io/codefresh-pipeline-runner@master
-        if: ${{ needs.GITHUB_USER.outputs.username }} != 'shaunharrisonfr'
+        if: needs.GITHUB_USER.outputs.GITHUB_USER != 'shaunharrisonfr'
         with:
           args: '-v TAG=${{ env.PR_NUMBER }} -v SERVICE_NAME=${{ env.SERVICE_NAME }} -v ENVIRONMENT=${{ env.GITHUB_USER }}'
         env:
