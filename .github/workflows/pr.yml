@@ -67,7 +67,7 @@ jobs:
     name: Deploy
     needs: build
     #if: github.actor != 'dependabot[bot]'
-    if: ${{ steps.github_username.outputs.GITHUB_USER }}!= 'shaunharrisonfr'
+    if: ${{ needs.build.github_username.outputs.GITHUB_USER }}!= 'shaunharrisonfr'
     steps:       
       - name: 'Update Environment'
         uses: codefresh-io/codefresh-pipeline-runner@master
