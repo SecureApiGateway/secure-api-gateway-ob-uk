@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Create lowercase Github Username
         id: github_username
-        run: echo "::set-output name=username::$(echo ${{github.actor}} | tr '[:upper:]' '[:lower:]')"
+        run: echo "GITHUB_USER=$(echo ${{github.actor}} | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_OUTPUT}
       
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -67,7 +67,7 @@ jobs:
     name: Deploy
     needs: build
     #if: github.actor != 'dependabot[bot]'
-    if: ${{ jobs.build.steps.github_username.outputs.username }} != 'shaunharrisonfr'
+    if: ${{ steps.github_username.outputs.GITHUB_USER }}!= 'shaunharrisonfr'
     steps:       
       - name: 'Update Environment'
         uses: codefresh-io/codefresh-pipeline-runner@master
