@@ -16,12 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     steps:
-      - uses: actions/checkout@v3
+      - name: Create lowercase Github Username
+        id: github_username
+        run: echo "::set-output name=username::$(echo ${{github.actor}} | tr '[:upper:]' '[:lower:]')"
+      
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
       # set java and cache
       - name: Set Java and Maven Cache
         uses: actions/setup-java@v3
-        id: set_java_maven
         with:
           distribution: 'adopt'
           java-version: '17'
@@ -62,15 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     needs: build
-    steps:
-
-      - name: Create lowercase Github Username
-        id: toLowerCase
-        run: echo "GITHUB_USER=$(echo ${{github.actor}} | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
-            
+    #if: github.actor != 'dependabot[bot]'
+    if: ${{ jobs.build.steps.github_username.outputs.username }} != 'shaunharrisonfr'
+    steps:       
       - name: 'Update Environment'
         uses: codefresh-io/codefresh-pipeline-runner@master
-        if: github.actor != 'dependabot[bot]'
         with:
           args: '-v TAG=${{ env.PR_NUMBER }} -v SERVICE_NAME=${{ env.SERVICE_NAME }} -v ENVIRONMENT=${{ env.GITHUB_USER }}'
         env:
