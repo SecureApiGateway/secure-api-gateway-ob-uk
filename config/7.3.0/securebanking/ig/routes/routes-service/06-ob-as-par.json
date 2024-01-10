@@ -45,15 +45,6 @@
             "idmGetApiClientBaseUri": "https://&{identity.platform.fqdn}/openidm/managed/apiClient",
             "clientHandler": "IDMClientHandler"
           }
-        },
-        {
-          "name": "ReSignIdTokenFilter",
-          "type": "ReSignIdTokenFilter",
-          "comment": "Re-sign the id_token returned by AM to fix OB keyId issue",
-          "config": {
-            "jwtReSigner": "ObJwtReSigner",
-            "endpointType": "authorize"
-          }
         }
       ],
       "handler": "FRReverseProxyHandler"

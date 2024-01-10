@@ -47,12 +47,11 @@
           }
         },
         {
-          "name": "ReSignIdTokenFilter",
-          "type": "ReSignIdTokenFilter",
-          "comment": "Re-sign the id_token returned by AM to fix OB keyId issue",
+          "name": "AuthorizeResponseJwtReSignFilter",
+          "type": "AuthorizeResponseJwtReSignFilter",
+          "comment": "Re-sign the authorize response data (id_token and/or JARM response) returned by AM to fix OB keyId issue",
           "config": {
-            "jwtReSigner": "ObJwtReSigner",
-            "endpointType": "authorize"
+            "jwtReSigner": "ObJwtReSigner"
           }
         }
       ],

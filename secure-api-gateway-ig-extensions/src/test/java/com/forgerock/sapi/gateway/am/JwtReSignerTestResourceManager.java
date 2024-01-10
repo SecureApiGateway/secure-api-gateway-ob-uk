@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.forgerock.json.jose.jwk.JWKSet;
 import org.forgerock.json.jose.jwk.RsaJWK;
@@ -140,6 +141,10 @@ public class JwtReSignerTestResourceManager {
         return createSignedJwt(amJwtSigner, amSigningKeyId, jti);
     }
 
+    public String createAmSignedJwt(String jti, Map<String, Object> additionalClaims) {
+        return createSignedJwt(amJwtSigner, amSigningKeyId, jti, additionalClaims);
+    }
+
     public String createAmSignedIdToken(String jti) {
         return createSignedIdToken(amJwtSigner, amSigningKeyId, jti);
     }
@@ -165,8 +170,12 @@ public class JwtReSignerTestResourceManager {
         }
         return signedJWT.serialize();
     }
+    public void validateJwtHasBeenReSigned(String expectedJti, String reSignedJwtString) {
+        validateJwtHasBeenReSigned(expectedJti, reSignedJwtString, ignored -> {});
+    }
 
-    public void validateJwtHasBeenReSigned(String expectedIdTokenJti, String reSignedJwtString) {
+
+    public void validateJwtHasBeenReSigned(String expectedJti, String reSignedJwtString, Consumer<SignedJWT> additionalValidation) {
         final SignedJWT reSignedJwt;
         try {
             reSignedJwt = SignedJWT.parse(reSignedJwtString);
@@ -189,15 +198,21 @@ public class JwtReSignerTestResourceManager {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
-        assertEquals(expectedIdTokenJti, jwtClaimsSet.getJWTID());
+        assertEquals(expectedJti, jwtClaimsSet.getJWTID());
+
+        additionalValidation.accept(reSignedJwt);
     }
 
-    public void validateIdTokenHasBeenReSigned(String expectedIdTokenJti, String idToken) throws ParseException {
-        validateJwtHasBeenReSigned(expectedIdTokenJti, idToken);
-        final SignedJWT idTokenJwt = SignedJWT.parse(idToken);
-        final JWTClaimsSet jwtClaimsSet = idTokenJwt.getJWTClaimsSet();
-        assertEquals(ID_TOKEN_ISSUER, jwtClaimsSet.getIssuer());
-        assertEquals(ID_TOKEN_TOKEN_CLAIM_VALUE, jwtClaimsSet.getClaim(TOKEN_CLAIM_NAME));
-        assertEquals(expectedIdTokenJti, jwtClaimsSet.getJWTID());
+    public void validateIdTokenHasBeenReSigned(String expectedIdTokenJti, String idToken)  {
+        validateJwtHasBeenReSigned(expectedIdTokenJti, idToken, reSignedJwt -> {
+            try {
+                final JWTClaimsSet jwtClaimsSet = reSignedJwt.getJWTClaimsSet();
+                assertEquals(ID_TOKEN_ISSUER, jwtClaimsSet.getIssuer());
+                assertEquals(ID_TOKEN_TOKEN_CLAIM_VALUE, jwtClaimsSet.getClaim(TOKEN_CLAIM_NAME));
+                assertEquals(expectedIdTokenJti, jwtClaimsSet.getJWTID());
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 }

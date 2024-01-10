@@ -266,7 +266,7 @@ class ReSignIdTokenFilterTest {
 
             final String idToken = json.get(ID_TOKEN).asString();
             jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken);
-        } catch (IOException | ParseException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -285,25 +285,17 @@ class ReSignIdTokenFilterTest {
     private void validateSuccessAuthoriseFragmentResponse(Response response, String expectedIdTokenJti) {
         assertEquals(Status.OK, response.getStatus());
         final MutableUri locationUri = getLocationUri(response);
-        try {
-            final Optional<String> idToken = new Form().fromQueryString(locationUri.getFragment()).get(ID_TOKEN).stream().findFirst();
-            assertTrue(idToken.isPresent());
-            jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
-        } catch (ParseException ex) {
-            throw new RuntimeException(ex);
-        }
+        final Optional<String> idToken = new Form().fromQueryString(locationUri.getFragment()).get(ID_TOKEN).stream().findFirst();
+        assertTrue(idToken.isPresent());
+        jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
     }
 
     private void validateSuccessAuthoriseQueryResponse(Response response, String expectedIdTokenJti) {
         assertEquals(Status.OK, response.getStatus());
         final MutableUri locationUri = getLocationUri(response);
-        try {
-            final Optional<String> idToken = new Form().fromQueryString(locationUri.getQuery()).get(ID_TOKEN).stream().findFirst();
-            assertTrue(idToken.isPresent());
-            jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
-        } catch (ParseException ex) {
-            throw new RuntimeException(ex);
-        }
+        final Optional<String> idToken = new Form().fromQueryString(locationUri.getQuery()).get(ID_TOKEN).stream().findFirst();
+        assertTrue(idToken.isPresent());
+        jwtReSignerTestResourceManager.validateIdTokenHasBeenReSigned(expectedIdTokenJti, idToken.get());
     }
 
     private static MutableUri getLocationUri(Response response) {

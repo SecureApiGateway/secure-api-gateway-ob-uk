@@ -45,9 +45,14 @@ import org.slf4j.LoggerFactory;
 /**
  * JwtReSigner takes a JWT as input, verifies its signature, and then re-signs the JWT with a configured signing key.
  * <p>
- * This functionality is required to work around an issue in AM, where the signing kid (key id) cannot be configured
- * correctly when using a Trusted Directory external to AM (such as OpenBanking UK). This means that JWTs produced by
- * AM cannot be verified against the JWKS hosted by the Trusted Directory.
+ * Certain use cases, such as OpenBanking UK, require keys from an external (to AM) jwks_uri be used to sign JWTs.
+ * AM can be configured to use these private keys via secret mappings, but there is an issue with how AM determines
+ * the kid value to use in the JWS header.
+ * For the OpenBanking UK case, the kid value does not match what is expected which means that clients will not trust
+ * JWT values return by AM.
+ * <p>
+ * To resolve this issue, this class decodes the JWTs returned by AM and creates a new one with the correct kid,
+ * it is then signed using a private key that must be configured to match the expected key in the external jwks_uri
  * <p>
  * There is a ticket open with AM to fix this issue: https://bugster.forgerock.org/jira/browse/OPENAM-15617
  */
@@ -106,19 +111,19 @@ public class JwtReSigner {
             logger.debug("Cannot re-sign jwt: {} as it is not a valid jwt", jwtString);
             return Promises.newExceptionPromise(new SignatureException("Invalid jwtString supplied", ex));
         }
+        return reSignJwt(signedJwt).then(SignedJwt::build);
+    }
+
+    public Promise<SignedJwt, SignatureException> reSignJwt(SignedJwt signedJwt) {
         return verifyAmSignedIdToken(signedJwt).thenAsync(signatureValid -> {
             if (!signatureValid) {
-                logger.error("Cannot re-sign jwt: {} as it does not have a valid signature", jwtString);
+                logger.error("Cannot re-sign jwt: {} as it does not have a valid signature", signedJwt);
                 return Promises.newExceptionPromise(new SignatureException("Unable to re-sign JWT - signature not valid for configured AM signing key"));
             }
-
-            return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> {
-                final String reSignedJwtString = reSignJwt(signedJwt, signingHandler);
-                logger.debug("jwt re-signed: {}", reSignedJwtString);
-                return reSignedJwtString;
-            }, nsse -> {
-                throw new SignatureException("Failed to create signingHandler", nsse);
-            });
+            return signingManager.newSigningHandler(signingKeyPurpose).then(signingHandler -> reSignJwt(signedJwt, signingHandler),
+                                                                            nsse -> {
+                                                                                throw new SignatureException("Failed to create signingHandler", nsse);
+                                                                            });
         }, neverThrownAsync());
     }
 
@@ -129,11 +134,10 @@ public class JwtReSigner {
      * @param signingHandler SigningHandler capable of signing the JWT
      * @return String jwt signed using the signingKeyId
      */
-    private String reSignJwt(SignedJwt signedJwt, SigningHandler signingHandler) {
+    private SignedJwt reSignJwt(SignedJwt signedJwt, SigningHandler signingHandler) {
         final JwsHeader headerWithCorrectKeyId = new JwsHeader(signedJwt.getHeader().getParameters());
         headerWithCorrectKeyId.setKeyId(signingKeyId);
-        final SignedJwt reSignedJwt = new SignedJwt(headerWithCorrectKeyId, signedJwt.getClaimsSet(), signingHandler);
-        return reSignedJwt.build();
+        return new SignedJwt(headerWithCorrectKeyId, signedJwt.getClaimsSet(), signingHandler);
     }
 
     /**
