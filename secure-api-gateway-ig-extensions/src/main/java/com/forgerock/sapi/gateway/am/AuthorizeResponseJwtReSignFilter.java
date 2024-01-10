@@ -125,6 +125,7 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
      * @return Promise with the updated Response or an HTTP 500 Internal Server Error Response if an error occurs
      */
     private Promise<Response, NeverThrowsException> handlePlainResponseMode(MutableUri locationUri, Response response) {
+        LOGGER.debug("handling plain response_mode re-signing");
         final Form formParams = getFormParams(locationUri);
         final String idTokenJwtString = formParams.getFirst(ID_TOKEN_FIELD_NAME);
         // May not be present on the first redirect call if the user
@@ -148,6 +149,7 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
      * @return Promise with the updated Response or an HTTP 500 Internal Server Error Response if an error occurs
      */
     private Promise<Response, NeverThrowsException> handleJwtResponseMode(MutableUri locationUri, Response response) {
+        LOGGER.debug("handling jwt response_mode re-signing");
         final Form formParams = getFormParams(locationUri);
         final String responseJwtString = formParams.getFirst(RESPONSE_JWT_PARAM_NAME);
         if (responseJwtString == null) {
@@ -158,9 +160,10 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
         final String idTokenClaim = originalResponseJwt.getClaimsSet().getClaim(ID_TOKEN_FIELD_NAME, String.class);
         final Promise<SignedJwt, SignatureException> responseJwtWithReSignedContentsPromise;
         if (idTokenClaim != null) {
+            LOGGER.debug("Found id_token in response JWT");
             // response JWT contains an id_token JWT, re-sign the inner id_token JWT first
             responseJwtWithReSignedContentsPromise = jwtReSigner.reSignJwt(idTokenClaim).then(reSignedIdToken -> {
-                LOGGER.debug("Successfully re-signed id_token: {}", reSignedIdToken);
+                LOGGER.debug("Successfully re-signed id_token: {} in response JWT", reSignedIdToken);
                 originalResponseJwt.getClaimsSet().setClaim(ID_TOKEN_FIELD_NAME, reSignedIdToken);
                 return originalResponseJwt;
             });
@@ -174,7 +177,7 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
                 responseJwtWithReSignedContents -> jwtReSigner.reSignJwt(responseJwtWithReSignedContents)
                         .then(reSignedJwt -> {
                                 final String reSignedJwtStr = reSignedJwt.build();
-                                LOGGER.debug("Successfully response JWT: {}", reSignedJwtStr);
+                                LOGGER.debug("Successfully re-signed response JWT: {}", reSignedJwtStr);
 
                                 formParams.replace(RESPONSE_JWT_PARAM_NAME, List.of(reSignedJwtStr));
                                 return updateResponseLocationHeader(locationUri, response, formParams.toQueryString());
