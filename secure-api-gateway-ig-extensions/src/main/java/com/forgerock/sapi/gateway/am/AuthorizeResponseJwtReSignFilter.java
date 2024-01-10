@@ -66,6 +66,7 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
     private static final String RESPONSE_JWT_PARAM_NAME = "response";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizeResponseJwtReSignFilter.class);
+
     private static final org.forgerock.util.Function<SignatureException, Response, NeverThrowsException> signatureExceptionResponseHandler = ex -> {
         LOGGER.error("Failed to re-sign JWT due to exception", ex);
         return newInternalServerError();
@@ -99,20 +100,20 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
                 if (isJwtResponseMode(request)) {
                     return handleJwtResponseMode(locationUri, response);
                 } else {
-                    return handleDefaultResponseMode(locationUri, response);
+                    return handlePlainResponseMode(locationUri, response);
                 }
             }
         });
     }
 
     /**
-     * handles re-signing data for the default response mode i.e. not JARM.
+     * handles re-signing data for the plain (default) response mode i.e. not JARM.
      *
-     * @param locationUri
-     * @param response
-     * @return
+     * @param locationUri the URI from the Location header in the redirect response which contains the JWT to re-sign
+     * @param response    the Response to update
+     * @return Promise with the updated Response or an HTTP 500 Internal Server Error Response if an error occurs
      */
-    private Promise<Response, NeverThrowsException> handleDefaultResponseMode(MutableUri locationUri, Response response) {
+    private Promise<Response, NeverThrowsException> handlePlainResponseMode(MutableUri locationUri, Response response) {
         final Form formParams = getFormParams(locationUri);
         final String idTokenJwtString = formParams.getFirst(ID_TOKEN_FIELD_NAME);
         // May not be present on the first redirect call if the user
@@ -131,9 +132,9 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
     /**
      * handles re-signing data for JWT response mode aka JARM.
      *
-     * @param locationUri
-     * @param response
-     * @return
+     * @param locationUri the URI from the Location header in the redirect response which contains the JWT to re-sign
+     * @param response    the Response to update
+     * @return Promise with the updated Response or an HTTP 500 Internal Server Error Response if an error occurs
      */
     private Promise<Response, NeverThrowsException> handleJwtResponseMode(MutableUri locationUri, Response response) {
         final Form formParams = getFormParams(locationUri);
@@ -158,15 +159,16 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
         }
 
         // re-sign the response JWT
-        return responseJwtWithReSignedContentsPromise.thenAsync(responseJwtWithReSignedContents -> {
-            return jwtReSigner.reSignJwt(responseJwtWithReSignedContents).then(reSignedJwt -> {
-                final String reSignedJwtStr = reSignedJwt.build();
-                LOGGER.debug("Successfully response JWT: {}", reSignedJwtStr);
+        return responseJwtWithReSignedContentsPromise.thenAsync(
+                responseJwtWithReSignedContents -> jwtReSigner.reSignJwt(responseJwtWithReSignedContents)
+                        .then(reSignedJwt -> {
+                                final String reSignedJwtStr = reSignedJwt.build();
+                                LOGGER.debug("Successfully response JWT: {}", reSignedJwtStr);
 
-                formParams.replace(RESPONSE_JWT_PARAM_NAME, List.of(reSignedJwtStr));
-                return updateResponseLocationHeader(locationUri, response, formParams.toQueryString());
-            }, signatureExceptionResponseHandler);
-        }, asyncSignatureExceptionResponseHandler);
+                                formParams.replace(RESPONSE_JWT_PARAM_NAME, List.of(reSignedJwtStr));
+                                return updateResponseLocationHeader(locationUri, response, formParams.toQueryString());
+                        }, signatureExceptionResponseHandler),
+                asyncSignatureExceptionResponseHandler);
     }
 
     private static Form getFormParams(MutableUri locationUri) {

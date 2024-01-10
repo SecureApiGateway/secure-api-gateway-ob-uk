@@ -83,14 +83,14 @@ class AuthorizeResponseJwtReSignFilterTest {
     }
 
     private static Response buildAuthoriseEndpointFragmentResponse(String idToken) {
-        return buildAuthoriseEndpointResponse(true, buildDefaultResponseModeFormParams(idToken));
+        return buildAuthoriseEndpointResponse(true, buildPlainResponseModeFormParams(idToken));
     }
 
     private static Response buildAuthoriseEndpointQueryResponse(String idToken) {
-        return buildAuthoriseEndpointResponse(false, buildDefaultResponseModeFormParams(idToken));
+        return buildAuthoriseEndpointResponse(false, buildPlainResponseModeFormParams(idToken));
     }
 
-    private static Form buildDefaultResponseModeFormParams(String idToken) {
+    private static Form buildPlainResponseModeFormParams(String idToken) {
         final Form form = new Form();
         form.add(AUTHORISATION_CODE_PARAM, AUTHORISATION_CODE_VALUE);
         form.add(ID_TOKEN, idToken);
@@ -153,7 +153,7 @@ class AuthorizeResponseJwtReSignFilterTest {
     }
 
     @Nested
-    class DefaultResponseModeTests {
+    class PlainResponseModeTests {
         @Test
         void testAuthoriseEndpointFragmentIdTokenIsReSigned() {
             testAuthoriseEndpointFragmentIdTokenIsReSigned(createFilter());
@@ -185,7 +185,7 @@ class AuthorizeResponseJwtReSignFilterTest {
 
         @Test
         void testAmResponseWithoutIdTokenIsPassedThrough() {
-            // Default response_mode i.e. not JARM, without an id_token is passed through
+            // plain response_mode i.e. not JARM, without an id_token is passed through
             final String locationUri = REDIRECT_URI +  "?" + AUTHORISATION_CODE_PARAM + "=" + AUTHORISATION_CODE_VALUE;
 
             final Response amResponse = new Response(Status.FOUND);
