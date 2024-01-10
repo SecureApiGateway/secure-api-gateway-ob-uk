@@ -67,10 +67,21 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizeResponseJwtReSignFilter.class);
 
+    /**
+     * Function which produces a {@link Response} to return when a {@link SignatureException} is handled.
+     * <p>
+     * This handler logs the exception passed and returns an HTTP 500 Internal Server Error Response, this type of
+     * Response is being used as there is no action the client can take to fix them, the issue will be due to
+     * misconfiguration or a change in AM behaviour.
+     */
     private static final org.forgerock.util.Function<SignatureException, Response, NeverThrowsException> signatureExceptionResponseHandler = ex -> {
         LOGGER.error("Failed to re-sign JWT due to exception", ex);
         return newInternalServerError();
     };
+    /**
+     * AsyncFunction which produces a {@link Response} to return when a {@link SignatureException} is handled.
+     * Wraps signatureExceptionResponseHandler in a Promise for use in async Promise chaining.
+     */
     private static final AsyncFunction<SignatureException, Response, NeverThrowsException> asyncSignatureExceptionResponseHandler = ex -> newResultPromise(signatureExceptionResponseHandler.apply(ex));
 
     /**
@@ -192,6 +203,12 @@ public class AuthorizeResponseJwtReSignFilter implements Filter {
         return response;
     }
 
+    /**
+     * Determines whether jwt response_mode is specified in the {@link Request} object's request JWT URI Query Param
+     *
+     * @param request the {@link Request} to inspect
+     * @return true if the response_mode is set to jwt or false if it is not specified or has another value.
+     */
     private boolean isJwtResponseMode(Request request) {
         final String requestJwtString = request.getQueryParams().getFirst("request");
         if (requestJwtString == null) {

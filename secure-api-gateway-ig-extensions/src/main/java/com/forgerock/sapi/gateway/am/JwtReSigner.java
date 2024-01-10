@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * To resolve this issue, this class decodes the JWTs returned by AM and creates a new one with the correct kid,
  * it is then signed using a private key that must be configured to match the expected key in the external jwks_uri
  * <p>
- * There is a ticket open with AM to fix this issue: https://bugster.forgerock.org/jira/browse/OPENAM-15617
+ * There is a ticket open with AM to fix this issue: <a href="https://bugster.forgerock.org/jira/browse/OPENAM-15617">OPENAM-15617</a>
  */
 public class JwtReSigner {
 
@@ -103,6 +103,14 @@ public class JwtReSigner {
         this.signingManager = new SigningManager(signingSecretsProvider);
     }
 
+    /**
+     * Re-signs a jwtString using the configured signingKeyId and signingHandler.
+     *
+     * @param jwtString the JWT to re-sign in compact serialization format
+     * @return Promise<String, SignatureException> with either the re-signed JWT in compact serialization format
+     * or a SignatureException if an error occurred in either validating the jwtString param's signature or computing
+     * the new signature.
+     */
     public Promise<String, SignatureException> reSignJwt(String jwtString) {
         final SignedJwt signedJwt;
         try {
@@ -114,6 +122,13 @@ public class JwtReSigner {
         return reSignJwt(signedJwt).then(SignedJwt::build);
     }
 
+    /**
+     * Re-signs a {@link SignedJwt} using the configured signingKeyId and signingHandler.
+     *
+     * @param signedJwt the {@link SignedJwt} to re-sign
+     * @return Promise<SignedJwt, SignatureException> with either return the re-signed JWT or a SignatureException if
+     * an error occurred in either validating the signedJwt param's signature or computing the new signature.
+     */
     public Promise<SignedJwt, SignatureException> reSignJwt(SignedJwt signedJwt) {
         return verifyAmSignedIdToken(signedJwt).thenAsync(signatureValid -> {
             if (!signatureValid) {
@@ -176,7 +191,7 @@ public class JwtReSigner {
      * {
      *   "name": "JwtReSigner",
      *   "type": "JwtReSigner",
-     *   "comment": "Re-sign the id_token returned by AM to fix OB keyId issue",
+     *   "comment": "Re-sign an JWT returned by AM to fix the keyId issue",
      *   "config": {
      *     "verificationSecretsProvider": "SecretsProvider-AmJWK",
      *     "verificationSecretId": "any.valid.regex.value",
