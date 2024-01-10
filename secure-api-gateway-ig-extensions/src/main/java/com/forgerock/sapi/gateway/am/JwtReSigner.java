@@ -157,7 +157,7 @@ public class JwtReSigner {
     }
 
     /**
-     * Heaplet which creates {@link ReSignIdTokenFilter} objects.
+     * Heaplet which creates {@link JwtReSigner} objects.
      * <p>
      * Configuration:
      * <ul>
