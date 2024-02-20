@@ -106,6 +106,7 @@ public class IdmApiClientOrganisationService implements ApiClientOrganisationSer
                                       field("id",   organisationId),
                                       field("name", organisationName))));
 
+        logger.debug("Attempting to create organisation - id: {}, name: {}", organisationId, organisationName);
         return httpClient.send(request)
                 .then(response -> {
                     if (!response.getStatus().isSuccessful()
@@ -115,8 +116,11 @@ public class IdmApiClientOrganisationService implements ApiClientOrganisationSer
                         logger.error(errorMessage);
                         throw new ApiClientServiceException(ErrorCode.SERVER_ERROR, errorMessage);
                     }
+
                     // No need to decode the response body as all the fields are known (also 412 Pre-condition failed responses do not contain a json entity)
-                    return new ApiClientOrganisation(organisationId, organisationName);
+                    final ApiClientOrganisation apiClientOrganisation = new ApiClientOrganisation(organisationId, organisationName);
+                    logger.debug("Organisation: {} created or already exists", apiClientOrganisation);
+                    return apiClientOrganisation;
                 }, neverThrown());
     }
 }
