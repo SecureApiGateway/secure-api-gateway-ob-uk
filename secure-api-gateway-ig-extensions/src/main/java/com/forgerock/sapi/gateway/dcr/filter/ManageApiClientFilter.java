@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.forgerock.http.Client;
 import org.forgerock.http.Filter;
 import org.forgerock.http.Handler;
 import org.forgerock.http.protocol.Request;
@@ -47,14 +46,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.forgerock.sapi.gateway.dcr.models.ApiClient;
+import com.forgerock.sapi.gateway.dcr.models.ApiClientOrganisation;
 import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest;
 import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement;
 import com.forgerock.sapi.gateway.dcr.service.ApiClientOrganisationService;
 import com.forgerock.sapi.gateway.dcr.service.ApiClientService;
 import com.forgerock.sapi.gateway.dcr.service.ApiClientServiceException;
-import com.forgerock.sapi.gateway.dcr.service.idm.IdmApiClientDecoder;
-import com.forgerock.sapi.gateway.dcr.service.idm.IdmApiClientOrganisationService;
-import com.forgerock.sapi.gateway.dcr.service.idm.IdmApiClientService;
 
 /**
  * Filter to manage {@link ApiClient}s in a data store as part of protecting an OAuth2.0 /register (DCR) endpoint.
@@ -117,6 +114,13 @@ public class ManageApiClientFilter implements Filter {
         public String locateClientId(Context context, Request request) {
             return request.getQueryParams().getFirst("client_id");
         }
+
+        public static class Heaplet extends GenericHeaplet {
+            @Override
+            public Object create() throws HeapException {
+                return new QueryParamClientIdRequestParameterLocator();
+            }
+        }
     }
 
     /**
@@ -139,6 +143,13 @@ public class ManageApiClientFilter implements Filter {
                 return pathElements.get(pathElements.size() - 1);
             }
             return null;
+        }
+
+        public static class Heaplet extends GenericHeaplet {
+            @Override
+            public Object create() throws HeapException {
+                return new PathParamClientIdRequestParameterLocator();
+            }
         }
     }
 
@@ -334,22 +345,47 @@ public class ManageApiClientFilter implements Filter {
         return newResultPromise(new Response(Status.METHOD_NOT_ALLOWED));
     }
 
+    /**
+     * Heaplet which creates a {@link ManageApiClientFilter}.
+     * <p>
+     * Mandatory config:
+     * - apiClientService: reference to a {@link ApiClientService} heap object to use to retrieve the {@link ApiClient}
+     * - apiClientOrgService: reference to a {@link ApiClientOrganisationService} heap object to use to create
+     *                        {@link ApiClientOrganisation}s
+     * - clientIdRequestParameterLocator: reference to a {@link ClientIdRequestParameterLocator} heap object to use to
+     *                                    retrieve the client_id from the Request
+     * <p>
+     * Example config:
+     * <pre>{@code
+     * {
+     *   "name": "ManageApiClientFilter",
+     *   "type": "ManageApiClientFilter",
+     *   "comment": "Filter to manage ApiClient data for DCRs in a repository",
+     *   "config": {
+     *     "apiClientService": "IdmApiClientService",
+     *     "apiClientOrgService": "IdmApiClientOrgService",
+     *     "clientIdRequestParameterLocator": "QueryParamClientIdRequestParameterLocator"
+     *   }
+     * }
+     * }</pre>
+     */
     public static class Heaplet extends GenericHeaplet {
 
-        private Client createHttpClient() throws HeapException {
-            final Handler clientHandler = config.get("clientHandler").as(requiredHeapObject(heap, Handler.class));
-            return new Client(clientHandler);
+        private ApiClientService getApiClientService() throws HeapException {
+            return config.get("apiClientService").as(requiredHeapObject(heap, ApiClientService.class));
+        }
+
+        private ApiClientOrganisationService getApiClientOrganisationService() throws HeapException {
+            return config.get("apiClientOrgService").as(requiredHeapObject(heap, ApiClientOrganisationService.class));
+        }
+
+        private ClientIdRequestParameterLocator getClientIdRequestParameterLocator() throws HeapException {
+            return config.get("clientIdRequestParameterLocator").as(requiredHeapObject(heap, ClientIdRequestParameterLocator.class));
         }
 
         @Override
         public Object create() throws HeapException {
-            final Client httpClient = createHttpClient();
-            final String idmManagedObjectsBaseUri = config.get("idmManagedObjectsBaseUri").asString();
-            final IdmApiClientService idmApiClientService = new IdmApiClientService(httpClient,
-                    idmManagedObjectsBaseUri, new IdmApiClientDecoder());
-
-            final IdmApiClientOrganisationService idmApiClientOrganisationService = new IdmApiClientOrganisationService(httpClient, idmManagedObjectsBaseUri);
-            return new ManageApiClientFilter(idmApiClientService, idmApiClientOrganisationService, new QueryParamClientIdRequestParameterLocator());
+            return new ManageApiClientFilter(getApiClientService(), getApiClientOrganisationService(), getClientIdRequestParameterLocator());
         }
     }
 }

@@ -90,8 +90,12 @@
           "name": "ManageApiClientFilter",
           "type": "ManageApiClientFilter",
           "config": {
-            "idmManagedObjectsBaseUri": "https://&{identity.platform.fqdn}/openidm/managed",
-            "clientHandler": "IDMClientHandler"
+            "apiClientService": "IdmApiClientService",
+            "apiClientOrgService": "IdmApiClientOrganisationService",
+            "clientIdRequestParameterLocator": {
+              "name": "QueryParamClientIdRequestParameterLocator",
+              "type": "QueryParamClientIdRequestParameterLocator"
+            }
           }
         },
         {
