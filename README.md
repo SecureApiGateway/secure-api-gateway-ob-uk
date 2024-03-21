@@ -178,7 +178,7 @@ to the samples.
 |-------------------------|----------------------------------|
 | IG_FQDN                 | Ig host name                     |
 | IDENTITY_PLATFORM_FQDN  | Identity platform host name      |
-| ENVIRONMENT_TYPE        | CDK / CDM / FIDC *(1)            |
+| CLOUD_TYPE        | CDK / CDM / FIDC *(1)            |
 | RS_FQDN                 | RS host name                     |                 
 | RCS_FQDN                | RCS host name                    |               
 | RCS_UI_FQDN             | RCS UI host name                 |             
@@ -203,7 +203,7 @@ to the samples.
 | CA_KEYSTORE_KEYPASS     | CA key store key password        |
 
 **References**
-- *(1) `ENVIRONMENT_TYPE`:
+- *(1) `CLOUD_TYPE`:
   - CDK value: (Cloud Developer's Kit) development identity platform
   - CDM value: CDM (Cloud Deployment Model) identity cloud platform
   - FIDC value: FIDC (Forgerock Identity Cloud) identity cloud platform
