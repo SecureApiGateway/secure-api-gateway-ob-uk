@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM gcr.io/forgerock-io/ig:pit1:2024.3.0-M2024-02.3
+FROM gcr.io/forgerock-io/ig/pit1:2024.3.0-RC3
 # Switching back to forgerock user, app will run as this
 USER forgerock
 # Create dir where secrets can be mounted into
