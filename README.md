@@ -1,4 +1,4 @@
-# ForgeRock DevOps and Cloud Deployment - Secure Banking Access toolkit Demo
+# ForgeRock DevOps and Cloud Deployment - Secure API Gateway demo
 
 This repository contains a demonstration deployment of the ForgeRock platform along with the ForgeRock Secure API Gateway. These access toolkit are a set of plugins and configuration for meeting the UK Open Banking requirements, 
 based on the [Secure API Gateway assets](https://github.com/SecureApiGateway/SecureApiGateway).

@@ -6,6 +6,7 @@
       "capture": "all"
     },
     {
+      "comment": "used to protect apis",
       "name": "ApiProtectionFilter",
       "type": "ScriptableFilter",
       "config": {
