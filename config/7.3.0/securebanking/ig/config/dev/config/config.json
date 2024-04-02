@@ -245,8 +245,8 @@
             "config": {
               "file": "&{ig.instance.dir}&{ig.ob.aspsp.signing.keystore.path}",
               "storeType": "&{ig.ob.aspsp.signing.keystore.type}",
-              "storePassword": "ig.ob.aspsp.signing.keystore.storepass",
-              "keyEntryPassword": "ig.ob.aspsp.signing.keystore.keypass",
+              "storePasswordSecretId": "ig.ob.aspsp.signing.keystore.storepass",
+              "entryPasswordSecretId": "ig.ob.aspsp.signing.keystore.keypass",
               "secretsProvider": "SystemAndEnvSecretStore-IAM",
               "mappings": [{
                 "secretId": "jwt.signer",
