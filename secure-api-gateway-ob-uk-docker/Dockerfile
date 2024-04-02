@@ -31,4 +31,3 @@ RUN test -f /opt/ig/lib/secure-api-gateway-ig-extensions-*.jar
 
 COPY --chown=forgerock:root 7.3.0/ig/config /var/ig/config/
 COPY --chown=forgerock:root 7.3.0/ig/scripts /var/ig/scripts/
-
