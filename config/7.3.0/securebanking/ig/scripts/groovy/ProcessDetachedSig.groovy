@@ -295,8 +295,8 @@ def validateCriticalParameters(JWSHeader jwsHeader) {
     def skewedIatTimestamp = iatTimestamp.minus(clockSkewAllowance)
     def currentTimestamp = Instant.now()
     if (skewedIatTimestamp.isAfter(currentTimestamp)) {
-        logger.error(SCRIPT_NAME + "Could not validate detached JWT - claim: " + IAT_CRIT_CLAIM + " value: " + iatTimestamp.getEpochSecond()
-                + ", current time: " + currentTimestamp.getEpochSecond() + ", skewAllowance: " + clockSkewAllowance)
+        logger.error(SCRIPT_NAME + "Could not validate detached JWT - claim: " + IAT_CRIT_CLAIM + " must be in the past, value: " + iatTimestamp.getEpochSecond()
+                + ", current time: " + currentTimestamp.getEpochSecond() + ", clockSkewAllowance: " + clockSkewAllowance)
         return false
     }
     logger.debug(SCRIPT_NAME + "Found valid iat!")
