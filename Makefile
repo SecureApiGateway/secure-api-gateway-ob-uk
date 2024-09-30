@@ -21,7 +21,7 @@ endif
 		docker build secure-api-gateway-ob-uk-docker ${dockerArgs} -t ${repo}/securebanking/${service}:${TAG} -t ${repo}/securebanking/${service}:${latesttagversion}; \
 		docker push ${repo}/securebanking/${service} --all-tags; \
     else \
-   		docker build secure-api-gateway-ob-uk-docker -t ${repo}/securebanking/${service}:${TAG}; \
+   		docker build secure-api-gateway-ob-uk-docker ${dockerArgs} -t ${repo}/securebanking/${service}:${TAG}; \
    		docker push ${repo}/securebanking/${service}:${TAG}; \
    	fi;
 
