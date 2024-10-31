@@ -22,7 +22,7 @@ SCRIPT_NAME = "[ObResponseCheck] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 
 String HEADER_INTERACTION_ID = "x-fapi-interaction-id"
-Map<String, String> getGenericError(Status status, String responseBody) {
+Map<String, String> getGenericError(Status status, String responseBody, boolean isV3Request) {
 
   String errorCode
   String message
@@ -31,13 +31,13 @@ Map<String, String> getGenericError(Status status, String responseBody) {
   switch (status) {
 
     case Status.NOT_FOUND:
-         errorCode = "UK.OBIE.NotFound"
-         message = "Resource not found"
+         errorCode = isV3Request ? "UK.OBIE.NotFound" : "U011"
+         message = isV3Request ? "Resource not found" : "Resource cannot be found"
          break
 
     case Status.BAD_REQUEST:
-      errorCode = "UK.OBIE.Field.Invalid"
-      message = "Bad request"
+      errorCode = isV3Request ? "UK.OBIE.Field.Invalid" : "U002"
+      message = isV3Request ? "Bad request" : "Field is invalid"
       break
 
     case Status.UNAUTHORIZED:
@@ -46,17 +46,17 @@ Map<String, String> getGenericError(Status status, String responseBody) {
       break
 
     case Status.FORBIDDEN:
-      errorCode = "UK.OBIE.Reauthenticate"
-      message = "Forbidden"
+      errorCode = isV3Request ? "UK.OBIE.Reauthenticate" : "U028"
+      message = isV3Request ? "Forbidden" : "Reauthentication is required by PSU"
       break
 
     case Status.INTERNAL_SERVER_ERROR:
-      errorCode = "UK.OBIE.UnexpectedError"
+      errorCode = isV3Request ? "UK.OBIE.UnexpectedError" : "U000"
       message = "Internal error"
       break
 
     default:
-      errorCode = "UK.OBIE.UnexpectedError"
+      errorCode = isV3Request ? "UK.OBIE.UnexpectedError" : "U000"
       message = "Internal error"
   }
 
@@ -99,6 +99,21 @@ static isObCompliantError(responseBody) {
   return false
 }
 
+boolean isV3Request(def request) {
+  String apiVersionRegex = "(v\\d+)"
+  def match = (request.uri.path =~ apiVersionRegex)
+  def isV3Request = true
+  if (match.find()) {
+    def apiVersion = match.group(1)  // Capture only the major version, e.g., "v4"
+    if (apiVersion == "v4") {
+      return false
+    }
+  }
+  return true;
+}
+
+def v3Request = isV3Request(request)
+
 next.handle(context, request).thenOnResult({response ->
 
   // Check for OB compliant error response
@@ -123,7 +138,7 @@ next.handle(context, request).thenOnResult({response ->
 
     newBody.put("Message",  status.toString())
 
-    def obErrorObject = getGenericError(status, responseBody)
+    def obErrorObject = getGenericError(status, responseBody, v3Request)
     errorList = [obErrorObject]
     newBody.put("Errors", errorList)
     logger.debug(SCRIPT_NAME + "Final Error Response: " + newBody)
