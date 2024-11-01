@@ -22,7 +22,7 @@ SCRIPT_NAME = "[ObResponseCheck] (" + fapiInteractionId + ") - ";
 logger.debug(SCRIPT_NAME + "Running...")
 
 String HEADER_INTERACTION_ID = "x-fapi-interaction-id"
-Map<String, String> getGenericError(Status status, String responseBody, boolean isV3Request) {
+Map<String, String> getGenericError(Status status, String responseBody, boolean isV4Request) {
 
   String errorCode
   String message
@@ -31,13 +31,13 @@ Map<String, String> getGenericError(Status status, String responseBody, boolean 
   switch (status) {
 
     case Status.NOT_FOUND:
-         errorCode = isV3Request ? "UK.OBIE.NotFound" : "U011"
-         message = isV3Request ? "Resource not found" : "Resource cannot be found"
+         errorCode = isV4Request ? "U011" : "UK.OBIE.NotFound"
+         message = isV4Request ? "Resource cannot be found" : "Resource not found"
          break
 
     case Status.BAD_REQUEST:
-      errorCode = isV3Request ? "UK.OBIE.Field.Invalid" : "U002"
-      message = isV3Request ? "Bad request" : "Field is invalid"
+      errorCode = isV4Request ? "U002" : "UK.OBIE.Field.Invalid"
+      message = isV4Request ? "Field is invalid" : "Bad request"
       break
 
     case Status.UNAUTHORIZED:
@@ -46,17 +46,17 @@ Map<String, String> getGenericError(Status status, String responseBody, boolean 
       break
 
     case Status.FORBIDDEN:
-      errorCode = isV3Request ? "UK.OBIE.Reauthenticate" : "U028"
-      message = isV3Request ? "Forbidden" : "Reauthentication is required by PSU"
+      errorCode = isV4Request ? "U028" : "UK.OBIE.Reauthenticate"
+      message = isV4Request ? "Reauthentication is required by PSU" : "Forbidden"
       break
 
     case Status.INTERNAL_SERVER_ERROR:
-      errorCode = isV3Request ? "UK.OBIE.UnexpectedError" : "U000"
+      errorCode = isV4Request ? "U000" : "UK.OBIE.UnexpectedError"
       message = "Internal error"
       break
 
     default:
-      errorCode = isV3Request ? "UK.OBIE.UnexpectedError" : "U000"
+      errorCode = isV4Request ? "U000" : "UK.OBIE.UnexpectedError"
       message = "Internal error"
   }
 
@@ -99,20 +99,7 @@ static isObCompliantError(responseBody) {
   return false
 }
 
-boolean isV3Request(def request) {
-  String apiVersionRegex = "(v\\d+)"
-  def match = (request.uri.path =~ apiVersionRegex)
-  def isV3Request = true
-  if (match.find()) {
-    def apiVersion = match.group(1)  // Capture only the major version, e.g., "v4"
-    if (apiVersion == "v4") {
-      return false
-    }
-  }
-  return true;
-}
-
-def v3Request = isV3Request(request)
+def v4Request = (request.uri.pathElements.size() > 2) && request.uri.pathElements[2].startsWith("v4")
 
 next.handle(context, request).thenOnResult({response ->
 
@@ -138,7 +125,7 @@ next.handle(context, request).thenOnResult({response ->
 
     newBody.put("Message",  status.toString())
 
-    def obErrorObject = getGenericError(status, responseBody, v3Request)
+    def obErrorObject = getGenericError(status, responseBody, v4Request)
     errorList = [obErrorObject]
     newBody.put("Errors", errorList)
     logger.debug(SCRIPT_NAME + "Final Error Response: " + newBody)
