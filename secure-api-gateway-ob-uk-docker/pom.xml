@@ -52,7 +52,6 @@
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
         </dependency>
-
         <!-- Extension Java modules -->
         <dependency>
             <groupId>com.forgerock.sapi.gateway</groupId>
