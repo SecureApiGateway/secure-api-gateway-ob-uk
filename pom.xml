@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>org.forgerock.openig</groupId>
                 <artifactId>openig-fapi</artifactId>
-                <version>${openig.version}</version>
+                <version>2024.11.0</version>
             </dependency>
             <!-- Third party -->
             <dependency>
@@ -103,6 +103,17 @@
             </snapshots>
             <releases>
                 <enabled>true</enabled>
+            </releases>
+        </repository>
+        <repository>
+            <id>forgerock-internal-snapshots</id>
+            <name>ForgeRock Internal Snapshots Repository</name>
+            <url>https://maven.forgerock.org/artifactory/internal-snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
             </releases>
         </repository>
     </repositories>
