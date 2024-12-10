@@ -1,24 +1,19 @@
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
-import com.nimbusds.jose.jwk.*
-import groovy.json.JsonSlurper
-import org.bouncycastle.asn1.x500.X500Name
-import org.forgerock.http.protocol.*
-import org.forgerock.json.JsonValueFunctions.*
-import org.forgerock.json.jose.*
-import org.forgerock.json.jose.jwk.JWKSet
-import org.forgerock.json.jose.jwk.RsaJWK
-import org.forgerock.json.jose.jwk.store.JwksStore.*
-import com.forgerock.securebanking.uk.gateway.jwks.*
-import java.security.interfaces.RSAPublicKey
-import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
-import com.forgerock.sapi.gateway.jwks.JwkSetService
-import org.forgerock.util.time.Duration
+import static org.forgerock.util.promise.Promises.newResultPromise
 
+import java.security.interfaces.RSAPublicKey
 import java.text.ParseException
 import java.time.Instant
 
-import static org.forgerock.util.promise.Promises.newResultPromise
+import org.forgerock.json.JsonValueFunctions.*
+import org.forgerock.json.jose.jwk.JWKSet
+import org.forgerock.json.jose.jwk.RsaJWK
+import org.forgerock.json.jose.jwk.store.JwksStore.*
+import org.forgerock.openig.fapi.jwks.JwkSetService
+import org.forgerock.util.time.Duration
+
+import com.forgerock.securebanking.uk.gateway.jwks.*
+
+import groovy.json.JsonSlurper
 
 /*
 JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
