@@ -46,12 +46,24 @@
     </parent>
 
     <properties>
-        <secure-api-gateway.version>4.0.2-SNAPSHOT</secure-api-gateway.version>
-        <nimbus-jose.version>9.40</nimbus-jose.version>
         <bouncy-castle.version>1.78.1</bouncy-castle.version>
+        <groovy.version>4.0.19</groovy.version>
+        <nimbus-jose.version>9.40</nimbus-jose.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+        <secure-api-gateway.version>4.0.2-SNAPSHOT</secure-api-gateway.version>
     </properties>
-    
+    <dependencyManagement>
+        <dependencies>
+        <!-- Groovy dependencies -->
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-bom</artifactId>
+                <version>${groovy.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <scm>
         <connection>scm:git:${project.scm.url}</connection>
         <developerConnection>scm:git:${project.scm.url}</developerConnection>
