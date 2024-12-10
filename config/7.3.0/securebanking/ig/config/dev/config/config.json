@@ -123,22 +123,6 @@
             }
           },
           {
-            "comment": "Add TrustedDirectory configuration to the context attributes.trustedDirectory",
-            "name": "FetchTrustedDirectoryFilter",
-            "type": "FetchTrustedDirectoryFilter",
-            "config": {
-              "trustedDirectoryService": "TrustedDirectoryService"
-            }
-          },
-          {
-            "comment": "Add the JWKS for the ApiClient to the context attributes.apiClientJwkSet",
-            "name": "FetchApiClientJwksFilter",
-            "type": "FetchApiClientJwksFilter",
-            "config": {
-              "jwkSetService": "OBJwkSetService"
-            }
-          },
-          {
             "comment": "Validate the MTLS transport cert",
             "name": "TransportCertValidationFilter",
             "type": "TransportCertValidationFilter",
@@ -484,19 +468,26 @@
       }
     },
     {
+      "name": "IdmService",
+      "type": "IdmService",
+      "config": {
+        "endpointHandler": "IDMClientHandler",
+        "baseEndpoint": "&{urls.idmManagedObjectsBaseUri}"
+      }
+    },
+    {
       "name": "IdmApiClientService",
       "type": "IdmApiClientService",
       "config": {
-        "clientHandler": "IDMClientHandler",
-        "idmManagedObjectsBaseUri": "&{urls.idmManagedObjectsBaseUri}"
+        "idmService": "IdmService",
+        "jwkSetService": "OBJwkSetService"
       }
     },
     {
       "name": "IdmApiClientOrganisationService",
       "type": "IdmApiClientOrganisationService",
       "config": {
-        "clientHandler": "IDMClientHandler",
-        "idmManagedObjectsBaseUri": "&{urls.idmManagedObjectsBaseUri}"
+        "idmService": "IdmService"
       }
     }
   ],
