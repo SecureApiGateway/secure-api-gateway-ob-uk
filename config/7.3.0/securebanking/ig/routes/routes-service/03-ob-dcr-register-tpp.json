@@ -43,6 +43,7 @@
           "name": "RegistrationRequestBuilderFilter",
           "type": "RegistrationRequestBuilderFilter",
           "config": {
+            "jwkSetService": "OBJwkSetService",
             "trustedDirectoryService": "TrustedDirectoryService"
           }
         },
