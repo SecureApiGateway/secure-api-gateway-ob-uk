@@ -47,16 +47,6 @@
           }
         },
         {
-          "comment": "Validate the signature of the request Jwt and it's embedded SSA",
-          "name": "RegistrationRequestJwtSignatureValidationFilter",
-          "type": "RegistrationRequestJwtSignatureValidationFilter",
-          "config": {
-            "clientHandler": "OBClientHandler",
-            "jwkSetService": "OBJwkSetService",
-            "jwtSignatureValidator": "RsaJwtSignatureValidator"
-          }
-        },
-        {
           "comment": "Validate that the request will result in an OAuth2 client that is FAPI compliant",
           "name": "FapiAdvancedDCRValidationFilter",
           "type": "FapiAdvancedDCRValidationFilter",
