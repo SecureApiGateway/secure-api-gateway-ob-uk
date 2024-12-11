@@ -70,11 +70,6 @@
                 <version>${openig.version}</version>
             </dependency>
             <!-- Third party -->
-            <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>nimbus-jose-jwt</artifactId>
-                <version>${nimbus-jose.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>    
     
