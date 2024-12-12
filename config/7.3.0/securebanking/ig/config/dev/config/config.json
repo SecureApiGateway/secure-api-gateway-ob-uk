@@ -461,7 +461,7 @@
       "type": "RsaJwtSignatureValidator"
     },
     {
-      "name": "OBTransportCertValidator",
+      "name": "TransportCertValidator",
       "type": "DefaultTransportCertValidator",
       "config": {
         "validKeyUse": "tls"

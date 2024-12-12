@@ -80,7 +80,7 @@
             "trustedDirectoryService": "TrustedDirectoryService",
             "jwkSetService": "JwkSetService",
             "certificateRetriever": "HeaderCertificateRetriever",
-            "transportCertValidator": "OBTransportCertValidator"
+            "transportCertValidator": "TransportCertValidator"
           }
         },
         {
