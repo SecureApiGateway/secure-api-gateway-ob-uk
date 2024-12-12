@@ -18,17 +18,44 @@
           "aliases": [ "&{ig.test.directory.signing.keystore.alias}" ]
         }]
       }
+    },
+    {
+      "name": "capture",
+      "type": "CaptureDecorator",
+      "config": {
+        "base": "capture.route.logger",
+        "captureContext": true,
+        "captureEntity": true
+      }
     }
   ],
-  "handler":     {
-    "name": "JwkSetHandler-TA",
-    "type": "JwkSetHandler",
+  "handler": {
+    "type": "Chain",
     "config": {
-      "secretsProvider": "TestDirectorySigningKeyStore",
-      "purposes": [{
-        "secretId": "jwt.signer",
-        "keyUsage": "VERIFY"
-      }]
+      "filters": [
+        "SBATFapiInteractionFilterChain"
+      ],
+      "handler": {
+        "name": "JwkSetHandler-TA",
+        "type": "JwkSetHandler",
+        "capture": [
+          "request",
+          "response"
+        ],
+        "config": {
+          "secretsProvider": "TestDirectorySigningKeyStore",
+          "purposes": [
+            {
+              "secretId": "jwt.signer",
+              "keyUsage": "VERIFY"
+            }
+          ]
+        }
+      }
     }
-  }
+  },
+  "capture": [
+    "filtered_request",
+    "filtered_response"
+  ]
 }
