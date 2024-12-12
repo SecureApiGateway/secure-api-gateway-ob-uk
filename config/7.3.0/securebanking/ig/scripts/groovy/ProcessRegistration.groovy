@@ -2,11 +2,12 @@ import org.forgerock.json.jose.jwk.JWKSet
 import org.forgerock.json.jose.jwk.JWK
 import com.forgerock.sapi.gateway.common.jwt.ClaimsSetFacade
 import com.forgerock.sapi.gateway.common.jwt.JwtException
-import com.forgerock.sapi.gateway.dcr.models.RegistrationRequest
-import com.forgerock.sapi.gateway.dcr.models.SoftwareStatement
+import org.forgerock.openig.fapi.dcr.RegistrationRequest
+import org.forgerock.openig.fapi.dcr.SoftwareStatement
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import com.nimbusds.jose.jwk.RSAKey
 import com.securebanking.gateway.dcr.ErrorResponseFactory
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
 
 import java.security.SignatureException
 
@@ -22,7 +23,7 @@ import static org.forgerock.util.promise.Promises.newResultPromise
  * https://openid.net/specs/openid-connect-registration-1_0.html
  * https://datatracker.ietf.org/doc/html/rfc7591
  *
- * NOTE: This filter should be used AFTER the FAPIAdvancedDCRValidationFilter. That filter will check that the request
+ * NOTE: This filter should be used AFTER the FapiAdvancedDCRValidationFilter. That filter will check that the request
  * is fapi compliant:
  * - validateRedirectUris
  *   - request object must contain redirect_uris field
@@ -81,15 +82,8 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("No client certificate for registration")
         }
 
-        if (registrationRequest.hasExpired()){
-            logger.debug(SCRIPT_NAME + "Registration request JWT has expired")
-            return errorResponseFactory.invalidClientMetadataErrorResponse("registration request jwt has expired")
-        }
-        logger.debug(SCRIPT_NAME + "registrationRequest is still valid");
-
-        ClaimsSetFacade regRequestClaimsSet = registrationRequest.getClaimsSet()
-        Optional<List<String>> optionalResponseTypes = regRequestClaimsSet.getOptionalStringListClaim("response_types")
-        if(optionalResponseTypes.isEmpty()){
+        List<String> responseTypes = registrationRequest.getResponseTypes()
+        if(responseTypes == null || responseTypes.isEmpty()){
             logger.debug(SCRIPT_NAME + "No response_types claim in registration request. Setting default response_types " +
                     "to " + defaultResponseTypes)
             registrationRequest.setResponseTypes([defaultResponseTypes])
@@ -98,8 +92,6 @@ switch (method.toUpperCase()) {
             //   "The authorization server MAY reject or
             //   replace any of the client's requested metadata values submitted
             //   during the registration and substitute them with suitable values."
-
-            def responseTypes = optionalResponseTypes.get()
             for (String responseType : responseTypes) {
                 if (!supportedResponseTypes.contains(responseType)){
                     logger.debug(SCRIPT_NAME + "response_types claim does not include supported types. " +
@@ -109,20 +101,13 @@ switch (method.toUpperCase()) {
                 }
             }
         }
-        logger.debug("{}response_types claim value is {}", SCRIPT_NAME, optionalResponseTypes.get())
+        logger.debug("{}response_types claim value is {}", SCRIPT_NAME, registrationRequest.getResponseTypes())
 
         // Check token_endpoint_auth_methods. OB Spec says this MUST be defined with 1..1 cardinality in the
         // registration request.
-        String tokenEndpointAuthMethod
-        try {
-            tokenEndpointAuthMethod = regRequestClaimsSet.getStringClaim("token_endpoint_auth_method")
-        } catch (JwtException jwtException){
-            String errorDescription = "registration request jwt must have a 'token_endpoint_auth_method' claim"
-            logger.info("{}{}", SCRIPT_NAME, errorDescription)
-            return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
-        }
+        String tokenEndpointAuthMethod = registrationRequest.getTokenEndpointAuthMethod()
 
-        if (!tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)){
+        if (tokenEndpointAuthMethod == null || !tokenEndpointAuthMethodsSupported.contains(tokenEndpointAuthMethod)){
             String errorDescription = "token_endpoint_auth_method claim must be one of: " +
                     tokenEndpointAuthMethodsSupported
             logger.info("{}{}", SCRIPT_NAME, errorDescription)
@@ -132,12 +117,12 @@ switch (method.toUpperCase()) {
 
 
         // AM should reject this case??
-        if (tokenEndpointAuthMethod.equals("tls_client_auth") && !regRequestClaimsSet.getStringClaim("tls_client_auth_subject_dn")) {
+        if (tokenEndpointAuthMethod.equals("tls_client_auth") && registrationRequest.getMetadata("tls_client_auth_subject_dn").isNull()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("tls_client_auth_subject_dn must be provided to use tls_client_auth")
         }
 
         SoftwareStatement softwareStatement = registrationRequest.getSoftwareStatement()
-        logger.debug(SCRIPT_NAME + "Got ssa [" + softwareStatement + "]")
+        logger.debug(SCRIPT_NAME + "Got ssa [" + softwareStatement.getSoftwareStatementAssertion().build() + "]")
 
         // This is OB specific
         // Validate the issuer claim for the registration matches the SSA software_id
@@ -150,22 +135,20 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidClientMetadataErrorResponse("invalid issuer claim")
         }
 
-        def apiClientOrgId = softwareStatement.getOrgId()
-        def apiClientOrgName = softwareStatement.getOrgName() !=null ? softwareStatement.getOrgName() : apiClientOrgId
+        def apiClientOrgId = softwareStatement.getOrganisationId()
+        def apiClientOrgName = softwareStatement.getOrganisationName() !=null ? softwareStatement.getOrganisationName() : apiClientOrgId
         logger.debug(SCRIPT_NAME + "Inbound details from SSA: apiClientOrgName: {} apiClientOrgCertId: {}",
                 apiClientOrgName,
                 apiClientOrgId
         )
 
         // ToDo: Why is this here?
-        String subject_type
-        try{
-            subject_type = regRequestClaimsSet.getStringClaim("subject_type");
-        } catch (JwtException jwtException) {
-            logger.debug("subject_type is not set. Setting to 'pairwise'", SCRIPT_NAME)
-            regRequestClaimsSet.setStringClaim("subject_type", "pairwise");
+        String subjectType = registrationRequest.getMetadata("subject_type").asString()
+        if (subjectType == null) {
+            logger.debug("subjectType is not set. Setting to 'pairwise'", SCRIPT_NAME)
+            registrationRequest.setMetadata("subject_type", "pairwise");
         }
-        logger.debug("{} subject_type is '{}'", SCRIPT_NAME, subject_type)
+        logger.debug("{} subject_type is '{}'", SCRIPT_NAME, subjectType)
 
         Response errorResponse = performOpenBankingScopeChecks(errorResponseFactory, registrationRequest)
         if (errorResponse != null) {
@@ -178,7 +161,7 @@ switch (method.toUpperCase()) {
             return errorResponseFactory.invalidRedirectUriErrorResponse(e.getMessage())
         }
 
-        regRequestClaimsSet.setClaim("tls_client_certificate_bound_access_tokens", true)
+        registrationRequest.setMetadata("tls_client_certificate_bound_access_tokens", true)
 
 
         // Put is editing an existing registration, so needs the client_id param in the uri
