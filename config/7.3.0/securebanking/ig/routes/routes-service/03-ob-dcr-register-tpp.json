@@ -53,7 +53,7 @@
           "type": "RegistrationRequestJwtSignatureValidationFilter",
           "config": {
             "clientHandler": "OBClientHandler",
-            "jwkSetService": "OBJwkSetService",
+            "jwkSetService": "JwkSetService",
             "jwtSignatureValidator": "RsaJwtSignatureValidator"
           }
         },

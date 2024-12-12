@@ -376,7 +376,7 @@
       }
     },
     {
-      "name": "OBJwkSetService",
+      "name": "JwkSetService",
       "type": "CaffeineCachingJwkSetService",
       "config": {
         "handler": "OBClientHandler",
