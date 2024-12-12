@@ -169,75 +169,24 @@ switch (method.toUpperCase()) {
             rewriteUriToAccessExistingAmRegistration()
         }
 
-        // Verify that the tls transport cert is registered for the TPP's software statement
-        if ( softwareStatement.hasJwksUri() ) {
-            URI softwareStatementJwksUri = softwareStatement.getJwksUri();
-            // We need to set the jwks_uri claim in the registration request because the software statement might not
-            // have the jwks URI in the jwks_uri claim in the software statement. For example, the OB Test Directory
-            // issued SSAs have thw jwks URI claim in the software_jwks_endpoint claim - which is unknown to AM and
-            // will be ignored. This will result in an OAuth2 Client with an empty Json Web Key URI field. This will
-            // Result AM being unable to validate client credential jws used in `private_key_jwt` as the
-            // `token_endpoint_auth_method`.
-            if (routeArgObJwksHosts) {
-                // If the JWKS URI host is in our list of private JWKS hosts, then proxy back through IG
-                if (routeArgObJwksHosts && routeArgObJwksHosts.contains(softwareStatementJwksUri.getHost())) {
-                    String newUri = routeArgProxyBaseUrl + "/" + softwareStatementJwksUri.getHost() + softwareStatementJwksUri.getPath();
-                    logger.debug(SCRIPT_NAME + "Updating private JWKS URI from {} to {}", softwareStatementJwksUri, newUri);
-                    try {
-                        softwareStatementJwksUri = new URI(newUri);
-                    } catch (URISyntaxException e){
-                        logger.error(SCRIPT_NAME + "Failed to create proxy URI for: {}", newUri);
-                        return new Response(Status.INTERNAL_SERVER_ERROR);
-                    }
-                }
-            }
-            regRequestClaimsSet.setClaim("jwks_uri", softwareStatementJwksUri.toString());
-
-            // AM doesn't understand JWS encoded registration requests, so we need to convert the jwt JSON and pass it on
-            // However, this might not be the best place to do that?
-            def regJson = regRequestClaimsSet.build();
-            logger.debug(SCRIPT_NAME + "final json [" + regJson + "]")
-            request.setEntity(regJson)
-
-            logger.debug(SCRIPT_NAME + "Checking cert against remote jwks: " + softwareStatementJwksUri)
-            return jwkSetService.getJwkSet(softwareStatementJwksUri)
-                    .thenCatchAsync(e -> {
-                        String errorDescription = "Unable to get jwks from uri: " + softwareStatementJwksUri
-                        logger.warn(SCRIPT_NAME + "Failed to get jwks due to exception: " + errorDescription, e)
-                        return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription))
-                    })
-                    .thenAsync(jwkSet -> {
-                        if (!tlsClientCertExistsInJwkSet(jwkSet)) {
-                            String errorDescription = "tls transport cert does not match any certs " +
-                                    "registered in jwks for software statement"
-                            logger.debug("{}{}", SCRIPT_NAME, errorDescription)
-                            return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
-                        }
-                        return next.handle(context, request)
-                                .thenOnResult(response -> addSoftwareStatementToResponse(response, softwareStatement.getB64EncodedJwtString()))
-                    })
-        } else {
-            // Verify against the software_jwks which is a JWKSet embedded within the software_statement
-            // NOTE: this is only suitable for developer testing purposes
-
+return softwareStatement.getJwkSetLocator().applyAsync(uri -> {
+            registrationRequest.setMetadata("jwks_uri", uri.toString());
+            return jwkSetService.getJwkSet(uri)
+        }, apiClientJwkSet -> {
             if (!allowIgIssuedTestCerts) {
-                String errorDescription = "software_statement must contain software_jwks_endpoint"
-                return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
+                return Promises.newExceptionPromise(new FailedToLoadJWKException("software_statement must contain software_jwks_endpoint"))
             }
-            JWKSet apiClientJwkSet = softwareStatement.getJwksSet()
 
             // We need to set the jwks claim in the registration request because the software statement might not
             // have the jwks in the jwks claim in the software statement. If that were the case it would result in
             // AM being unable to validate client credential jws used in `private_key_jwt` as the
             // `token_endpoint_auth_method`.
-            regRequestClaimsSet.setClaim("jwks", apiClientJwkSet.toJsonValue());
+            registrationRequest.setMetadata("jwks", apiClientJwkSet.toJsonValue())
+            return newResultPromise(apiClientJwkSet)
 
-            // AM doesn't understand JWS encoded registration requests, so we need to convert the jwt JSON and pass it on
-            // However, this might not be the best place to do that?
-            def regJson = regRequestClaimsSet.build();
-            logger.debug(SCRIPT_NAME + "final json [" + regJson + "]")
-            request.setEntity(regJson)
-
+        }).thenCatchAsync(e -> {
+            return newResultPromise(errorResponseFactory.invalidClientMetadataErrorResponse(e.message))
+        }).thenAsync(apiClientJwkSet -> {
             logger.debug(SCRIPT_NAME + "Checking cert against ssa software_jwks: " + apiClientJwkSet)
             if (!tlsClientCertExistsInJwkSet(apiClientJwkSet)) {
                 String errorDescription = "tls transport cert does not match any certs registered in jwks for software " +
@@ -245,9 +194,16 @@ switch (method.toUpperCase()) {
                 logger.debug("{}{}", SCRIPT_NAME, errorDescription)
                 return newResultPromise(errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription))
             }
+            // AM doesn't understand JWS encoded registration requests, so we need to convert the jwt JSON and pass it on
+            // However, this might not be the best place to do that?
+            def regJson = registrationRequest.toJsonValue()
+            logger.debug(SCRIPT_NAME + "final json [" + regJson + "]")
+            request.setEntity(regJson)
+
             return next.handle(context, request)
-                    .thenOnResult(response -> addSoftwareStatementToResponse(response, softwareStatement.getB64EncodedJwtString()))
-        }
+                       .thenAsync(response -> addSoftwareStatementToResponse(response, softwareStatement.getSoftwareStatementAssertion()))
+
+        })
 
     case "DELETE":
         rewriteUriToAccessExistingAmRegistration()
@@ -255,11 +211,12 @@ switch (method.toUpperCase()) {
     case "GET":
         rewriteUriToAccessExistingAmRegistration()
         return next.handle(context, request)
-                .thenOnResult(response -> {
+                .thenAsync(response -> {
                     var apiClient = attributes.apiClient
                     if (apiClient && apiClient.softwareStatementAssertion) {
-                        addSoftwareStatementToResponse(response, apiClient.softwareStatementAssertion)
+                        return addSoftwareStatementToResponse(response, apiClient.softwareStatementAssertion)
                     }
+                    return newResultPromise(response)
                 })
     default:
         logger.debug(SCRIPT_NAME + "Method not supported")
@@ -316,25 +273,16 @@ private Response performOpenBankingScopeChecks(ErrorResponseFactory errorRespons
                                                RegistrationRequest registrationRequest) {
     logger.debug("{}performing OpenBanking Scope tests", SCRIPT_NAME)
 
-    ClaimsSetFacade registrationRequestClaims = registrationRequest.getClaimsSet()
-
-    String requestedScopes;
-    try {
-        requestedScopes = registrationRequestClaims.getStringClaim("scope")
-    } catch (JwtException jwtException) {
-
+    String requestedScopes = registrationRequest.getScope()
+    if (requestedScopes == null) {
             String errorDescription = "The request jwt does not contain the required scopes claim"
             logger.info(SCRIPT_NAME + errorDescription)
             return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
     }
     logger.debug("{}requestedScopes are {}", SCRIPT_NAME, requestedScopes)
 
-    ClaimsSetFacade softwareStatementClaims = registrationRequest.getSoftwareStatement().getClaimsSet()
-
-    List<String> ssaRoles
-    try {
-        ssaRoles = softwareStatementClaims.getRequiredStringListClaim("software_roles")
-    } catch (JwtException jwtException) {
+    List<String> ssaRoles = registrationRequest.getSoftwareStatement().getRoles()
+    if (ssaRoles == null || ssaRoles.isEmpty()) {
         String errorDescription = "The software_statement jwt does not contain a 'software_roles' claim"
         logger.debug(SCRIPT_NAME + errorDescription)
         return errorResponseFactory.invalidSoftwareStatementErrorResponse(errorDescription)
@@ -381,14 +329,17 @@ private void rewriteUriToAccessExistingAmRegistration() {
     request.uri.setRawQuery("client_id=" + apiClientId)
 }
 
-private void addSoftwareStatementToResponse(response, softwareStatementAssertion) {
+private Promise addSoftwareStatementToResponse(response, softwareStatementAssertion) {
     if (response.status.isSuccessful()) {
-        var registrationResponse = response.getEntity().getJson()
-        if (!registrationResponse["software_statement"]) {
-            registrationResponse["software_statement"] = softwareStatementAssertion.build()
+        return response.getEntity().getJsonAsync().then(json -> {
+            if (!json["software_statement"]) {
+                json["software_statement"] = softwareStatementAssertion.build()
         }
-        response.entity.setJson(registrationResponse)
+            response.entity.setJson(json)
+            return response
+        })
     }
+    return newResultPromise(response)
 }
 
 private boolean tlsClientCertExistsInJwkSet(jwkSet) {
