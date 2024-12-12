@@ -185,7 +185,7 @@
       }
     },
     {
-      "name" : "AmService-OBIE",
+      "name" : "AmService",
       "type" : "AmService",
       "config" : {
         "url" : "https://&{identity.platform.fqdn}/am",
