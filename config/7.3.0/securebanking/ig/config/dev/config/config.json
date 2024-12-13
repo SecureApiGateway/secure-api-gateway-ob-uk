@@ -403,7 +403,6 @@
       "name": "OpenBankingTestDirectory",
       "type": "TrustedDirectory",
       "config": {
-        "directoryJwksUri": "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks",
         "issuer": "OpenBanking Ltd",
         "softwareStatementClaims": {
           "organisationIdClaimName": "org_id",
