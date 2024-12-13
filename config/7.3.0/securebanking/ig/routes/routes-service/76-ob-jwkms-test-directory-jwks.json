@@ -43,13 +43,15 @@
           "response"
         ],
         "config": {
-          "secretsProvider": "TestDirectorySigningKeyStore",
-          "purposes": [
-            {
-              "secretId": "jwt.signer",
-              "keyUsage": "VERIFY"
-            }
-          ]
+          "delegate": {
+            "secretsProvider": "TestDirectorySigningKeyStore",
+            "purposes": [
+              {
+                "secretId": "jwt.signer",
+                "keyUsage": "VERIFY"
+              }
+            ]
+          }
         }
       }
     }
