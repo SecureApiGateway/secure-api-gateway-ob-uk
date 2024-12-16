@@ -2,7 +2,6 @@ import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import com.nimbusds.jose.jwk.*
 import groovy.json.JsonSlurper
-import org.bouncycastle.asn1.x500.X500Name
 import org.forgerock.http.protocol.*
 import org.forgerock.json.JsonValueFunctions.*
 import org.forgerock.json.jose.*
@@ -11,8 +10,6 @@ import org.forgerock.json.jose.jwk.RsaJWK
 import org.forgerock.json.jose.jwk.store.JwksStore.*
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.interfaces.RSAPublicKey
-import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
-import com.forgerock.sapi.gateway.jwks.JwkSetService
 import org.forgerock.util.time.Duration
 
 import java.text.ParseException
@@ -222,9 +219,10 @@ def validateEncodedPayload(String detachedSignatureValue, JWKSet jwkSet, String 
 def getRSAKeyFromJwks(JWKSet jwkSet, JWSHeader jwsHeader) {
     var keyId = jwsHeader.getKeyID()
     logger.debug(SCRIPT_NAME + "Fetching key for keyId: " + keyId)
-    var jwk = JwkSetService.findJwkByKeyId(keyId).apply(jwkSet)
+    var jwk = jwkSet.findJwk(keyId)
     return ((RsaJWK) jwk).toRSAPublicKey()
 }
+
 
 /**
  * Encodes the payload for an encoded payload request and performs the signature validation. Defers the validation of

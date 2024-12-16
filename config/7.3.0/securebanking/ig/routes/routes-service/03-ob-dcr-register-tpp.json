@@ -4,6 +4,17 @@
   "auditService": "AuditService-OB-Route",
   "baseURI": "https://&{identity.platform.fqdn}",
   "condition": "${find(request.uri.path, '^/am/oauth2/realms/root/realms/&{am.realm}/register')}",
+  "heap": [
+    {
+      "name": "capture",
+      "type": "CaptureDecorator",
+      "config": {
+        "base": "capture.route.logger",
+        "captureContext": true,
+        "captureEntity": true
+      }
+    }
+  ],
   "handler": {
     "type": "Chain",
     "config": {
@@ -43,7 +54,8 @@
           "name": "RegistrationRequestBuilderFilter",
           "type": "RegistrationRequestBuilderFilter",
           "config": {
-            "trustedDirectoryService": "TrustedDirectoryService"
+            "trustedDirectoryService": "TrustedDirectoryService",
+            "jwkSetService": "JwkSetService"
           }
         },
         {
@@ -52,7 +64,7 @@
           "type": "RegistrationRequestJwtSignatureValidationFilter",
           "config": {
             "clientHandler": "OBClientHandler",
-            "jwkSetService": "OBJwkSetService",
+            "jwkSetService": "JwkSetService",
             "jwtSignatureValidator": "RsaJwtSignatureValidator"
           }
         },
@@ -63,7 +75,7 @@
           "config": {
             "certificateRetriever": "ContextCertificateRetriever",
             "supportedSigningAlgorithms": ["PS256"],
-            "supportedTokenEndpointAuthMethods": ["tls_client_auth", "private_key_jwt"]
+            "supportedTokenEndpointAuthMethods": "${oauth2.tokenEndpointAuthMethodsSupported}"
           }
         },
         {
@@ -74,11 +86,7 @@
             "type": "application/x-groovy",
             "file": "ProcessRegistration.groovy",
             "args": {
-              "routeArgObJwksHosts": [
-                "&{hosts.obJwks}"
-              ],
-              "routeArgProxyBaseUrl": "https://&{ig.fqdn}/jwkms/jwksproxy",
-              "jwkSetService": "${heap['OBJwkSetService']}",
+              "jwkSetService": "${heap['JwkSetService']}",
               "allowIgIssuedTestCerts": "${security.enableTestTrustedDirectory}",
               "jwtSignatureValidator": "${heap['RsaJwtSignatureValidator']}",
               "tokenEndpointAuthMethodsSupported": "${oauth2.tokenEndpointAuthMethodsSupported}",
@@ -133,17 +141,19 @@
                   "name": "ClientCredentialsOAuth2ClientFilterHandler",
                   "type": "Chain",
                   "config": {
-                    "handler": "ForgeRockClientHandler",
-                    "filters": [
-                      {
-                        "type": "ClientSecretBasicAuthenticationFilter",
-                        "config": {
-                          "clientId": "&{ig.client.id}",
-                          "clientSecretId": "ig.client.secret",
-                          "secretsProvider": "SystemAndEnvSecretStore-IAM"
+                    "delegate": {
+                      "handler": "ForgeRockClientHandler",
+                      "filters": [
+                        {
+                          "type": "ClientSecretBasicAuthenticationFilter",
+                          "config": {
+                            "clientId": "&{ig.client.id}",
+                            "clientSecretId": "ig.client.secret",
+                            "secretsProvider": "SystemAndEnvSecretStore-IAM"
+                          }
                         }
-                      }
-                    ]
+                      ]
+                    }
                   }
                 }
               }
