@@ -12,7 +12,7 @@ import org.forgerock.json.jose.jwk.store.JwksStore.*
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.interfaces.RSAPublicKey
 import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
-import com.forgerock.sapi.gateway.jwks.JwkSetService
+import org.forgerock.openig.fapi.jwks.JwkSetService
 import org.forgerock.util.time.Duration
 
 import java.text.ParseException
