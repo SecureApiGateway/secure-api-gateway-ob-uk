@@ -46,7 +46,7 @@
     </parent>
 
     <properties>
-        <secure-api-gateway.version>3.2.0</secure-api-gateway.version>
+        <secure-api-gateway.version>4.0.1</secure-api-gateway.version>
         <nimbus-jose.version>9.40</nimbus-jose.version>
         <bouncy-castle.version>1.78.1</bouncy-castle.version>
         <maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
