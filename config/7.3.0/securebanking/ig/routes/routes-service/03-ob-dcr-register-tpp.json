@@ -131,19 +131,17 @@
                   "name": "ClientCredentialsOAuth2ClientFilterHandler",
                   "type": "Chain",
                   "config": {
-                    "delegate": {
-                      "handler": "ForgeRockClientHandler",
-                      "filters": [
-                        {
-                          "type": "ClientSecretBasicAuthenticationFilter",
-                          "config": {
-                            "clientId": "&{ig.client.id}",
-                            "clientSecretId": "ig.client.secret",
-                            "secretsProvider": "SystemAndEnvSecretStore-IAM"
-                          }
+                    "handler": "ForgeRockClientHandler",
+                    "filters": [
+                      {
+                        "type": "ClientSecretBasicAuthenticationFilter",
+                        "config": {
+                          "clientId": "&{ig.client.id}",
+                          "clientSecretId": "ig.client.secret",
+                          "secretsProvider": "SystemAndEnvSecretStore-IAM"
                         }
-                      ]
-                    }
+                      }
+                    ]
                   }
                 }
               }
