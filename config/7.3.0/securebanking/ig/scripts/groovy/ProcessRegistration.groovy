@@ -122,7 +122,7 @@ switch (method.toUpperCase()) {
         // Validate the issuer claim for the registration matches the SSA software_id
         // NOTE: At this stage we do not know if the SSA is valid, it is assumed the SSAVerifier filter will run after
         //       this filter and raise an error if the SSA is invalid.
-        String registrationIssuer = registrationRequest.getMetadata(iss).asString()
+        String registrationIssuer = registrationRequest.getMetadata("iss").asString()
         String ssaSoftwareId = softwareStatement.getSoftwareId()
         logger.debug("{}registrationIssuer is {}, ssaSoftwareId is {}", SCRIPT_NAME, registrationIssuer, ssaSoftwareId)
         if (registrationIssuer == null || ssaSoftwareId == null || registrationIssuer != ssaSoftwareId) {
