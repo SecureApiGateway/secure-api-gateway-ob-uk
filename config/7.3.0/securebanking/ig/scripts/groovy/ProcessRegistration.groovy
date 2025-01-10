@@ -64,12 +64,6 @@ switch (method.toUpperCase()) {
         logger.debug(SCRIPT_NAME + "required registrationRequest is present")
 
         RegistrationRequest registrationRequest = attributes.registrationRequest
-        if (! registrationRequest.signatureHasBeenValidated() ){
-            logger.error(SCRIPT_NAME + "registrationResponse signature has not been validated. " +
-                    "RegistrationRequestJwtSignatureValidatorFilter must be run prior to this script")
-            return new Response(Status.INTERNAL_SERVER_ERROR)
-        }
-        logger.debug(SCRIPT_NAME + "required registrationRequest signatures have been validated")
 
         def SCOPE_ACCOUNTS = "accounts"
         def SCOPE_PAYMENTS = "payments"
@@ -169,7 +163,7 @@ switch (method.toUpperCase()) {
             rewriteUriToAccessExistingAmRegistration()
         }
 
-return softwareStatement.getJwkSetLocator().applyAsync(uri -> {
+        return softwareStatement.getJwkSetLocator().applyAsync(uri -> {
             registrationRequest.setMetadata("jwks_uri", uri.toString());
             return jwkSetService.getJwkSet(uri)
         }, apiClientJwkSet -> {
@@ -275,9 +269,9 @@ private Response performOpenBankingScopeChecks(ErrorResponseFactory errorRespons
 
     String requestedScopes = registrationRequest.getScope()
     if (requestedScopes == null) {
-            String errorDescription = "The request jwt does not contain the required scopes claim"
-            logger.info(SCRIPT_NAME + errorDescription)
-            return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
+        String errorDescription = "The request jwt does not contain the required scopes claim"
+        logger.info(SCRIPT_NAME + errorDescription)
+        return errorResponseFactory.invalidClientMetadataErrorResponse(errorDescription)
     }
     logger.debug("{}requestedScopes are {}", SCRIPT_NAME, requestedScopes)
 
@@ -334,7 +328,7 @@ private Promise addSoftwareStatementToResponse(response, softwareStatementAssert
         return response.getEntity().getJsonAsync().then(json -> {
             if (!json["software_statement"]) {
                 json["software_statement"] = softwareStatementAssertion.build()
-        }
+            }
             response.entity.setJson(json)
             return response
         })
