@@ -113,28 +113,49 @@ String jwsHeaderDecoded = new String(jwsHeaderEncoded.decodeBase64Url())
 logger.debug(SCRIPT_NAME + "Got JWT header: " + jwsHeaderDecoded)
 def jwsHeaderDataStructure = new JsonSlurper().parseText(jwsHeaderDecoded)
 
-def jwkSet = attributes.apiClientJwkSet
-if (!jwkSet) {
-    logger.error(SCRIPT_NAME + "attributes.apiClientJwkSet not found, ensure that filter which sets this attribute "
-                         + "is installed prior to this filter in the chain")
-    return new Response(Status.INTERNAL_SERVER_ERROR)
-}
+apiClient().getJwkSet().then(jwkSet -> {
+    if (!jwkSet) {
+        logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the apiClient "
+                             + "JwkSet is installed prior to this filter in the chain")
+        return new Response(Status.INTERNAL_SERVER_ERROR)
+    }
 
-if (['v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3'].contains(apiVersion)) {
-    //Processing pre v3.1.4 requests
-    if (jwsHeaderDataStructure.b64 == null) {
-        message = "B64 header must be presented in JWT header before v3.1.3"
-        logger.error(SCRIPT_NAME + message)
-        return getSignatureValidationErrorResponse()
-    } else if (jwsHeaderDataStructure.b64 != false) {
-        message = "B64 header must be false in JWT header before v3.1.3"
-        logger.error(SCRIPT_NAME + message)
-        return getSignatureValidationErrorResponse()
+    if ([ 'v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3' ].contains(apiVersion)) {
+        //Processing pre v3.1.4 requests
+        if (jwsHeaderDataStructure.b64 == null) {
+            message = "B64 header must be presented in JWT header before v3.1.3"
+            logger.error(SCRIPT_NAME + message)
+            return getSignatureValidationErrorResponse()
+        } else if (jwsHeaderDataStructure.b64 != false) {
+            message = "B64 header must be false in JWT header before v3.1.3"
+            logger.error(SCRIPT_NAME + message)
+            return getSignatureValidationErrorResponse()
+        } else {
+            String requestPayload = request.entity.getString()
+            try {
+                logger.debug(SCRIPT_NAME + "Processing Unencoded payload request")
+                if (!validateUnencodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
+                    return newResultPromise(getSignatureValidationErrorResponse())
+                }
+                return next.handle(context, request)
+            }
+            catch (Exception e) {
+                logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
+                return newResultPromise(getSignatureValidationErrorResponse())
+            }
+        }
     } else {
+        //Processing post v3.1.4 requests
+        if (jwsHeaderDataStructure.b64 != null) {
+            message = "B64 header not permitted in JWT header after v3.1.3"
+            logger.error(SCRIPT_NAME + message)
+            return getSignatureValidationErrorResponse()
+        }
+
         String requestPayload = request.entity.getString()
         try {
-            logger.debug(SCRIPT_NAME + "Processing Unencoded payload request")
-            if (!validateUnencodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
+            logger.debug(SCRIPT_NAME + "Standard base64 encoded payload for detached sig")
+            if (!validateEncodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
                 return newResultPromise(getSignatureValidationErrorResponse())
             }
             return next.handle(context, request)
@@ -144,28 +165,7 @@ if (['v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3'].contains(apiVersion)) {
             return newResultPromise(getSignatureValidationErrorResponse())
         }
     }
-} else {
-    //Processing post v3.1.4 requests
-    if (jwsHeaderDataStructure.b64 != null) {
-        message = "B64 header not permitted in JWT header after v3.1.3"
-        logger.error(SCRIPT_NAME + message)
-        return getSignatureValidationErrorResponse()
-    }
-
-    String requestPayload = request.entity.getString()
-    try {
-        logger.debug(SCRIPT_NAME + "Standard base64 encoded payload for detached sig")
-        if (!validateEncodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
-            return newResultPromise(getSignatureValidationErrorResponse())
-        }
-        return next.handle(context, request)
-    }
-    catch (Exception e) {
-        logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
-        return newResultPromise(getSignatureValidationErrorResponse())
-    }
-
-}
+})
 
 next.handle(context, request)
 
@@ -341,11 +341,7 @@ def validateIssCritClaim(issCritClaim) {
         logger.error(SCRIPT_NAME + "Could not validate detached JWT - Missing required header value: " + ISS_CRIT_CLAIM)
         return false
     }
-    if (attributes.apiClient == null) {
-        throw new IllegalStateException("Route is configured incorrectly, " + SCRIPT_NAME
-                                                + "requires apiClient context attribute")
-    }
-    def apiClient = attributes.apiClient
+    def apiClient = apiClient()
     def orgId = apiClient.getOrganisation().id()
     def softwareStatementId = apiClient.getSoftwareClientId()
     def expectedIssuerValue = orgId + "/" + softwareStatementId
@@ -357,6 +353,15 @@ def validateIssCritClaim(issCritClaim) {
     }
     logger.debug(SCRIPT_NAME + ISS_CRIT_CLAIM + " is valid")
     return true
+}
+
+private void apiClient() {
+    def apiClient = attributes.apiClient
+    if (apiClient == null) {
+        throw new IllegalStateException("Route is configured incorrectly, " + SCRIPT_NAME
+                                                + "requires apiClient context attribute")
+    }
+    return apiClient
 }
 
 /**
