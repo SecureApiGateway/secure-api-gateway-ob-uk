@@ -113,7 +113,7 @@ String jwsHeaderDecoded = new String(jwsHeaderEncoded.decodeBase64Url())
 logger.debug(SCRIPT_NAME + "Got JWT header: " + jwsHeaderDecoded)
 def jwsHeaderDataStructure = new JsonSlurper().parseText(jwsHeaderDecoded)
 
-apiClient().getJwkSet().then(jwkSet -> {
+apiClient().getJwkSet().thenAsync(jwkSet -> {
     if (!jwkSet) {
         logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the apiClient "
                              + "JwkSet is installed prior to this filter in the chain")
