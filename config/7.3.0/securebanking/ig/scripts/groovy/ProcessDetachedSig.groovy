@@ -115,8 +115,8 @@ def jwsHeaderDataStructure = new JsonSlurper().parseText(jwsHeaderDecoded)
 
 apiClient().getJwkSet().thenAsync(jwkSet -> {
     if (!jwkSet) {
-        logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the apiClient "
-                             + "JwkSet is installed prior to this filter in the chain")
+        logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the apiClient " +
+                             "JwkSet is installed prior to this filter in the chain")
         return new Response(Status.INTERNAL_SERVER_ERROR)
     }
 
@@ -141,12 +141,6 @@ apiClient().getJwkSet().thenAsync(jwkSet -> {
             }
             catch (Exception e) {
                 logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
-                // TODO[wm]: remove
-                def pw = new PrintWriter(new StringWriter());
-                e.printStackTrace(pw);
-                logger.error(SCRIPT_NAME + "[TODO:1:remove]: " + sw.toString())
-                pw.close();
-                // TODO[end]
                 return newResultPromise(getSignatureValidationErrorResponse())
             }
         }
@@ -168,12 +162,6 @@ apiClient().getJwkSet().thenAsync(jwkSet -> {
         }
         catch (Exception e) {
             logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
-            // TODO[wm]: remove
-            def pw = new PrintWriter(new StringWriter());
-            e.printStackTrace(pw);
-            logger.error(SCRIPT_NAME + "[TODO:2:remove]: " + sw.toString())
-            pw.close();
-            // TODO[end]
             return newResultPromise(getSignatureValidationErrorResponse())
         }
     }
@@ -271,11 +259,9 @@ def isJwsSignatureValid(String detachedSignatureValue,
     String[] jwtElements = detachedSignatureValue.split("\\.")
 
     // The payload must be encoded with base64Url
-    String rebuiltJwt = jwtElements[ 0 ]
-            + "."
-            + Base64.getUrlEncoder().withoutPadding().encodeToString(requestPayload.getBytes())
-            + "."
-            + jwtElements[ 2 ]
+    String rebuiltJwt = jwtElements[0] + "." +
+            Base64.getUrlEncoder().withoutPadding().encodeToString(requestPayload.getBytes()) + "." +
+            jwtElements[2]
 
     logger.debug(SCRIPT_NAME + "JWT rebuilt using the request body: " + rebuiltJwt)
     JWSObject jwsObject = JWSObject.parse(rebuiltJwt)
@@ -296,16 +282,16 @@ def validateCriticalParameters(JWSHeader jwsHeader) {
     logger.debug(SCRIPT_NAME + "Starting validation of critical parameters")
 
     if (jwsHeader.getAlgorithm() == null || !jwsHeader.getAlgorithm().getName().equals("PS256")) {
-        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid algorithm was used: "
-                             + jwsHeader.getAlgorithm().getName())
-        return false
+        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid algorithm was used: " +
+                             jwsHeader.getAlgorithm().getName())
+        return false;
     }
     logger.debug(SCRIPT_NAME + "Found valid algorithm!")
 
     //optional header - only if it's found verify that it's mandatory equal to "JOSE"
     if (jwsHeader.getType() != null && !jwsHeader.getType().getType().equals("JOSE")) {
-        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid type detected: "
-                             + jwsHeader.getType().getType())
+        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid type detected: " +
+                             jwsHeader.getType().getType())
         return false
     }
     logger.debug(SCRIPT_NAME + "Found valid type!")
@@ -320,18 +306,18 @@ def validateCriticalParameters(JWSHeader jwsHeader) {
     def skewedIatTimestamp = iatTimestamp.minus(clockSkewAllowance)
     def currentTimestamp = Instant.now()
     if (skewedIatTimestamp.isAfter(currentTimestamp)) {
-        logger.error(SCRIPT_NAME + "Could not validate detached JWT - claim: " + IAT_CRIT_CLAIM
-                             + " must be in the past, value: " + iatTimestamp.getEpochSecond()
-                             + ", current time: " + currentTimestamp.getEpochSecond()
-                             + ", clockSkewAllowance: " + clockSkewAllowance)
+        logger.error(SCRIPT_NAME + "Could not validate detached JWT - claim: " + IAT_CRIT_CLAIM +
+                             " must be in the past, value: " + iatTimestamp.getEpochSecond() +
+                             ", current time: " + currentTimestamp.getEpochSecond() +
+                             ", clockSkewAllowance: " + clockSkewAllowance)
         return false
     }
     logger.debug(SCRIPT_NAME + "Found valid iat!")
 
     if (jwsHeader.getCustomParam(TAN_CRIT_CLAIM) == null
             || !jwsHeader.getCustomParam(TAN_CRIT_CLAIM).equals(routeArgTrustedAnchor)) {
-        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid trusted anchor found: "
-                             + jwsHeader.getCustomParam(TAN_CRIT_CLAIM) + " expected: " + routeArgTrustedAnchor)
+        logger.error(SCRIPT_NAME + "Could not validate detached JWT - Invalid trusted anchor found: " +
+                             jwsHeader.getCustomParam(TAN_CRIT_CLAIM) + " expected: " + routeArgTrustedAnchor)
         return false
     }
     logger.debug(SCRIPT_NAME + "Found valid tan!")
@@ -358,9 +344,9 @@ def validateIssCritClaim(issCritClaim) {
     def softwareStatementId = apiClient.getSoftwareId()
     def expectedIssuerValue = orgId + "/" + softwareStatementId
     if (expectedIssuerValue != issCritClaim) {
-        logger.error(SCRIPT_NAME + "Invalid " + ISS_CRIT_CLAIM
-                             + " value, expected: " + expectedIssuerValue + " "
-                             + "actual: " + issCritClaim)
+        logger.error(SCRIPT_NAME + "Invalid " + ISS_CRIT_CLAIM +
+                             " value, expected: " + expectedIssuerValue +
+                             " actual: " + issCritClaim)
         return false
     }
     logger.debug(SCRIPT_NAME + ISS_CRIT_CLAIM + " is valid")
@@ -370,8 +356,8 @@ def validateIssCritClaim(issCritClaim) {
 def apiClient() {
     def apiClient = attributes.apiClient
     if (apiClient == null) {
-        throw new IllegalStateException("Route is configured incorrectly, " + SCRIPT_NAME
-                                                + "requires apiClient context attribute")
+        throw new IllegalStateException("Route is configured incorrectly, " + SCRIPT_NAME +
+                                                "requires apiClient context attribute")
     }
     return apiClient
 }
