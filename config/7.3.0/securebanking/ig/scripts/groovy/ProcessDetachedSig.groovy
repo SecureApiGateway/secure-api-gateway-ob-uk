@@ -343,7 +343,7 @@ def validateIssCritClaim(issCritClaim) {
     }
     def apiClient = apiClient()
     def orgId = apiClient.getOrganisation().id()
-    def softwareStatementId = apiClient.getSoftwareClientId()
+    def softwareStatementId = apiClient.getSoftwareId()
     def expectedIssuerValue = orgId + "/" + softwareStatementId
     if (expectedIssuerValue != issCritClaim) {
         logger.error(SCRIPT_NAME + "Invalid " + ISS_CRIT_CLAIM
