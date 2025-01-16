@@ -355,7 +355,7 @@ def validateIssCritClaim(issCritClaim) {
     return true
 }
 
-private void apiClient() {
+def apiClient() {
     def apiClient = attributes.apiClient
     if (apiClient == null) {
         throw new IllegalStateException("Route is configured incorrectly, " + SCRIPT_NAME
