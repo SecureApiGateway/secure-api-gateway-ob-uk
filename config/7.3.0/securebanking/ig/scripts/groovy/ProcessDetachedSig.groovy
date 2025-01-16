@@ -141,6 +141,12 @@ apiClient().getJwkSet().thenAsync(jwkSet -> {
             }
             catch (Exception e) {
                 logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
+                // TODO[wm]: remove
+                def pw = new PrintWriter(new StringWriter());
+                e.printStackTrace(pw);
+                logger.error(SCRIPT_NAME + "[TODO:1:remove]: " + sw.toString())
+                pw.close();
+                // TODO[end]
                 return newResultPromise(getSignatureValidationErrorResponse())
             }
         }
@@ -165,7 +171,7 @@ apiClient().getJwkSet().thenAsync(jwkSet -> {
             // TODO[wm]: remove
             def pw = new PrintWriter(new StringWriter());
             e.printStackTrace(pw);
-            logger.error(SCRIPT_NAME + "[TODO:remove]: " + sw.toString())
+            logger.error(SCRIPT_NAME + "[TODO:2:remove]: " + sw.toString())
             pw.close();
             // TODO[end]
             return newResultPromise(getSignatureValidationErrorResponse())
