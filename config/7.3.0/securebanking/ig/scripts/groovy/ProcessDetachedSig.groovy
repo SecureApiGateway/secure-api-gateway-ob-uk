@@ -369,7 +369,7 @@ private void apiClient() {
  * separately.
  * @return Set of crit claims
  */
-static def getCriticalHeaderParameters() {
+def getCriticalHeaderParameters() {
     Set<String> criticalParameters = new HashSet<String>()
     criticalParameters.add(IAT_CRIT_CLAIM)
     criticalParameters.add(ISS_CRIT_CLAIM)
