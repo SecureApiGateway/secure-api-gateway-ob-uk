@@ -5,8 +5,10 @@ import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.*
 import org.forgerock.json.JsonValueFunctions.*
 import org.forgerock.json.jose.*
+import org.forgerock.json.jose.jwk.JWK
 import org.forgerock.json.jose.jwk.JWKSet
 import org.forgerock.json.jose.jwk.RsaJWK
+import org.forgerock.json.jose.exceptions.FailedToLoadJWKException
 import org.forgerock.json.jose.jwk.store.JwksStore.*
 import com.forgerock.securebanking.uk.gateway.jwks.*
 import java.security.interfaces.RSAPublicKey
@@ -203,7 +205,7 @@ def validateUnencodedPayload(String detachedSignatureValue, JWKSet jwkSet, Strin
 
 /**
  * Validates a request with encoded payload. For version 3.1.4 onward, ASPSPs must not include the
- * b64 claim in the header, and any TPPs using these ASPSPs must do the same. By defaut b64 will be considered as true
+ * b64 claim in the header, and any TPPs using these ASPSPs must do the same. By default b64 will be considered as true
  *
  * The correct way to verify this version of detached signature with encoded payload:
  * <b> b64Encode(header).b64UrlEncode(payload)
@@ -225,10 +227,12 @@ def validateEncodedPayload(String detachedSignatureValue, JWKSet jwkSet, String 
 def getRSAKeyFromJwks(JWKSet jwkSet, JWSHeader jwsHeader) {
     var keyId = jwsHeader.getKeyID()
     logger.debug(SCRIPT_NAME + "Fetching key for keyId: " + keyId)
-    var jwk = jwkSet.findJwk(keyId)
+    JWK jwk = jwkSet.findJwk(keyId);
+    if (jwk == null) {
+        throw new FailedToLoadJWKException("Failed to find keyId: " + keyId + " in JWKSet");
+    }
     return ((RsaJWK) jwk).toRSAPublicKey()
 }
-
 
 /**
  * Encodes the payload for an encoded payload request and performs the signature validation. Defers the validation of
