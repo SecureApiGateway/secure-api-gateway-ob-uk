@@ -169,8 +169,6 @@ apiClient().getJwkSet().thenAsync(jwkSet -> {
     }
 })
 
-next.handle(context, request)
-
 // End script execution - Start method definitions
 
 /**
