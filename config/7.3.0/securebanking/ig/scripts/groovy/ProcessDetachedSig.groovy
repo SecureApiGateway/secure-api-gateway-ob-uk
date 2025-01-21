@@ -22,7 +22,7 @@ import org.forgerock.util.time.Duration
 import java.text.ParseException
 import java.time.Instant
 
-import static org.forgerock.util.promise.Promises.newResponsePromise
+import static org.forgerock.util.promise.Promises.newResultPromise
 
 /*
 JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
