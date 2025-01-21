@@ -143,6 +143,11 @@
       "config": {
         "filters": [
           {
+            "comment": "Add x-fapi-interaction-id header if one was not present in the request",
+            "name": "FapiInteractionIdFilter",
+            "type": "FapiInteractionIdFilter"
+          },
+          {
             "comment": "[TODO] Temporary filter to log access to the route, given unusual issues we're seeing",
             "name": "WhereAmI?",
             "type": "ScriptableFilter",
@@ -168,11 +173,6 @@
                 "  })"
               ]
             }
-          },
-          {
-            "comment": "Add x-fapi-interaction-id header if one was not present in the request",
-            "name": "FapiInteractionIdFilter",
-            "type": "FapiInteractionIdFilter"
           },
           {
             "name": "FapiInteractionIdTracingFilter",
