@@ -22,22 +22,22 @@ import org.forgerock.util.time.Duration
 import java.text.ParseException
 import java.time.Instant
 
-import static org.forgerock.util.promise.Promises.newResultPromise
+import static org.forgerock.http.protocol.Response.newResponsePromise
 
 /*
-JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
+ * JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
  */
 /**
- Subject to waiver for earlier versions as per
- https://openbanking.atlassian.net/wiki/spaces/DZ/pages/1112670669/W007
-
- If ASPSPs are still using v3.1.3 or earlier, they must support the parameter b64 to be false,
- and any TPPs using these ASPSPs must do the same.
-
- If ASPSPs have updated to v3.1.4 or later, they must not include the b64 claim in the header,
- and any TPPs using these ASPSPs must do the same.
-
- This script relies on the apiClient attribute being set, therefore must be installed after the FetchApiClientFilter
+ * Subject to waiver for earlier versions as per
+ * https://openbanking.atlassian.net/wiki/spaces/DZ/pages/1112670669/W007
+ *
+ * If ASPSPs are still using v3.1.3 or earlier, they must support the parameter b64 to be false,
+ * and any TPPs using these ASPSPs must do the same.
+ *
+ * If ASPSPs have updated to v3.1.4 or later, they must not include the b64 claim in the header,
+ * and any TPPs using these ASPSPs must do the same.
+ *
+ * This script relies on the apiClient attribute being set, therefore must be installed after the FetchApiClientFilter
  */
 
 SCRIPT_NAME = null
