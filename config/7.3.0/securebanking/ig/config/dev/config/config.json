@@ -168,7 +168,7 @@
                 "next.handle(context, request)",
                 "    .then({ response ->",
                 "      logger.debug(\"[WhereAmI?] EXIT: routeId={}\", context.asContext(RoutingContext.class).getRouteId())",
-                "      response.getEntity().setJson(debug)",
+                "      //response.getEntity().setJson(debug)",
                 "      return response",
                 "  })"
               ]
