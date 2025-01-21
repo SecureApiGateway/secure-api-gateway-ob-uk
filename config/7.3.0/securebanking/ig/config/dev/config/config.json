@@ -143,6 +143,33 @@
       "config": {
         "filters": [
           {
+            "comment": "[TODO] Temporary filter to log access to the route, given unusual issues we're seeing",
+            "name": "WhereAmI?",
+            "type": "ScriptableFilter",
+            "config": {
+              "type": "application/x-groovy",
+              "source": [
+                "import org.forgerock.openig.handler.router.RoutingContext",
+                "import org.forgerock.http.protocol.Header",
+                "import static org.forgerock.json.JsonValue.json",
+                "import static org.forgerock.json.JsonValue.object",
+                "import static org.forgerock.json.JsonValue.field",
+                "JsonValue debug = json(object(",
+                "    field(\"routeId\", context.asContext(RoutingContext.class).getRouteId()), ",
+                "    field(\"URI\", request.getUri()), ",
+                "    field(\"referrer\", request.getHeaders().getFirst(\"Referrer\")), ",
+                "    field(\"x-fapi-interaction-id\", request.getHeaders().getFirst(\"x-fapi-interaction-id\"))))",
+                "logger.debug(\"[WhereAmI?] ENTER: {}\", debug)",
+                "next.handle(context, request)",
+                "    .then({ response ->",
+                "      logger.debug(\"[WhereAmI?] EXIT: routeId={}\", context.asContext(RoutingContext.class).getRouteId())",
+                "      response.getEntity().setJson(debug)",
+                "      return response",
+                "  })"
+              ]
+            }
+          },
+          {
             "comment": "Add x-fapi-interaction-id header if one was not present in the request",
             "name": "FapiInteractionIdFilter",
             "type": "FapiInteractionIdFilter"
