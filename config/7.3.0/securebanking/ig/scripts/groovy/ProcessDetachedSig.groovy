@@ -1,9 +1,14 @@
+import static org.forgerock.json.JsonValue.json
+import static org.forgerock.json.JsonValue.object
+import static org.forgerock.json.JsonValue.field
+
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.*
 import com.nimbusds.jose.jwk.*
 import groovy.json.JsonSlurper
 import org.forgerock.http.protocol.*
 import org.forgerock.json.JsonValueFunctions.*
+import org.forgerock.json.JsonValue
 import org.forgerock.json.jose.*
 import org.forgerock.json.jose.jwk.JWK
 import org.forgerock.json.jose.jwk.JWKSet
@@ -17,7 +22,7 @@ import org.forgerock.util.time.Duration
 import java.text.ParseException
 import java.time.Instant
 
-import static org.forgerock.util.promise.Promises.newResultPromise
+import static org.forgerock.util.promise.Promises.newResponsePromise
 
 /*
 JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
@@ -35,141 +40,153 @@ JWS spec: https://www.rfc-editor.org/rfc/rfc7515#page-7
  This script relies on the apiClient attribute being set, therefore must be installed after the FetchApiClientFilter
  */
 
-def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
-if (fapiInteractionId == null) {
-    fapiInteractionId = "No x-fapi-interaction-id"
-}
-SCRIPT_NAME = "[ProcessDetachedSig] (" + fapiInteractionId + ") - "
-logger.debug(SCRIPT_NAME + "Running...")
-
-// routeArgClockSkewAllowance is a org.forgerock.util.time.Duration
-// (see docs: https://backstage.forgerock.com/docs/ig/2024.3/reference/preface.html#definition-duration)
-clockSkewAllowance = Duration.duration(routeArgClockSkewAllowance).toJavaDuration()
-logger.info(SCRIPT_NAME + "Configured clock skew allowance: " + clockSkewAllowance)
-
-def method = request.method
-if (method != "POST") {
-    //This script should be executed only if it is a POST request
-    logger.debug(SCRIPT_NAME + "Skipping the filter because the method is not POST, the method is " + method)
-    return next.handle(context, request)
-}
+SCRIPT_NAME = null
 
 IAT_CRIT_CLAIM = "http://openbanking.org.uk/iat"
 ISS_CRIT_CLAIM = "http://openbanking.org.uk/iss"
 TAN_CRIT_CLAIM = "http://openbanking.org.uk/tan"
 
-response = new Response(Status.BAD_REQUEST)
-response.headers['Content-Type'] = "application/json"
+scriptInit(request)
+filter(context, request, next)
 
-// Parse api version from the request path
-logger.debug(SCRIPT_NAME + "request.uri.path: " + request.uri.path)
-String apiVersionRegex = "(v(\\d+.)?(\\d+.)?(\\*|\\d+))"
-
-def match = (request.uri.path =~ apiVersionRegex)
-def apiVersion = "";
-if (match.find()) {
-    apiVersion = match.group(1)
-    logger.debug(SCRIPT_NAME + "API version: " + apiVersion)
-} else {
-    message = "Can't parse API version for inbound request"
-    logger.error(SCRIPT_NAME + message)
-    response.status = Status.BAD_REQUEST
-    response.entity = "{ \"error\":\"" + message + "\"}"
-    return response
+/**
+ * Initialises the script.
+ * @param request the request
+ */
+void scriptInit(Request request) {
+    def fapiInteractionId = request.getHeaders().getFirst("x-fapi-interaction-id");
+    if (fapiInteractionId == null) {
+        fapiInteractionId = "No x-fapi-interaction-id"
+    }
+    SCRIPT_NAME = "[ProcessDetachedSig] (" + fapiInteractionId + ") - "
+    logger.debug(SCRIPT_NAME + "Running...")
 }
 
-logger.debug(SCRIPT_NAME + "Building JWT from detached header")
+/**
+ * Script filter method
+ * @param context the context
+ * @param request the request
+ * @param next the next handler
+ * @return A promise containing a response
+ */
+Promise<Response, NeverThrowsException> filter(Context context, Request request, Handler next) {
+    // routeArgClockSkewAllowance is a org.forgerock.util.time.Duration
+    // (see docs: https://backstage.forgerock.com/docs/ig/2024.3/reference/preface.html#definition-duration)
+    clockSkewAllowance = Duration.duration(routeArgClockSkewAllowance).toJavaDuration()
+    logger.info(SCRIPT_NAME + "Configured clock skew allowance: " + clockSkewAllowance)
 
-// JWS detached signature pattern: 'JWSHeader..JWSSignature' with no JWS payload
-
-def jwsDetachedSignatureHeader = request.headers.get(routeArgHeaderName)
-
-if (jwsDetachedSignatureHeader == null) {
-    message = "No detached signature header on inbound request " + routeArgHeaderName
-    logger.error(SCRIPT_NAME + message)
-    response.status = Status.BAD_REQUEST
-    response.entity = "{ \"error\":\"" + message + "\"}"
-    return response
-}
-
-String detachedSignatureValue = jwsDetachedSignatureHeader.firstValue.toString()
-
-logger.debug(SCRIPT_NAME + "Inbound detached signature: " + detachedSignatureValue)
-String[] signatureElements = detachedSignatureValue.split("\\.")
-
-if (signatureElements.length != 3) {
-    message = "Wrong number of dots on inbound detached signature " + signatureElements.length
-    logger.error(SCRIPT_NAME + message)
-    response.status = Status.BAD_REQUEST
-    response.entity = "{ \"error\":\"" + message + "\"}"
-    return response
-}
-// Get the JWS header, first part of array
-String jwsHeaderEncoded = signatureElements[0]
-
-// Check JWS header for b64 claim
-// If claim is present, and API version > 3.1.3 then reject
-// If claim is present, and is set to false, and API < 3.1.4 then accept and validate as non base64 payload
-
-String jwsHeaderDecoded = new String(jwsHeaderEncoded.decodeBase64Url())
-logger.debug(SCRIPT_NAME + "Got JWT header: " + jwsHeaderDecoded)
-def jwsHeaderDataStructure = new JsonSlurper().parseText(jwsHeaderDecoded)
-
-apiClient().getJwkSet().thenAsync(jwkSet -> {
-    if (!jwkSet) {
-        logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the apiClient " +
-                             "JwkSet is installed prior to this filter in the chain")
-        return new Response(Status.INTERNAL_SERVER_ERROR)
+    def method = request.method
+    if (method != "POST") {
+        //This script should be executed only if it is a POST request
+        logger.debug(SCRIPT_NAME + "Skipping the filter because the method is not POST, the method is " + method)
+        return next.handle(context, request)
     }
 
-    if ([ 'v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3' ].contains(apiVersion)) {
-        //Processing pre v3.1.4 requests
-        if (jwsHeaderDataStructure.b64 == null) {
-            message = "B64 header must be presented in JWT header before v3.1.3"
-            logger.error(SCRIPT_NAME + message)
-            return getSignatureValidationErrorResponse()
-        } else if (jwsHeaderDataStructure.b64 != false) {
-            message = "B64 header must be false in JWT header before v3.1.3"
-            logger.error(SCRIPT_NAME + message)
-            return getSignatureValidationErrorResponse()
+    // Parse api version from the request path
+    logger.debug(SCRIPT_NAME + "request.uri.path: " + request.uri.path)
+    String apiVersionRegex = "(v(\\d+.)?(\\d+.)?(\\*|\\d+))"
+    def match = (request.uri.path =~ apiVersionRegex)
+    def apiVersion = "";
+    if (match.find()) {
+        apiVersion = match.group(1)
+        logger.debug(SCRIPT_NAME + "API version: " + apiVersion)
+    } else {
+        return fail(Status.BAD_REQUEST, "Can't parse API version for inbound request")
+    }
+
+    logger.debug(SCRIPT_NAME + "Building JWT from detached header")
+    // JWS detached signature pattern: 'JWSHeader..JWSSignature' with no JWS payload
+    def jwsDetachedSignatureHeader = request.headers.get(routeArgHeaderName)
+    if (jwsDetachedSignatureHeader == null) {
+        return fail(Status.BAD_REQUEST, "No detached signature header on inbound request " + routeArgHeaderName)
+    }
+
+    String detachedSignatureValue = jwsDetachedSignatureHeader.firstValue.toString()
+    logger.debug(SCRIPT_NAME + "Inbound detached signature: " + detachedSignatureValue)
+    String[] signatureElements = detachedSignatureValue.split("\\.")
+    if (signatureElements.length != 3) {
+        return fail(Status.BAD_REQUEST,
+                    "Wrong number of dots on inbound detached signature " + signatureElements.length)
+    }
+    // Get the JWS header, first part of array
+    String jwsHeaderEncoded = signatureElements[ 0 ]
+
+    // Check JWS header for b64 claim:
+    // - If claim is present, and API version > 3.1.3 then reject
+    // - If claim is present, and is set to false, and API < 3.1.4 then accept and validate as non base64 payload
+
+    String jwsHeaderDecoded = new String(jwsHeaderEncoded.decodeBase64Url())
+    logger.debug(SCRIPT_NAME + "Got JWT header: " + jwsHeaderDecoded)
+    def jwsHeaderDataStructure = new JsonSlurper().parseText(jwsHeaderDecoded)
+
+    apiClient().getJwkSet().thenAsync(jwkSet -> {
+        if (!jwkSet) {
+            logger.error(SCRIPT_NAME + "apiClient JwkSet not found, ensure that filter which configures the " +
+                                   "apiClient JwkSet is installed prior to this filter in the chain")
+            return newResponsePromise(new Response(Status.INTERNAL_SERVER_ERROR))
+        }
+
+        if ([ 'v3.0', 'v3.1.0', 'v3.1.1', 'v3.1.2', 'v3.1.3' ].contains(apiVersion)) {
+            //Processing pre v3.1.4 requests
+            if (jwsHeaderDataStructure.b64 == null) {
+                message = "B64 header must be presented in JWT header before v3.1.3"
+                logger.error(SCRIPT_NAME + message)
+                return getSignatureValidationErrorResponse()
+            } else if (jwsHeaderDataStructure.b64 != false) {
+                message = "B64 header must be false in JWT header before v3.1.3"
+                logger.error(SCRIPT_NAME + message)
+                return getSignatureValidationErrorResponse()
+            } else {
+                String requestPayload = request.entity.getString()
+                try {
+                    logger.debug(SCRIPT_NAME + "Processing Unencoded payload request")
+                    if (!validateUnencodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
+                        return fail(Status.UNAUTHORIZED, "Signature validation failed")
+                    }
+                    return next.handle(context, request)
+                }
+                catch (Exception e) {
+                    logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
+                    return fail(Status.UNAUTHORIZED, "Signature validation failed")
+                }
+            }
         } else {
+            //Processing post v3.1.4 requests
+            if (jwsHeaderDataStructure.b64 != null) {
+                message = "B64 header not permitted in JWT header after v3.1.3"
+                logger.error(SCRIPT_NAME + message)
+                return fail(Status.UNAUTHORIZED, "Signature validation failed")
+            }
+
             String requestPayload = request.entity.getString()
             try {
-                logger.debug(SCRIPT_NAME + "Processing Unencoded payload request")
-                if (!validateUnencodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
-                    return newResultPromise(getSignatureValidationErrorResponse())
+                logger.debug(SCRIPT_NAME + "Standard base64 encoded payload for detached sig")
+                if (!validateEncodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
+                    return fail(Status.UNAUTHORIZED, "Signature validation failed")
                 }
                 return next.handle(context, request)
             }
             catch (Exception e) {
                 logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
-                return newResultPromise(getSignatureValidationErrorResponse())
+                return fail(Status.UNAUTHORIZED, "Signature validation failed")
             }
         }
-    } else {
-        //Processing post v3.1.4 requests
-        if (jwsHeaderDataStructure.b64 != null) {
-            message = "B64 header not permitted in JWT header after v3.1.3"
-            logger.error(SCRIPT_NAME + message)
-            return getSignatureValidationErrorResponse()
-        }
+    })
+}
 
-        String requestPayload = request.entity.getString()
-        try {
-            logger.debug(SCRIPT_NAME + "Standard base64 encoded payload for detached sig")
-            if (!validateEncodedPayload(detachedSignatureValue, jwkSet, requestPayload)) {
-                return newResultPromise(getSignatureValidationErrorResponse())
-            }
-            return next.handle(context, request)
-        }
-        catch (Exception e) {
-            logger.error(SCRIPT_NAME + "Exception validating the detached jws: " + e)
-            return newResultPromise(getSignatureValidationErrorResponse())
-        }
-    }
-})
-
-// End script execution - Start method definitions
+/**
+ * Report a processing failure.
+ * @param status HTTP status
+ * @param message error message
+ * @return Pomise of a response
+ */
+Promise<Response, NeverThrowsException> fail(Status status, String message) {
+    logger.error(SCRIPT_NAME + message)
+    response = new Response(status)
+    response.headers[ 'Content-Type' ] = "application/json"
+    response.getEntity().setJson(json(object(field("error", message))))
+    return newResponsePromise(response)
+}
 
 /**
  * Validates a request with unencoded payload. Between Version 3.1.3 and later versions,
@@ -377,14 +394,4 @@ def getCriticalHeaderParameters() {
     return criticalParameters
 }
 
-/**
- * Builds the signature validation failure error response
- * @return error response
- */
-def getSignatureValidationErrorResponse() {
-    message = "Signature validation failed"
-    logger.error(SCRIPT_NAME + message)
-    Response response = new Response(Status.UNAUTHORIZED)
-    response.setEntity("{ \"error\":\"" + message + "\"}")
-    return response
-}
+
