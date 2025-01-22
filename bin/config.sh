@@ -238,7 +238,7 @@ DOCKER_ROOT="secure-api-gateway-ob-uk-docker/$_arg_version"
 # else
 #	COMPONENTS=( "$_arg_component" )
 # fi
-# core only uses IG component
+# securebanking only uses IG component
 COMPONENTS=(ig)
 
 case "$_arg_operation" in
