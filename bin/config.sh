@@ -26,7 +26,7 @@ begins_with_short_option()
 _positionals=()
 
 # Profile defaults to cdk if not provided
-_arg_profile="${_PROFILE:-securebanking}"
+_arg_profile="${_PROFILE:-sapig}"
 _arg_environment="${_ENVIRONMENT:-dev}"
 _arg_version="${_VERSION:-7.3.0}"
 _arg_ig_mode=${_IGMODE:-development}
@@ -238,7 +238,7 @@ DOCKER_ROOT="secure-api-gateway-ob-uk-docker/$_arg_version"
 # else
 #	COMPONENTS=( "$_arg_component" )
 # fi
-# securebanking only uses IG component
+# core only uses IG component
 COMPONENTS=(ig)
 
 case "$_arg_operation" in

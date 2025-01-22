@@ -148,8 +148,8 @@
             "type": "FapiInteractionIdFilter"
           },
           {
-            "comment": "[TODO] Temporary filter to log access to the route, given unusual issues we're seeing",
-            "name": "WhereAmI?",
+            "comment": "Dev filter to log access to the route",
+            "name": "RouteAccessLog",
             "type": "ScriptableFilter",
             "config": {
               "type": "application/x-groovy",
@@ -164,10 +164,10 @@
                 "    field(\"URI\", request.getUri()), ",
                 "    field(\"referrer\", request.getHeaders().getFirst(\"Referrer\")), ",
                 "    field(\"x-fapi-interaction-id\", request.getHeaders().getFirst(\"x-fapi-interaction-id\"))))",
-                "logger.debug(\"[WhereAmI?] ENTER: {}\", debug)",
+                "logger.debug(\"[RouteAccessLog] ENTER: {}\", debug)",
                 "next.handle(context, request)",
                 "    .then({ response ->",
-                "      logger.debug(\"[WhereAmI?] EXIT: routeId={}\", context.asContext(RoutingContext.class).getRouteId())",
+                "      logger.debug(\"[RouteAccessLog] EXIT: routeId={}\", context.asContext(RoutingContext.class).getRouteId())",
                 "      //response.getEntity().setJson(debug)",
                 "      return response",
                 "  })"
