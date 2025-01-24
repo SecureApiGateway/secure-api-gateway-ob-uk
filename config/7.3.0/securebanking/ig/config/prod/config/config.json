@@ -383,12 +383,12 @@
       "config": {
         "trustedDirectories": [
           "OpenBankingTestDirectory",
-          "Secure API Gateway Test Directory"
+          "SecureAPIGatewayTestDirectory"
         ]
       }
     },
     {
-      "name": "Open Banking Test Directory",
+      "name": "OpenBankingTestDirectory",
       "type": "TrustedDirectory",
       "config": {
         "issuer": "OpenBanking Ltd",
@@ -418,7 +418,7 @@
       }
     },
     {
-      "name": "Secure API Gateway Test Directory",
+      "name": "SecureAPIGatewayTestDirectory",
       "type": "TrustedDirectory",
       "config": {
         "issuer": "test-publisher",
