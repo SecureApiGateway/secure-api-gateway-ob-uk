@@ -421,8 +421,7 @@
       "comment": "Used to obtain meta information about a trusted directory by look up using the 'iss' field value",
       "config": {
         "trustedDirectories": [
-          "OpenBankingTestDirectory",
-          "SecureAPIGatewayTestDirectory"
+          "OpenBankingTestDirectory"
         ]
       }
     },
