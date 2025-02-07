@@ -1,10 +1,5 @@
 {
   "properties": {
-    "security": {
-      "enableTestTrustedDirectory": {
-        "$bool": "&{ig.test.directory.enabled|true}"
-      }
-    },
     "oauth2": {
       "tokenEndpointAuthMethodsSupported": {
         "$list": "&{ig.oauth2.token.endpoint.auth.methods|private_key_jwt,tls_client_auth}"
@@ -448,36 +443,6 @@
                 "type": "JwkSetSecretStore",
                 "config": {
                   "jwkUrl": "https://keystore.openbankingtest.org.uk/keystore/openbanking.jwks",
-                  "handler": "OBClientHandler"
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "name": "SecureAPIGatewayTestDirectory",
-      "type": "TrustedDirectory",
-      "config": {
-        "issuer": "test-publisher",
-        "softwareStatementClaims": {
-          "organisationIdClaimName": "org_id",
-          "organisationNameClaimName": "org_name",
-          "softwareIdClaimName": "software_id",
-          "clientNameClaimName": "software_client_name",
-          "redirectUrisClaimName": "software_redirect_uris",
-          "rolesClaimName": "software_roles",
-          "jwksUriClaimName": "software_jwks_endpoint"
-        },
-        "secretsProvider": {
-          "type": "SecretsProvider",
-          "config": {
-            "stores": [
-              {
-                "type": "JwkSetSecretStore",
-                "config": {
-                  "jwkUrl": "https://&{trusteddir.fqdn}/jwkms/testdirectory/jwks",
                   "handler": "OBClientHandler"
                 }
               }
