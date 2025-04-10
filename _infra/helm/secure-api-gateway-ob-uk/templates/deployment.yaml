@@ -6,6 +6,7 @@ metadata:
     app: {{ .Chart.Name }}
     app.kubernetes.io/component: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Chart.Name }}
+    app.kubernetes.io/name: pingid
     app.kubernetes.io/part-of: pingid
     tier: middle
   name: {{ .Chart.Name }}
@@ -23,6 +24,7 @@ spec:
       app: {{ .Chart.Name }}
       app.kubernetes.io/component: {{ .Chart.Name }}
       app.kubernetes.io/instance: {{ .Chart.Name }}
+      app.kubernetes.io/name: pingid
       app.kubernetes.io/part-of: pingid
       tier: middle
   template:
@@ -31,6 +33,7 @@ spec:
         app: {{ .Chart.Name }}
         app.kubernetes.io/component: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Chart.Name }}
+        app.kubernetes.io/name: pingid
         app.kubernetes.io/part-of: pingid
         tier: middle
     spec:
@@ -67,7 +70,7 @@ spec:
               name: ig-ob-signing-key
               readOnly: true
             - mountPath: /var/ig/secrets/test-trusted-directory
-              name: test-trusted-dir-keystore
+              name: test-trusted-directory-keystore
               readOnly: true
           env:
             - name: NAMESPACE
@@ -128,7 +131,7 @@ spec:
           secret:
             optional: false
             secretName: ig-ob-signing-key
-        - name: test-trusted-dir-keystore
+        - name: test-trusted-directory-keystore
           secret:
             optional: false
-            secretName: test-trusted-dir-keystore
+            secretName: test-trusted-directory-keystore

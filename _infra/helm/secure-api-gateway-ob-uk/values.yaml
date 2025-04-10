@@ -52,10 +52,9 @@ deployment:
   # See https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/ for further info on Liveness and Readiness Probes
   # Config for the liveness probe
   livenessProbe:
-    initialDelaySeconds: 160
-    failureThreshold: 5
+    failureThreshold: 3
     path: "/kube/liveness"
-    periodSeconds: 5
+    periodSeconds: 30
     successThreshold: 1
     timeoutSeconds: 5
   # RS Connects to the mongodb instance
@@ -64,11 +63,12 @@ deployment:
     host: "mongodb"
   # Config for the readiness probe
   readinessProbe:
+    initialDelaySeconds: 5
     failureThreshold: 3
-    periodSeconds: 5
+    periodSeconds: 10
     path: "/kube/readiness"
     successThreshold: 1
-    timeoutSeconds: 5
+    timeoutSeconds: 1
   # How many pods are to run in the deployment
   replicas: 1
   # See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ 
