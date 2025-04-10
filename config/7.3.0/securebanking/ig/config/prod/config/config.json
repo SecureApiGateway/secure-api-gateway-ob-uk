@@ -439,7 +439,7 @@
               {
                 "type": "JwkSetSecretStore",
                 "config": {
-                  "jwkUrl": "https://&{test.directory.fdqn}/jwkms/testdirectory/jwks",
+                  "jwkUrl": "https://&{test.directory.fqdn}/jwkms/testdirectory/jwks",
                   "handler": "OBClientHandler"
                 }
               }
