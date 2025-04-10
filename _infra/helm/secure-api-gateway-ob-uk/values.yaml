@@ -13,7 +13,7 @@ configmap:
   igOBASPSPSigningKeystorePath: "/secrets/open-banking/ig-ob-signing-key.p12"
   igOBASPSPSigningKeystoreType: "PKCS12"
   igOBASPSPSigningKid: "sU72Qz8tTtH9W6EoG-vhEYiQTJc"
-  igTestDirectoryEnabled: "true"
+  igTestDirectoryEnabled: true
   igTruststorePath: "/secrets/truststore/igtruststore"
   mtlsFQDN: "mtls.sapig.dev-cdk-ob.forgerock.financial"
   obASPSPOrgID: "0015800001041REAAY"
