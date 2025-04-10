@@ -12,7 +12,7 @@ data:
   # ---SAPIG---
   # core: base sapig
   # ob: Open Banking specification of sapig
-  SAPIG_TYPE:{{ .Values.configmap.sapigType }}
+  SAPIG_TYPE: {{ .Values.configmap.sapigType }}
   # ---Cloud---
   # CDK value: (Cloud Developer's Kit) development identity platform
   # CDM value: CDM (Cloud Deployment Model)
