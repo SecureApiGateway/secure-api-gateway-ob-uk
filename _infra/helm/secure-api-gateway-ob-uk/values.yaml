@@ -3,7 +3,7 @@ configmap:
   # Version of the Kubernetes API to use
   apiVersion: "v1"
   amRealm: "alpha"
-  baseFQDN: "dev.forgerock.financial"
+  baseFQDN: "dev-cdk-core.forgerock.financial"
   certIssuer: "null-issuer"
   cloudType: "CDK"
   gatewayDataRepoURI: "http://ig:80"
@@ -86,6 +86,7 @@ deployment:
     maxSurge: "50%"
     maxUnavailable: "25%"
   strategyType: "RollingUpdate"
+
 ingress:
   sapig:
     host: "replace-me"
@@ -104,6 +105,7 @@ ingress:
     tls:
       host: "replace-me"
       secretName: ob-tls-cert
+
 secrets:
   igAgentID: "replace-me"
   igAgentPassword: "replace-me"
@@ -120,6 +122,7 @@ secrets:
   mongodbConsentUsername: "replace-me"
   mongodbTestFacilityPassword: "replace-me"
   mongodbTestFacilityUsername: "replace-me"
+
 service:
   # Version of the Kubernetes API to use
   apiVersion: "v1"
