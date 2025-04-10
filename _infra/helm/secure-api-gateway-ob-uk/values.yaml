@@ -65,10 +65,10 @@ deployment:
   readinessProbe:
     initialDelaySeconds: 5
     failureThreshold: 3
-    periodSeconds: 10
+    periodSeconds: 30
     path: "/kube/readiness"
     successThreshold: 1
-    timeoutSeconds: 1
+    timeoutSeconds: 5
   # How many pods are to run in the deployment
   replicas: 1
   # See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ 
