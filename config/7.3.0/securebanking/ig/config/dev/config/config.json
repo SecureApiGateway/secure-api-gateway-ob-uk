@@ -78,14 +78,6 @@
       }
     },
     {
-      "name": "ReverseProxyHandlerNoCapture",
-      "type": "ReverseProxyHandler",
-      "comment": "ReverseProxyHandler with no capture decorator configuration",
-      "config": {
-        "vertx": "${vertxConfig}"
-      }
-    },
-    {
       "name": "JwtSession",
       "type": "JwtSession"
     },
