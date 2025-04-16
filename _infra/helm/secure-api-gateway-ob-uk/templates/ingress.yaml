@@ -5,7 +5,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
-    nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/{{ .Values.ingress.mtls.annotations.authTlsSecret }}
+    nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/{{ .Values.ingress.rsMtls.annotations.authTlsSecret }}
     nginx.ingress.kubernetes.io/auth-tls-verify-client: "optional_no_ca"
     nginx.ingress.kubernetes.io/large-client-header-buffers: "4 128k"
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
