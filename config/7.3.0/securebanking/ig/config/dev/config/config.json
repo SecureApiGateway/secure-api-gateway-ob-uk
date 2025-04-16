@@ -322,6 +322,13 @@
         "signingSecretsProvider": "SecretsProvider-ASPSP",
         "signingKeySecretId": "jwt.signer"
       }
+    },
+    {
+      "name": "HeaderCertificateRetriever",
+      "type": "HeaderCertificateRetriever",
+      "config": {
+        "certificateHeaderName": "ssl-client-cert"
+      }
     }
   ],
   "monitor": true
