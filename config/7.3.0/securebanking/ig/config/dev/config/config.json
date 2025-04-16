@@ -239,16 +239,8 @@
       "name": "ValidateApiClientMtlsCertChain",
       "type": "ChainOfFilters",
       "comment": "This filter chain validates the ApiClient's MTLS cert using the Trusted Directory, it first fetches all of the resources it needs to perform the validation",
-      "config" : {
+      "config": {
         "filters": [
-          {
-            "comment": "Initialize FAPI Context",
-            "name": "FapiContextInitializerFilter",
-            "type": "FapiContextInitializerFilter",
-            "config": {
-              "tlsCertificateHeaderName": "ssl-client-cert"
-            }
-          },
           {
             "comment": "Add ApiClient data to the context attributes.apiClient",
             "name": "FetchApiClientFilter",
@@ -262,6 +254,7 @@
             "name": "TransportCertValidationFilter",
             "type": "TransportCertValidationFilter",
             "config": {
+              "certificateRetriever": "HeaderCertificateRetriever",
               "transportCertValidator": "TransportCertValidator"
             }
           }
