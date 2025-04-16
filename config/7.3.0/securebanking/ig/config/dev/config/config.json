@@ -1,8 +1,5 @@
 {
   "properties": {
-    "security": {
-      "tlsTransportCertSecretId": "tls.cert.secret.id"
-    },
     "jwtValidation": {
       "clockSkewAllowanceDuration": "5s"
     },
@@ -391,6 +388,25 @@
           "TransactionIdOutboundFilter"
         ],
         "handler": "ReverseProxyHandler"
+      }
+    },
+    {
+      "name": "AmService",
+      "type": "AmService",
+      "config": {
+        "url": "https://&{identity.platform.fqdn}/am",
+        "realm": "/&{am.realm}",
+        "agent": {
+          "username": "ig-agent",
+          "passwordSecretId": "ig.agent.password"
+        },
+        "secretsProvider": "SystemAndEnvSecretStore-IAM",
+        "sessionCache": {
+          "enabled": false
+        },
+        "notifications": {
+          "enabled": false
+        }
       }
     }
   ],
