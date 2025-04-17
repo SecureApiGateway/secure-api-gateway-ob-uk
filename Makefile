@@ -1,6 +1,6 @@
 name := secure-api-gateway-fapi-pep-rs-ob
 repo := europe-west4-docker.pkg.dev/sbat-gcr-develop/sapig-docker-artifact
-service := ig
+service := fapi-pep-rs-ob
 latesttagversion := latest
 
 docker: build-java copy-java-dependencies conf
