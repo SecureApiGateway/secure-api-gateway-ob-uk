@@ -52,7 +52,7 @@ spec:
   rules:
     - host: {{ .Values.ingress.rsSapig.host }}
       http:
-        paths:{{ .Chart.Name }}
+        paths:
           - backend:
               service:
                 name: fapi-pep-rs
