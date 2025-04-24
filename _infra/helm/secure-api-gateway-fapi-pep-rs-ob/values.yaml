@@ -92,19 +92,19 @@ ingress:
   rsMtls:
     annotations:
       authTlsSecret: fapi-pep-rs-mtls-ca-certs
-    host: "replace-me"
+    host: "replace-me.domain"
     tls:
-      host: "replace-me"
+      host: "replace-me.domain"
       secretName: fapi-pep-rs-mtls-tls-cert
   rsSapig:
-    host: "replace-me"
+    host: "replace-me.domain"
     tls:
-      host: "replace-me"
+      host: "replace-me.domain"
       secretName: fapi-pep-rs-tls-cert
   rsIGSstudio:
-    host: "replace-me"
+    host: "replace-me.domain"
     tls:
-      host: "replace-me"
+      host: "replace-me.domain"
       secretName: fapi-pep-rs-tls-cert
 
 
