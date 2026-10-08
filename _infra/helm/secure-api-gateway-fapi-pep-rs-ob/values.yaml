@@ -100,5 +100,36 @@ ingress:
   tls:
     serverCertSecret: fapi-pep-rs-tls-cert
 
+networkPolicy:
+  enabled: true
+  # Allow traffic from ingress-nginx controller pods only.
+  # Adjust these labels to match YOUR ingress controller installation — a
+  # mismatch here means the controller cannot reach the service at all (total
+  # FAPI outage), not merely a dropped connection.
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+              app.kubernetes.io/component: controller
+      # Ports are the container ports declared in the deployment template
+      # (main 8080, admin 8085).
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Admin interface (container port 8085): keep reachable in-cluster for
+    # Prometheus scraping of /openig/monitor. Adjust the namespaceSelector to
+    # match where Prometheus runs.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8085
+
 service:
   port: 80

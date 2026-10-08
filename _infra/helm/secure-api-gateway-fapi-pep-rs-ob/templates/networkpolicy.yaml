@@ -1,0 +1,17 @@
+{{- if .Values.networkPolicy.enabled }}
+# Restrict pod ingress to the ingress-nginx controller:
+# ssl-client-cert is only trustworthy when set by the mTLS ingress, so nothing
+# else in the cluster should be able to reach IG directly.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+{{- toYaml .Values.networkPolicy.ingress | nindent 2 }}
+{{- end }}
