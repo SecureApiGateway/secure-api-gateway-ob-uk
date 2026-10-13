@@ -1,3 +1,7 @@
+{{- if eq (lower .Values.resourceServer.fqdn) (lower .Values.resourceServer.mtlsFqdn) }}
+{{- fail "resourceServer.fqdn and resourceServer.mtlsFqdn must differ: FAPI mTLS-only endpoints are enforced per-host" }}
+{{- end }}
+---
 # Ingress for routes requiring MTLS with Open Banking Directory issued certs
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -33,7 +37,14 @@ spec:
         - {{ .Values.resourceServer.mtlsFqdn }}
       secretName: {{ .Values.ingress.mtls.serverCertSecret }}
 ---
-# Ingress for access to routes protected with TLS
+# Plain-TLS ingress for the non-FAPI endpoints. Only endpoints that never
+# consume the client TLS certificate are allow-listed here: the RCS consent
+# UI (the browser flow AM's RemoteConsent agent redirects the PSU to) and the
+# RCS API. The FAPI endpoints that consume the client TLS certificate (the
+# /rs/open-banking/... account, payment and funds-confirmation routes) are
+# only served through the mTLS ingress, which overwrites ssl-client-cert from
+# the TLS handshake. Anything not listed falls through to the default backend
+# (404), so future cert-consuming routes can never become reachable here.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -53,12 +64,21 @@ spec:
     - host: {{ .Values.resourceServer.fqdn }}
       http:
         paths:
+          # PSU browser consent flow (AM RemoteConsent redirect target)
           - backend:
               service:
                 name: {{ .Chart.Name }}
                 port:
                   number: 80
-            path: /
+            path: /rcs/ui/
+            pathType: Prefix
+          # RCS consent API (consent details/decision)
+          - backend:
+              service:
+                name: {{ .Chart.Name }}
+                port:
+                  number: 80
+            path: /rcs/api/
             pathType: Prefix
   tls:
     - hosts:

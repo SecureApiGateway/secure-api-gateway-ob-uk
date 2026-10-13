@@ -45,7 +45,12 @@ spec:
           image: {{ .Values.deployment.image.repo }}:{{ default .Chart.AppVersion .Values.deployment.image.tag }}
           imagePullPolicy: {{ .Values.deployment.image.imagePullPolicy }}
           ports:
-            - containerPort: 8080
+            # The NetworkPolicy references these names, so the policy can never
+            # drift from the ports the container actually listens on.
+            - name: http
+              containerPort: 8080
+            - name: admin
+              containerPort: 8085
           readinessProbe:
             failureThreshold: {{ .Values.deployment.readinessProbe.failureThreshold }}
             httpGet:
