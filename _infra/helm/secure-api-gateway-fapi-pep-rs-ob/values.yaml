@@ -121,12 +121,18 @@ networkPolicy:
         - protocol: TCP
           port: 8080
     # Admin interface (container port 8085): keep reachable in-cluster for
-    # Prometheus scraping of /openig/monitor. Adjust the namespaceSelector to
-    # match where Prometheus runs.
+    # Prometheus scraping of /openig/monitor.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+          # Pin to the Prometheus pods (kube-prometheus-stack release name in
+          # sbat-infra/cluster/prometheus) — least privilege, matching the
+          # controller-pod pattern of the rule above.
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/instance: prometheus
       ports:
         - protocol: TCP
           port: 8085
